@@ -28,12 +28,24 @@ $ cd argonaut
 $ sbt argonautNative/publishLocal
 ```
 
+### Build libhttpsimple
+
+The library `libhttpsimple` is a thin wrapper around `libcurl`. `libhttpsimple` is created due to difficulties binding the `CURLOption` enums from Scala Native. Normally enums in Scala Native will be wrapped around a value class containing a `CInt` or `CLong`. However, the `CURLOption` enums being generated using C macros, resulting in an enum that can't be mapped to a value class.
+
+You must have `gcc` installed to build the `libhttpsimple` library.
+
+To build `libhttpsimple` execute the following command.
+
+```bash
+$ sh compile.sh
+```
+
 ## Building and running
 
 Use the following SBT command to create the native executable:
 
 ```bash
-$ sbt nativeLink
+$ sbt k8s-cli/nativeLink
 ```
 
 Once built, the native executable can be found in the `k8s-cli/target/scala-2.11/k8s-cli-out` path, i.e.
