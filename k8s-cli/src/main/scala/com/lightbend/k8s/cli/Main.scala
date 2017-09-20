@@ -6,6 +6,7 @@
 
 package com.lightbend.k8s.cli
 
+import libhttpsimple.LibHttpSimple
 import scopt.OptionParser
 import argonaut._
 import Argonaut._
@@ -37,6 +38,10 @@ object Main {
     val inputArgsJsonString = inputArgsJson.spaces2
     println(s"Got input args as JSON string:")
     println(inputArgsJsonString)
+
+    val response = LibHttpSimple.get("https://www.example.org")
+    println(s"Got HTTP response:")
+    println(response)
   }
 
   def main(args: Array[String]): Unit = {

@@ -9,6 +9,9 @@ scalaVersion := "2.11.11"
 // Disable GC since the CLI is a short-lived process.
 nativeGC := "none"
 
+
+nativeLinkingOptions := Seq("-L", "/Users/felixsatyaputra/workspace/typesafe-fsat/reactive-cli/libhttpsimple/target")
+
 libraryDependencies ++= List(
   "com.github.scopt"  %%% "scopt"    % "3.7.0",
   "io.argonaut"       %%% "argonaut" % "6.3-SNAPSHOT",
