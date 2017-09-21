@@ -56,11 +56,6 @@ lazy val `k8s-cli` = project
   .enablePlugins(ScalaNativePlugin, AutomateHeaderPlugin)
   .settings(commonSettings)
   .settings(Seq(
-    // Disable GC since the CLI is a short-lived process.
-    nativeGC := "none",
-
-    nativeLinkingOptions := Seq("-L", (file("libhttpsimple") / "target").toString),
-
     libraryDependencies ++= List(
       "com.github.scopt"  %%% "scopt"    % "3.7.0",
       "io.argonaut"       %%% "argonaut" % "6.3-SNAPSHOT"
