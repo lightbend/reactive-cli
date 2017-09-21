@@ -19,6 +19,28 @@ object LibHttpSimple {
 
   case class HttpResponse(statusCode: Long, headers: Map[String, String], body: Option[String])
 
+  /**
+   * Initializes libcurl` internal state by calling `curl_global_init` underneath.
+   * This method is _NOT_ thread safe and it's meant to be called at the start of the program.
+   */
+  def globalInit(): Try[Unit] =
+    native.Zone { implicit z =>
+      val errorCode = nativebinding.httpsimple.global_init()
+      if (errorCode.toInt == 0)
+        Success(Unit)
+      else
+        Failure(InternalNativeFailure(-70, "Failure calling curl_global_init"))
+    }
+
+  /**
+   * Performs cleanup of libcurl` internal state by calling `curl_global_cleanup` underneath.
+   * This method is _NOT_ thread safe and it's meant to be called before termination of the program.
+   */
+  def globalCleanup(): Unit =
+    native.Zone { implicit z =>
+      nativebinding.httpsimple.global_cleanup()
+    }
+
   def get(url: String): Try[HttpResponse] =
     doHttp("GET", url, headers = Map.empty, requestBody = None)
 

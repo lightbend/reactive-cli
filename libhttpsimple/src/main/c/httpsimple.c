@@ -25,6 +25,21 @@ struct http_response {
   size_t len;
 };
 
+int global_init() {
+  CURLcode res_curl_code;
+  res_curl_code = curl_global_init(CURL_GLOBAL_DEFAULT);
+  if (res_curl_code == CURLE_OK) {
+    fprintf(stderr, "curl_global_init() failed: %s\n", curl_easy_strerror(res_curl_code));
+    return 0;
+  } else {
+    return -1;
+  }
+}
+
+void global_cleanup() {
+  curl_global_cleanup();
+}
+
 void init_http_response(struct http_response *s) {
   s->has_error = 0;
   s->http_status = 0;
@@ -96,7 +111,7 @@ struct http_response *do_http(char *http_method, char *url, char *request_header
       /* Perform the request, res will get the return code */
       res_curl_code = curl_easy_perform(curl);
       /* Check for errors */
-      if(res_curl_code == CURLE_OK && s->has_error == 0) {
+      if (res_curl_code == CURLE_OK && s->has_error == 0) {
         long http_response_code;
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_response_code);
         s->http_status = http_response_code;

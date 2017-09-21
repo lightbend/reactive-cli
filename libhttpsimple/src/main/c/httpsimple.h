@@ -23,6 +23,10 @@ struct http_response {
   size_t len;
 };
 
+extern int global_init();
+
+extern void global_cleanup();
+
 extern struct http_response *do_http(char *http_method, char *url, char *request_headers_raw, char *request_body);
 
 extern long get_error_code(struct http_response *s);
@@ -33,6 +37,6 @@ extern long get_http_status(struct http_response *s);
 
 extern char *get_raw_http_response(struct http_response *s);
 
-void cleanup_http_response(struct http_response *s);
+extern void cleanup_http_response(struct http_response *s);
 
 #endif // httpsimple_h__

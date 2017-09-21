@@ -29,6 +29,8 @@ object Main {
   }
 
   def run(inputArgs: InputArgs): Unit = {
+    LibHttpSimple.globalInit()
+
     println(s"Got input args: $inputArgs")
 
     val inputArgsJson = inputArgs.asJson
@@ -42,6 +44,8 @@ object Main {
     val response = LibHttpSimple.get("https://www.example.org")
     println(s"Got HTTP response:")
     println(response)
+
+    LibHttpSimple.globalCleanup()
   }
 
   def main(args: Array[String]): Unit = {
