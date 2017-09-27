@@ -36,7 +36,7 @@ lazy val root = project
   .in(file("."))
   .aggregate(
     `libhttpsimple-bindings`,
-    `k8s-cli`
+    `cli`
   )
   .settings(
     name := "reactive-cli"
@@ -47,8 +47,8 @@ lazy val `libhttpsimple-bindings` = project
   .enablePlugins(ScalaNativePlugin, AutomateHeaderPlugin)
   .settings(commonSettings)
 
-lazy val `k8s-cli` = project
-  .in(file("k8s-cli"))
+lazy val cli = project
+  .in(file("cli"))
   .enablePlugins(ScalaNativePlugin, AutomateHeaderPlugin)
   .settings(commonSettings)
   .settings(Seq(

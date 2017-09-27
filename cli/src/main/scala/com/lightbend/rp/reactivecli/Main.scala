@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.lightbend.k8s.cli
+package com.lightbend.rp.reactivecli
 
 import libhttpsimple.LibHttpSimple
 import scopt.OptionParser
@@ -28,8 +28,8 @@ object Main {
 
   implicit def inputArgsCodecJson = casecodec1(InputArgs.apply, InputArgs.unapply)("foo")
 
-  val parser = new OptionParser[InputArgs]("k8s-cli") {
-    head("k8s-cli", "0.1.0")
+  val parser = new OptionParser[InputArgs]("reactive-cli") {
+    head("reactive-cli", "0.1.0")
 
     help("help").text("Print this help text")
 
