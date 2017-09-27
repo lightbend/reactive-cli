@@ -1,4 +1,9 @@
-addSbtPlugin("org.scala-native"   % "sbt-scala-native"  % "0.3.3")
-addSbtPlugin("de.heikoseeberger"  % "sbt-header"        % "1.5.1")
-addSbtPlugin("org.scalariform"    % "sbt-scalariform"   % "1.6.0")
+val Versions = new {
+  val sbtHeader     = "3.0.1"
+  val sbtSalaNative = "0.3.3"
+  val sbtSclariform = "1.8.0"
+}
 
+addSbtPlugin("de.heikoseeberger"  % "sbt-header"        % Versions.sbtHeader)
+addSbtPlugin("org.scala-native"   % "sbt-scala-native"  % Versions.sbtSalaNative)
+addSbtPlugin("org.scalariform"    % "sbt-scalariform"   % Versions.sbtSclariform)

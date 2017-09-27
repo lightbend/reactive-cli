@@ -1,40 +1,33 @@
 import sbt._
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
-import de.heikoseeberger.sbtheader.HeaderPattern
 import scalariform.formatter.preferences.AlignSingleLineCaseStatements
 
+val Versions = new {
+  val argonaut = "6.3-SNAPSHOT"
+  val scala = "2.11.11"
+  val scopt = "3.7.0"
+  val utest = "0.4.8"
+}
+
 lazy val commonSettings = Seq(
-  scalaVersion := "2.11.11",
+  organization := "com.lightbend.rp",
+
+  organizationName := "Lightbend, Inc.",
+
+  startYear := Some(2017),
+
+  licenses += ("Apache-2.0", new URL("https://www.apache.org/licenses/LICENSE-2.0.txt")),
+
+  scalaVersion := Versions.scala,
 
   libraryDependencies ++= List(
-    "com.lihaoyi"       %%% "utest"    % "0.4.8" % "test"
+    "com.lihaoyi" %%% "utest" % Versions.utest % "test"
   ),
 
   ScalariformKeys.preferences :=
     ScalariformKeys.preferences.value
       .setPreference(AlignSingleLineCaseStatements, true)
       .setPreference(AlignSingleLineCaseStatements.MaxArrowIndent, 100),
-
-  HeaderPlugin.autoImport.headers := Map(
-    "scala" -> (
-      HeaderPattern.cStyleBlockComment,
-      """|/*
-         | * Copyright © 2014-2016 Lightbend, Inc. All rights reserved.
-         | * No information contained herein may be reproduced or transmitted in any form
-         | * or by any means without the express written permission of Lightbend, Inc.
-         | */
-         |
-         |""".stripMargin
-      ),
-    "conf" -> (
-      HeaderPattern.hashLineComment,
-      """|# Copyright © 2014-2016 Lightbend, Inc. All rights reserved.
-         |# No information contained herein may be reproduced or transmitted in any form
-         |# or by any means without the express written permission of Lightbend, Inc.
-         |
-         |""".stripMargin
-      )
-  ),
 
   testFrameworks += new TestFramework("utest.runner.Framework")
 )
@@ -44,6 +37,9 @@ lazy val root = project
   .aggregate(
     `libhttpsimple-bindings`,
     `k8s-cli`
+  )
+  .settings(
+    name := "reactive-cli"
   )
 
 lazy val `libhttpsimple-bindings` = project
@@ -57,8 +53,8 @@ lazy val `k8s-cli` = project
   .settings(commonSettings)
   .settings(Seq(
     libraryDependencies ++= List(
-      "com.github.scopt"  %%% "scopt"    % "3.7.0",
-      "io.argonaut"       %%% "argonaut" % "6.3-SNAPSHOT"
+      "com.github.scopt"  %%% "scopt"    % Versions.scopt,
+      "io.argonaut"       %%% "argonaut" % Versions.argonaut
     )
   ))
   .dependsOn(`libhttpsimple-bindings`)

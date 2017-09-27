@@ -1,4 +1,4 @@
-# k8s-cli #
+# reactive-cli #
 
 CLI tools to generate Kubernetes resources for Akka, Play, Lagom based application.
 
