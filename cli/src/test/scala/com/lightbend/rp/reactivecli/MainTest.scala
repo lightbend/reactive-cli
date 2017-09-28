@@ -4,7 +4,7 @@
  * or by any means without the express written permission of Lightbend, Inc.
  */
 
-package com.lightbend.k8s.cli
+package com.lightbend.rp.reactivecli
 
 import utest._
 

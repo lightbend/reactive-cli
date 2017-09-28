@@ -1,4 +1,4 @@
-# k8s-cli #
+# reactive-cli #
 
 CLI tools to generate Kubernetes resources for Akka, Play, Lagom based application.
 
@@ -45,15 +45,15 @@ $ sh compile.sh
 Use the following SBT command to create the native executable:
 
 ```bash
-$ sbt k8s-cli/nativeLink
+$ sbt cli/nativeLink
 ```
 
-Once built, the native executable can be found in the `k8s-cli/target/scala-2.11/k8s-cli-out` path, i.e.
+Once built, the native executable can be found in the `cli/target/scala-2.11/cli-out` path, i.e.
 
 ```bash
-$ k8s-cli/target/scala-2.11/k8s-cli-out --help
-k8s-cli 0.1.0
-Usage: k8s-cli [options]
+$ cli/target/scala-2.11/cli-out --help
+reactive-cli 0.1.0
+Usage: reactive-cli [options]
 
   --help             Print this help text
 ```
