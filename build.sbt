@@ -6,7 +6,7 @@ val Versions = new {
   val argonaut = "6.3-SNAPSHOT"
   val scala = "2.11.11"
   val scopt = "3.7.0"
-  val utest = "0.4.8"
+  val utest = "0.5.3"
 }
 
 lazy val commonSettings = Seq(
@@ -28,6 +28,8 @@ lazy val commonSettings = Seq(
     ScalariformKeys.preferences.value
       .setPreference(AlignSingleLineCaseStatements, true)
       .setPreference(AlignSingleLineCaseStatements.MaxArrowIndent, 100),
+
+  nativeLinkStubs := true,
 
   testFrameworks += new TestFramework("utest.runner.Framework")
 )
