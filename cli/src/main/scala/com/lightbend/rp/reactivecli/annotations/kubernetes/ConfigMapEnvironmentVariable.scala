@@ -14,11 +14,8 @@
  * limitations under the License.
  */
 
-package com.lightbend.rp.reactivecli.annotations
+package com.lightbend.rp.reactivecli.annotations.kubernetes
 
-private[annotations] trait EnvironmentVariable
+import com.lightbend.rp.reactivecli.annotations.EnvironmentVariable
 
-case class LiteralEnvironmentVariable(value: String) extends EnvironmentVariable
-
-case class SecretEnvironmentVariable(secret: String) extends EnvironmentVariable
-
+case class ConfigMapEnvironmentVariable(mapName: String, key: String) extends EnvironmentVariable
