@@ -77,7 +77,6 @@ struct http_response *do_http(char *http_method, char *url, char *request_header
     if(curl) {
       curl_easy_setopt(curl, CURLOPT_URL, url);
       curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, http_method);
-      curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L); // Follow redirect
       curl_easy_setopt(curl, CURLOPT_HEADER, 1L); // Return header as part of the response text
 
       // Append request headers if defined

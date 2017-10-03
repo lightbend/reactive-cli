@@ -16,7 +16,7 @@
 
 package com.lightbend.rp.reactivecli
 
-import libhttpsimple.LibHttpSimple
+import libhttpsimple.{ LibHttpSimple, HttpRequest }
 import scopt.OptionParser
 import argonaut._
 import Argonaut._
@@ -51,9 +51,11 @@ object Main {
     println(s"Got input args as JSON string:")
     println(inputArgsJsonString)
 
-    val response = LibHttpSimple.get("https://www.example.org")
+    val response = LibHttpSimple(HttpRequest("https://www.example.org"))
     println(s"Got HTTP response:")
     println(response)
+
+    println(docker.DockerRegistry.getConfig("dockercloud/hello-world"))
 
     LibHttpSimple.globalCleanup()
   }

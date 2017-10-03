@@ -27,7 +27,7 @@ object LibHttpSimple {
 
   case class InternalNativeFailure(errorCode: Long, errorDescription: String) extends RuntimeException(s"$errorCode: $errorDescription")
 
-  case class HttpResponse(statusCode: Long, headers: Map[String, String], body: Option[String])
+  case class InfiniteRedirect(visited: List[String]) extends RuntimeException(s"Infinte redirect detected: $visited")
 
   /**
    * Initializes libcurl` internal state by calling `curl_global_init` underneath.
@@ -51,25 +51,16 @@ object LibHttpSimple {
       nativebinding.httpsimple.global_cleanup()
     }
 
-  def get(url: String): Try[HttpResponse] =
-    doHttp("GET", url, headers = Map.empty, requestBody = None)
+  def apply(request: HttpRequest): Try[HttpResponse] =
+    doHttp(request.requestMethod, request.requestUrl, request.requestHeaders.headers, request.requestBody, request.requestFollowRedirects, Nil)
 
-  def get(url: String, headers: Map[String, String]): Try[HttpResponse] =
-    doHttp("GET", url, headers, requestBody = None)
-
-  def post(url: String): Try[HttpResponse] =
-    doHttp("POST", url, headers = Map.empty, requestBody = None)
-
-  def post(url: String, headers: Map[String, String]): Try[HttpResponse] =
-    doHttp("GET", url, headers, requestBody = None)
-
-  def post(url: String, headers: Map[String, String], requestBody: String): Try[HttpResponse] =
-    doHttp("GET", url, headers, requestBody = Some(requestBody))
-
-  def post(url: String, requestBody: String): Try[HttpResponse] =
-    doHttp("GET", url, headers = Map.empty, requestBody = Some(requestBody))
-
-  private def doHttp(method: String, url: String, headers: Map[String, String], requestBody: Option[String]): Try[HttpResponse] =
+  private def doHttp(
+    method: String,
+    url: String,
+    headers: Map[String, String],
+    requestBody: Option[String],
+    followRedirects: Boolean,
+    visitedUrls: List[String]): Try[HttpResponse] =
     native.Zone { implicit z =>
       val http_response_struct = nativebinding.httpsimple.do_http(
         native.toCString(method),
@@ -82,9 +73,19 @@ object LibHttpSimple {
         if (errorCode == 0) {
           val httpStatus = nativebinding.httpsimple.get_http_status(http_response_struct).cast[Long]
           val rawHttpResponse = native.fromCString(nativebinding.httpsimple.get_raw_http_response(http_response_struct))
-          val (header, body) = rawHttpResponseToHttpHeadersAndBody(rawHttpResponse)
+          val (headers, body) = rawHttpResponseToHttpHeadersAndBody(rawHttpResponse)
+          val hs = HttpHeaders(headers)
 
-          Success(HttpResponse(httpStatus, header, body))
+          if (followRedirects && hs.contains("Location")) {
+            val location = hs("Location")
+
+            if (visitedUrls.contains(location))
+              Failure(InfiniteRedirect(visitedUrls))
+            else
+              doHttp("GET", location, Map.empty, None, true, location :: visitedUrls)
+          } else {
+            Success(HttpResponse(httpStatus, hs, body))
+          }
         } else {
           Failure(InternalNativeFailure(errorCode, errorMessageFromCode(errorCode)))
         }
@@ -114,9 +115,9 @@ object LibHttpSimple {
         val (headerText, responseBody) = splitBySeparator(rawResponse, HttpHeaderAndBodyPartsSeparator)
 
         // Exclude the first line which is the HTTP status line
-        val headers = headerText.split(CRLF).toList.tail.foldLeft(Map.empty[String, String]) { (v, l) =>
+        val headers = headerText.split(CRLF).tail.foldLeft(Map.empty[String, String]) { (v, l) =>
           val (headerName, headerValue) = splitBySeparator(l, HttpHeaderNameAndValueSeparator)
-          v + (headerName -> headerValue.trim)
+          v.updated($headerName, headerValue.trim)
         }
 
         headers -> Option(responseBody)
