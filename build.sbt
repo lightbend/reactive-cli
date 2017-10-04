@@ -1,12 +1,15 @@
 import sbt._
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
+import scala.collection.immutable.Seq
 import scalariform.formatter.preferences.AlignSingleLineCaseStatements
+
+val binaryName = SettingKey[String]("binary-name")
 
 val Versions = new {
   val argonaut = "6.3-SNAPSHOT"
-  val scala = "2.11.11"
-  val scopt = "3.7.0"
-  val utest = "0.5.3"
+  val scala    = "2.11.11"
+  val scopt    = "3.7.0"
+  val utest    = "0.5.3"
 }
 
 lazy val commonSettings = Seq(
@@ -18,9 +21,13 @@ lazy val commonSettings = Seq(
 
   licenses += ("Apache-2.0", new URL("https://www.apache.org/licenses/LICENSE-2.0.txt")),
 
+  maintainer := "info@lightbend.com",
+
+  rpmVendor := organizationName.value,
+
   scalaVersion := Versions.scala,
 
-  libraryDependencies ++= List(
+  libraryDependencies ++= Seq(
     "com.lihaoyi" %%% "utest" % Versions.utest % "test"
   ),
 
@@ -51,12 +58,26 @@ lazy val `libhttpsimple-bindings` = project
 
 lazy val cli = project
   .in(file("cli"))
-  .enablePlugins(ScalaNativePlugin, AutomateHeaderPlugin)
+  .enablePlugins(ScalaNativePlugin, AutomateHeaderPlugin, JavaAppPackaging)
+  .dependsOn(`libhttpsimple-bindings`)
   .settings(commonSettings)
   .settings(Seq(
-    libraryDependencies ++= List(
+    libraryDependencies ++= Seq(
       "com.github.scopt"  %%% "scopt"    % Versions.scopt,
       "io.argonaut"       %%% "argonaut" % Versions.argonaut
     )
   ))
-  .dependsOn(`libhttpsimple-bindings`)
+  .settings(
+    binaryName := "rp",
+    packageSummary := "Tools for managing and deploying Lightbend Reactive Platform applications",
+    nativeLink in Compile := {
+      val out = (nativeLink in Compile).value
+      val dest = out.getParentFile / binaryName.value
+      IO.move(out, dest)
+      dest
+    },
+    packageName in Linux := "reactive-cli",
+    mappings in Universal := Seq(
+      (nativeLink in Compile).value -> s"bin/${binaryName.value}"
+    )
+  )
