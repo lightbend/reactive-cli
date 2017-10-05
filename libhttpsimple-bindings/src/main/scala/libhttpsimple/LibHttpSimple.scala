@@ -117,7 +117,7 @@ object LibHttpSimple {
         // Exclude the first line which is the HTTP status line
         val headers = headerText.split(CRLF).tail.foldLeft(Map.empty[String, String]) { (v, l) =>
           val (headerName, headerValue) = splitBySeparator(l, HttpHeaderNameAndValueSeparator)
-          v.updated($headerName, headerValue.trim)
+          v.updated(headerName, headerValue.trim)
         }
 
         headers -> Option(responseBody)

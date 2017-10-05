@@ -23,16 +23,6 @@ import scala.util.{ Failure, Success, Try }
 
 import Argonaut._
 
-case class Image(
-  url: String,
-  namespace: String,
-  image: String,
-  tag: String,
-  providedUrl: Option[String],
-  providedNamespace: Option[String],
-  providedImage: String,
-  providedTag: Option[String])
-
 object DockerRegistry {
   def blobUrl(img: Image, digest: String): String =
     s"https://${img.url}/v2/${img.namespace}/${img.image}/blobs/$digest"
@@ -40,7 +30,7 @@ object DockerRegistry {
   def manifestUrl(img: Image): String =
     s"https://${img.url}/v2/${img.namespace}/${img.image}/manifests/${img.tag}"
 
-  def parseImageUri(uri: String): Image = {
+  def parseImageUri(uri: String): Try[Image] = {
     val parts = uri.split("/", 3).toVector
 
     val providedUrl = someIf(parts.length > 2)(parts(0))
@@ -57,19 +47,26 @@ object DockerRegistry {
 
     val providedTag = someIf(imageParts.length > 1)(imageParts(1))
 
-    Image(
-      url = providedUrl.getOrElse(DockerDefaultRegistry),
-      namespace = providedNs.getOrElse(DockerDefaultLibrary),
-      image = image,
-      tag = providedTag.getOrElse(DockerDefaultTag),
-      providedUrl = providedUrl,
-      providedNamespace = providedNs,
-      providedImage = image,
-      providedTag = providedTag)
+    if (image.isEmpty || providedTag.fold(false)(_.isEmpty))
+      Failure(new IllegalArgumentException(s"""Cannot parse uri "$uri"""))
+    else
+      Success(
+        Image(
+          url = providedUrl.getOrElse(DockerDefaultRegistry),
+          namespace = providedNs.getOrElse(DockerDefaultLibrary),
+          image = image,
+          tag = providedTag.getOrElse(DockerDefaultTag),
+          providedUrl = providedUrl,
+          providedNamespace = providedNs,
+          providedImage = image,
+          providedTag = providedTag))
   }
 
   def getBlob(uri: String, digest: String): Try[HttpResponse] =
-    getWithToken(blobUrl(parseImageUri(uri), digest), HttpHeaders(Map.empty))
+    for {
+      i <- parseImageUri(uri)
+      r <- getWithToken(blobUrl(i, digest), HttpHeaders(Map.empty))
+    } yield r
 
   def getConfig(uri: String): Try[Config] =
     for {
@@ -88,7 +85,8 @@ object DockerRegistry {
 
   def getManifest(uri: String): Try[Manifest] =
     for {
-      r <- getWithToken(manifestUrl(parseImageUri(uri)), HttpHeaders(Map("Accept" -> DockerAcceptManifestHeader)))
+      i <- parseImageUri(uri)
+      r <- getWithToken(manifestUrl(i), HttpHeaders(Map("Accept" -> DockerAcceptManifestHeader)))
       v <- getDecoded[Manifest](r)
     } yield v
 
