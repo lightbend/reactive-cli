@@ -57,3 +57,13 @@ Usage: reactive-cli [options]
 
   --help             Print this help text
 ```
+
+## Packaging
+
+This project uses [SBT Native Packager](https://github.com/sbt/sbt-native-packager) to produce release artifacts.
+
+#### deb
+`sbt clean debian:packageBin`
+
+#### rpm
+`sbt clean rpm:packageBin`
