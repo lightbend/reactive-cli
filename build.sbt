@@ -4,6 +4,7 @@ import scala.collection.immutable.Seq
 import scalariform.formatter.preferences.AlignSingleLineCaseStatements
 
 val binaryName = SettingKey[String]("binary-name")
+val cSource = SettingKey[File]("c-source")
 
 val Versions = new {
   val argonaut = "6.3-SNAPSHOT"
@@ -38,7 +39,9 @@ lazy val commonSettings = Seq(
 
   nativeLinkStubs := true,
 
-  testFrameworks += new TestFramework("utest.runner.Framework")
+  testFrameworks += new TestFramework("utest.runner.Framework"),
+
+  cSource in Compile := sourceDirectory.value / "main" / "c"
 )
 
 lazy val root = project
@@ -51,9 +54,33 @@ lazy val root = project
     name := "reactive-cli"
   )
 
+lazy val libhttpsimple = project
+  .in(file("libhttpsimple"))
+  .settings(commonSettings)
+  .settings(
+    compile in Compile := {
+      val result = (compile in Compile).value
+      val sources = (cSource in Compile).value
+      val output = (target in Compile).value
+
+      val gccCode1 =
+        Seq("gcc", "-c", "-fPIC", "-o", (output / "httpsimple.o").toString, (sources / "httpsimple.c").toString).!
+
+      assert(gccCode1 == 0, s"gcc exited with $gccCode1")
+
+      val gccCode2 =
+        Seq("gcc", "-shared", "-fPIC", "-lcurl", "-o", (output / "libhttpsimple.so").toString, (output / "httpsimple.o").toString).!
+
+      assert(gccCode2 == 0, s"gcc exited with $gccCode2")
+
+      result
+    }
+  )
+
 lazy val `libhttpsimple-bindings` = project
   .in(file("libhttpsimple-bindings"))
   .enablePlugins(ScalaNativePlugin, AutomateHeaderPlugin)
+  .dependsOn(libhttpsimple)
   .settings(commonSettings)
 
 lazy val cli = project
