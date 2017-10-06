@@ -8,11 +8,14 @@ _Currently in prototype stage - nothing usable just yet_
 
 The CLI tools depends on Scala Native to build, as such follow the instructions on the [Scala Native setup](http://www.scala-native.org/en/latest/user/setup.html#installing-clang-and-runtime-dependencies) page.
 
-Scala Native requires LLVM 3.7 and above.
+### Prerequisites
 
-### MacOS specific setup
+* LVM 3.7+
+* gcc
 
-On macOs this would mean ensuring XCode is updated to Apple's latest version. With Apple's latest XCode version, the minimum LLVM version is satisfied, so Homebrew install is not required. However, the following needs to be installed to ensure `gc.h` is available despite it being optional on the Scala Native setup page:
+### macOS specific setup
+
+On macOS this would mean ensuring XCode is updated to Apple's latest version. With Apple's latest XCode version, the minimum LLVM version is satisfied, so Homebrew install is not required. However, the following needs to be installed to ensure `gc.h` is available despite it being optional on the Scala Native setup page:
 
 ```bash
 $ brew install bdw-gc re2
@@ -28,18 +31,6 @@ $ cd argonaut
 $ sbt argonautNative/publishLocal
 ```
 
-### Build libhttpsimple
-
-The library `libhttpsimple` is a thin wrapper around `libcurl`. `libhttpsimple` is created due to difficulties binding the `CURLOption` enums from Scala Native. Normally enums in Scala Native will be wrapped around a value class containing a `CInt` or `CLong`. However, the `CURLOption` enums being generated using C macros, resulting in an enum that can't be mapped to a value class.
-
-You must have `gcc` installed to build the `libhttpsimple` library.
-
-To build `libhttpsimple` execute the following command.
-
-```bash
-$ sh compile.sh
-```
-
 ## Building and running
 
 Use the following SBT command to create the native executable:
@@ -48,10 +39,10 @@ Use the following SBT command to create the native executable:
 $ sbt cli/nativeLink
 ```
 
-Once built, the native executable can be found in the `cli/target/scala-2.11/cli-out` path, i.e.
+Once built, the native executable can be found in the `cli/target/scala-2.11/rp` path, i.e.
 
 ```bash
-$ cli/target/scala-2.11/cli-out --help
+$ cli/target/scala-2.11/rp --help
 reactive-cli 0.1.0
 Usage: reactive-cli [options]
 
