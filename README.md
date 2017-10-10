@@ -43,20 +43,6 @@ Execute the following command to setup the project:
 $ bash setup-ubuntu-16.sh
 ```
 
-### Ubuntu 14 specific setup
-
-Execute the following command to setup the project:
-
-```bash
-$ bash setup-ubuntu-14.sh
-```
-
-The Ubuntu 14 setup script will remove the `libre2` which is installed by the default `clang`. The build script then will build `libre2` from source in its place.
-
-### Travis specific setup
-
-Travis build makes use of Ubuntu 14 setup as at the time of writing Ubunt 16 is not yet supported by Travis.
-
 ## Building and running
 
 Use the following SBT command to create the native executable:
