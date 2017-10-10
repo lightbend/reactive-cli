@@ -1,0 +1,21 @@
+language: scala
+scala:
+  - 2.11.11
+jdk:
+  - oraclejdk8
+sudo: required
+cache:
+  directories:
+    - $HOME/.ivy2/cache
+    - $HOME/.sbt/launchers
+before_cache:
+  # Ensure changes to the cache aren't persisted
+  - rm -rf $HOME/.ivy2/cache/com/lightbend/rp/reactivecli
+  # Delete all ivydata files since ivy touches them on each build
+  - find $HOME/.ivy2/cache -name "ivydata-*.properties" | xargs rm
+before_install:
+  - bash setup-travis.sh
+script:
+  - sbt test
+  - sbt cli/nativeLink
+  - LD_LIBRARY_PATH=libhttpsimple/target cli/target/scala-2.11/rp --help
