@@ -10,5 +10,6 @@ echo "Install argonaut from source"
 rm -rf argonaut
 git clone https://github.com/argonaut-io/argonaut.git
 pushd argonaut
+git checkout 2c719f155744881d30fc932dcbbf597a9ce8084c
 sbt argonautNative/publishLocal
 popd
