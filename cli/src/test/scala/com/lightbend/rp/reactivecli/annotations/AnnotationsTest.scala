@@ -115,7 +115,8 @@ object AnnotationsTest extends TestSuite {
           privileged = false,
           healthCheck = None,
           readinessCheck = None,
-          environmentVariables = Map.empty))
+          environmentVariables = Map.empty,
+          version = None))
 
       "all options (except checks)" - {
         assert(
@@ -123,6 +124,10 @@ object AnnotationsTest extends TestSuite {
             "some.key" -> "test",
             "com.lightbend.rp.some-key" -> "test",
 
+            "com.lightbend.rp.version-major" -> "3",
+            "com.lightbend.rp.version-minor" -> "2",
+            "com.lightbend.rp.version-patch" -> "1",
+            "com.lightbend.rp.version-patch-label" -> "SNAPSHOT",
             "com.lightbend.rp.disk-space" -> "65536",
             "com.lightbend.rp.memory" -> "8192",
             "com.lightbend.rp.nr-of-cpus" -> "0.5",
@@ -183,7 +188,26 @@ object AnnotationsTest extends TestSuite {
             environmentVariables = Map(
               "testing1" -> LiteralEnvironmentVariable("testingvalue1"),
               "testing2" -> SecretEnvironmentVariable("secretvalue1"),
-              "testing3" -> kubernetes.ConfigMapEnvironmentVariable("mymap", "mykey"))))
+              "testing3" -> kubernetes.ConfigMapEnvironmentVariable("mymap", "mykey")),
+            version = Some(Version(3, 2, 1, Some("SNAPSHOT")))))
+      }
+
+      "version (no label)" - {
+        assert(
+          Annotations(Map(
+            "com.lightbend.rp.version-major" -> "3",
+            "com.lightbend.rp.version-minor" -> "2",
+            "com.lightbend.rp.version-patch" -> "1")) == Annotations(
+            diskSpace = None,
+            memory = None,
+            nrOfCpus = None,
+            endpoints = Map.empty,
+            volumes = Map.empty,
+            privileged = false,
+            healthCheck = None,
+            readinessCheck = None,
+            environmentVariables = Map.empty,
+            version = Some(Version(3, 2, 1, None))))
       }
 
       "CommandCheck" - {
@@ -203,7 +227,8 @@ object AnnotationsTest extends TestSuite {
             privileged = false,
             healthCheck = Some(CommandCheck("/usr/bin/env", "bash")),
             readinessCheck = Some(CommandCheck("/usr/bin/env", "bash")),
-            environmentVariables = Map.empty))
+            environmentVariables = Map.empty,
+            version = None))
       }
 
       "HttpCheck" - {
@@ -225,7 +250,8 @@ object AnnotationsTest extends TestSuite {
             privileged = false,
             healthCheck = Some(HttpCheck(0, "my-service", 5, "/hello")),
             readinessCheck = Some(HttpCheck(1234, "", 5, "/hello")),
-            environmentVariables = Map.empty))
+            environmentVariables = Map.empty,
+            version = None))
       }
 
       "TcpCheck" - {
@@ -245,7 +271,8 @@ object AnnotationsTest extends TestSuite {
             privileged = false,
             healthCheck = Some(TcpCheck(0, "my-service", 5)),
             readinessCheck = Some(TcpCheck(1234, "", 5)),
-            environmentVariables = Map.empty))
+            environmentVariables = Map.empty,
+            version = None))
       }
     }
   }

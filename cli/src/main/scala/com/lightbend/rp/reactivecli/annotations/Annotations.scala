@@ -29,7 +29,8 @@ case class Annotations(
   privileged: Boolean,
   healthCheck: Option[Check],
   readinessCheck: Option[Check],
-  environmentVariables: Map[String, EnvironmentVariable])
+  environmentVariables: Map[String, EnvironmentVariable],
+  version: Option[Version])
 
 /**
  * Parses annotations in the RP format (typically stored in Docker labels)
@@ -62,7 +63,8 @@ object Annotations {
     privileged = privileged(labels),
     healthCheck = check(selectSubset(labels, ns("health-check"))),
     readinessCheck = check(selectSubset(labels, ns("readiness-check"))),
-    environmentVariables = environmentVariables(selectArray(labels, ns("environment-variables"))))
+    environmentVariables = environmentVariables(selectArray(labels, ns("environment-variables"))),
+    version = version(labels))
 
   private[annotations] def diskSpace(labels: Map[String, String]): Option[Long] =
     labels
@@ -84,6 +86,16 @@ object Annotations {
       .get(ns("privileged"))
       .flatMap(decodeBoolean)
       .getOrElse(false)
+
+  private[annotations] def version(labels: Map[String, String]): Option[Version] =
+    for {
+      majorStr <- labels.get(ns("version-major"))
+      minorStr <- labels.get(ns("version-minor"))
+      patchStr <- labels.get(ns("version-patch"))
+      major <- decodeInt(majorStr)
+      minor <- decodeInt(minorStr)
+      patch <- decodeInt(patchStr)
+    } yield Version(major, minor, patch, labels.get(ns("version-patch-label")))
 
   private[annotations] def acls(acls: Seq[Map[String, String]]): Seq[Acl] =
     acls
