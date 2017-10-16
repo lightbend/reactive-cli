@@ -14,22 +14,8 @@
  * limitations under the License.
  */
 
-package com.lightbend.rp.reactivecli.annotations
+package com.lightbend.rp.reactivecli.annotations.kubernetes
 
-import scala.collection.immutable.Seq
+import com.lightbend.rp.reactivecli.annotations.EnvironmentVariable
 
-sealed trait Acl
-
-case class HttpAcl(expression: String) extends Acl
-
-case class TcpAcl(ports: Seq[Int]) extends Acl
-
-object TcpAcl {
-  def apply(ports: Int*): TcpAcl = new TcpAcl(ports.toVector)
-}
-
-case class UdpAcl(ports: Seq[Int]) extends Acl
-
-object UdpAcl {
-  def apply(ports: Int*): UdpAcl = new UdpAcl(ports.toVector)
-}
+case class FieldRefEnvironmentVariable(fieldPath: String) extends EnvironmentVariable
