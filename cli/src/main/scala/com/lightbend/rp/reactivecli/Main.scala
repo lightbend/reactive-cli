@@ -32,7 +32,12 @@ object Main extends LazyLogging {
   implicit val logLevelsRead: scopt.Read[LogLevels.Value] =
     scopt.Read.reads(LogLevels.withName)
 
-  case class InputArgs(foo: Option[String] = None, logLevel: LogLevels.Value = LogLevels.info)
+  case class InputArgs(foo: Option[String] = None,
+                       logLevel: LogLevels.Value = LogLevels.info,
+                       environmentVariables: Map[String, String] = Map.empty,
+                       nrOfCpus: Option[Double] = None,
+                       memory: Option[Long] = None,
+                       diskSpace: Option[Long] = None)
 
   val defaultInputArgs = InputArgs()
 
@@ -48,6 +53,28 @@ object Main extends LazyLogging {
     opt[LogLevels.Value]('l', "loglevel")
       .text("Sets the log level. Available: error, warn, info, debug, trace")
       .action((v, c) => c.copy(logLevel = v))
+
+    opt[String]("env")
+      .text("Sets an environment variable. Format: NAME=value")
+      .action { (v, c) =>
+        val parts = v.split("=", 2).lift
+        c.copy(
+          environmentVariables = c.environmentVariables.updated(
+            parts(0).get,
+            parts(1).getOrElse("")))
+      }
+
+    opt[Double]("nr-of-cpus")
+      .text("Specify the number of CPU shares")
+      .action((v, c) => c.copy(nrOfCpus = Some(v)))
+
+    opt[Long]("memory")
+      .text("Specify the memory limit")
+      .action((v, c) => c.copy(memory = Some(v)))
+
+    opt[Long]("disk-space")
+      .text("Specify the disk space limit")
+      .action((v, c) => c.copy(diskSpace = Some(v)))
   }
 
   def main(args: Array[String]): Unit = {

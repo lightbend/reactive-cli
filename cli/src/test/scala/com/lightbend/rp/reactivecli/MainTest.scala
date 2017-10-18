@@ -35,6 +35,29 @@ object MainTest extends TestSuite {
         val result = Main.parser.parse(Seq("--foo", "hey"), Main.defaultInputArgs)
         assert(result.contains(Main.InputArgs(foo = Some("hey"))))
       }
+
+      "--env" - {
+        val result1 = Main.parser.parse(Seq("--env", "test1=test2"), Main.defaultInputArgs)
+        assert(result1.contains(Main.InputArgs(environmentVariables = Map("test1" -> "test2"))))
+
+        val result2 = Main.parser.parse(Seq("--env", "test1"), Main.defaultInputArgs)
+        assert(result2.contains(Main.InputArgs(environmentVariables = Map("test1" -> ""))))
+      }
+
+      "--nr-of-cpus" - {
+        val result = Main.parser.parse(Seq("--nr-of-cpus", "0.5"), Main.defaultInputArgs)
+        assert(result.contains(Main.InputArgs(nrOfCpus = Some(0.5))))
+      }
+
+      "--memory" - {
+        val result = Main.parser.parse(Seq("--memory", "1024"), Main.defaultInputArgs)
+        assert(result.contains(Main.InputArgs(memory = Some(1024))))
+      }
+
+      "--disk-space" - {
+        val result = Main.parser.parse(Seq("--disk-space", "2048"), Main.defaultInputArgs)
+        assert(result.contains(Main.InputArgs(diskSpace = Some(2048))))
+      }
     }
   }
 }
