@@ -9,7 +9,9 @@ val cSource = SettingKey[File]("c-source")
 val Versions = new {
   val argonaut = "6.3-SNAPSHOT"
   val scala    = "2.11.11"
+  val scalaz   = "7.2.16"
   val scopt    = "3.7.0"
+  val slogging = "0.6.0"
   val utest    = "0.5.3"
 }
 
@@ -90,8 +92,10 @@ lazy val cli = project
   .settings(commonSettings)
   .settings(Seq(
     libraryDependencies ++= Seq(
-      "com.github.scopt"  %%% "scopt"    % Versions.scopt,
-      "io.argonaut"       %%% "argonaut" % Versions.argonaut
+      "com.github.scopt"  %%% "scopt"       % Versions.scopt,
+      "io.argonaut"       %%% "argonaut"    % Versions.argonaut,
+      "biz.enef"          %%% "slogging"    % Versions.slogging,
+      "org.scalaz"        %%% "scalaz-core" % Versions.scalaz
     )
   ))
   .settings(
