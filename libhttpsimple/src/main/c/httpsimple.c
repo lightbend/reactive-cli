@@ -28,10 +28,11 @@ struct http_response {
 int global_init() {
   CURLcode res_curl_code;
   res_curl_code = curl_global_init(CURL_GLOBAL_DEFAULT);
+
   if (res_curl_code == CURLE_OK) {
-    fprintf(stderr, "curl_global_init() failed: %s\n", curl_easy_strerror(res_curl_code));
     return 0;
   } else {
+    fprintf(stderr, "curl_global_init() failed: %s\n", curl_easy_strerror(res_curl_code));
     return -1;
   }
 }
@@ -77,7 +78,6 @@ struct http_response *do_http(char *http_method, char *url, char *request_header
     if(curl) {
       curl_easy_setopt(curl, CURLOPT_URL, url);
       curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, http_method);
-      curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L); // Follow redirect
       curl_easy_setopt(curl, CURLOPT_HEADER, 1L); // Return header as part of the response text
 
       // Append request headers if defined

@@ -16,17 +16,25 @@
 
 package com.lightbend.rp.reactivecli
 
-import libhttpsimple.LibHttpSimple
+import libhttpsimple.{ LibHttpSimple, HttpRequest }
 import scopt.OptionParser
+import slogging._
 import argonaut._
 import Argonaut._
 
-object Main {
-  case class InputArgs(foo: Option[String] = None)
+object Main extends LazyLogging {
+  object LogLevels extends Enumeration {
+    type Level = Value
+
+    val error, warn, info, debug, trace = Value
+  }
+
+  implicit val logLevelsRead: scopt.Read[LogLevels.Value] =
+    scopt.Read.reads(LogLevels.withName)
+
+  case class InputArgs(foo: Option[String] = None, logLevel: LogLevels.Value = LogLevels.info)
 
   val defaultInputArgs = InputArgs()
-
-  implicit def inputArgsCodecJson = casecodec1(InputArgs.apply, InputArgs.unapply)("foo")
 
   val parser = new OptionParser[InputArgs]("reactive-cli") {
     head("reactive-cli", "0.1.0")
@@ -36,29 +44,39 @@ object Main {
     opt[String]('f', "foo")
       .text("test switch called foo")
       .action((v, c) => c.copy(foo = Some(v)))
-  }
 
-  def run(inputArgs: InputArgs): Unit = {
-    LibHttpSimple.globalInit()
-
-    println(s"Got input args: $inputArgs")
-
-    val inputArgsJson = inputArgs.asJson
-    println(s"Got input args as Argonaut JSON:")
-    println(inputArgsJson)
-
-    val inputArgsJsonString = inputArgsJson.spaces2
-    println(s"Got input args as JSON string:")
-    println(inputArgsJsonString)
-
-    val response = LibHttpSimple.get("https://www.example.org")
-    println(s"Got HTTP response:")
-    println(response)
-
-    LibHttpSimple.globalCleanup()
+    opt[LogLevels.Value]('l', "loglevel")
+      .text("Sets the log level. Available: error, warn, info, debug, trace")
+      .action((v, c) => c.copy(logLevel = v))
   }
 
   def main(args: Array[String]): Unit = {
-    parser.parse(args, defaultInputArgs).foreach(run)
+    LibHttpSimple.globalInit()
+    LoggerConfig.factory = TerminalLoggerFactory
+
+    try {
+      parser.parse(args, defaultInputArgs).foreach { inputArgs =>
+        LoggerConfig.level =
+          inputArgs.logLevel match {
+            case LogLevels.`error` => LogLevel.ERROR
+            case LogLevels.`warn` => LogLevel.WARN
+            case LogLevels.`info` => LogLevel.INFO
+            case LogLevels.`debug` => LogLevel.DEBUG
+            case LogLevels.`trace` => LogLevel.TRACE
+          }
+
+        logger.debug(s"input args: $inputArgs")
+
+        println(s"Got input args: $inputArgs")
+
+        val response = LibHttpSimple(HttpRequest("https://www.example.org"))
+        println(s"Got HTTP response:")
+        println(response)
+
+        println(docker.DockerRegistry.getConfig("dockercloud/hello-world", token = None))
+      }
+    } finally {
+      LibHttpSimple.globalCleanup()
+    }
   }
 }
