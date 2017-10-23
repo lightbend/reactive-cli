@@ -20,13 +20,7 @@ import argonaut._
 import utest._
 
 import Argonaut._
-case class Cfg(
-  Hostname: Option[String] = None,
-  ExposedPorts: Option[Map[String, String]] = None,
-  Cmd: Option[Vector[String]] = None,
-  Image: Option[String] = None,
-  User: Option[String] = None,
-  Labels: Option[Map[String, String]] = None)
+
 object ConfigTest extends TestSuite {
   val tests = this{
     "Decode JSON" - {
