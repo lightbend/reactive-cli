@@ -1,0 +1,56 @@
+/*
+ * Copyright 2017 Lightbend, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.lightbend.rp.reactivecli.runtime.kubernetes
+
+import argonaut._
+import Argonaut._
+import com.lightbend.rp.reactivecli.annotations._
+
+object Service {
+  implicit def encodeEndpoint = EncodeJson[Endpoint] { endpoint =>
+    val protocol = endpoint match {
+      case v: HttpEndpoint => "TCP"
+      case v: TcpEndpoint => "TCP"
+      case v: UdpEndpoint => "UDP"
+    }
+
+    Json(
+      "name" -> endpointName(endpoint).asJson,
+      "port" -> endpoint.port.asJson,
+      "protocol" -> protocol.asJson,
+      "targetPort" -> endpoint.port.asJson)
+  }
+
+  implicit def encodeEndpoints = EncodeJson[Map[String, Endpoint]] { endpoints =>
+    endpoints.map(_._2.asJson).toList.asJson
+  }
+
+  def generate(annotations: Annotations, clusterIp: Option[String]): Json =
+    Json(
+      "apiVersion" -> "v1".asJson,
+      "kind" -> "Service".asJson,
+      "metadata" -> Json(
+        "labels" -> Json(
+          "app" -> annotations.appName.asJson),
+        "name" -> annotations.appName.asJson),
+      "spec" -> Json(
+        "clusterIP" -> clusterIp.getOrElse("None").asJson,
+        "ports" -> annotations.endpoints.asJson,
+        "selector" -> Json(
+          "app" -> annotations.appName.asJson)))
+}
+

@@ -14,9 +14,15 @@
  * limitations under the License.
  */
 
-package com.lightbend.rp.reactivecli.annotations
+package com.lightbend.rp.reactivecli.runtime
 
-case class Version(major: Int, minor: Int, patch: Int, patchLabel: Option[String]) {
-  def versionMajorMinor: String = s"$major.$minor"
-  def version: String = s"$major.$minor.$patch${patchLabel.fold("")("-" + _)}"
+import com.lightbend.rp.reactivecli.annotations.{ Annotations, Endpoint }
+import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment.VersionSeparator
+
+package object kubernetes {
+  def endpointName(endpoint: Endpoint): String =
+    endpoint.version.fold(endpoint.name)(v => s"${endpoint.name}$VersionSeparator$v")
+
+  def serviceName(annotations: Annotations): Option[String] =
+    annotations.appName
 }

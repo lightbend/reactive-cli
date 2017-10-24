@@ -16,11 +16,14 @@
 
 package com.lightbend.rp.reactivecli.annotations
 
+import com.lightbend.rp.reactivecli.annotations.HttpEndpoint.HttpAcl
+
 import scala.collection.immutable.Seq
 import scala.util.Try
 import scala.util.matching.Regex
 
 case class Annotations(
+  appName: Option[String],
   diskSpace: Option[Long],
   memory: Option[Long],
   nrOfCpus: Option[Double],
@@ -54,17 +57,25 @@ case class Annotations(
  * )
  */
 object Annotations {
-  def apply(labels: Map[String, String]): Annotations = Annotations(
-    diskSpace = diskSpace(labels),
-    memory = memory(labels),
-    nrOfCpus = nrOfCpus(labels),
-    endpoints = endpoints(selectArray(labels, ns("endpoints"))),
-    volumes = volumes(selectArray(labels, ns("volumes"))),
-    privileged = privileged(labels),
-    healthCheck = check(selectSubset(labels, ns("health-check"))),
-    readinessCheck = check(selectSubset(labels, ns("readiness-check"))),
-    environmentVariables = environmentVariables(selectArray(labels, ns("environment-variables"))),
-    version = version(labels))
+  def apply(labels: Map[String, String]): Annotations = {
+    val appVersion = version(labels)
+    Annotations(
+      appName = appName(labels),
+      diskSpace = diskSpace(labels),
+      memory = memory(labels),
+      nrOfCpus = nrOfCpus(labels),
+      endpoints = endpoints(selectArray(labels, ns("endpoints")), appVersion),
+      volumes = volumes(selectArray(labels, ns("volumes"))),
+      privileged = privileged(labels),
+      healthCheck = check(selectSubset(labels, ns("health-check"))),
+      readinessCheck = check(selectSubset(labels, ns("readiness-check"))),
+      environmentVariables = environmentVariables(selectArray(labels, ns("environment-variables"))),
+      version = appVersion)
+  }
+
+  private[annotations] def appName(labels: Map[String, String]): Option[String] =
+    labels
+      .get(ns("app-name"))
 
   private[annotations] def diskSpace(labels: Map[String, String]): Option[Long] =
     labels
@@ -97,33 +108,7 @@ object Annotations {
       patch <- decodeInt(patchStr)
     } yield Version(major, minor, patch, labels.get(ns("version-patch-label")))
 
-  private[annotations] def acls(acls: Seq[Map[String, String]]): Seq[Acl] =
-    acls
-      .flatMap(entry =>
-        for {
-          typ <- entry.get("type")
-          value <- typ match {
-            case "http" =>
-              entry.get("expression").map(HttpAcl.apply)
-
-            case "tcp" | "udp" =>
-              val ports =
-                selectArray(entry, "ports")
-                  .flatMap(_.values)
-                  .flatMap(decodeInt)
-
-              if (ports.isEmpty)
-                None
-              else if (typ == "tcp")
-                Some(TcpAcl(ports))
-              else
-                Some(UdpAcl(ports))
-            case _ =>
-              None
-          }
-        } yield value)
-
-  private[annotations] def check(check: Map[String, String]): Option[Check] =
+  private[annotations] def check(check: Map[String, String]): Option[Check] = {
     for {
       typ <- check.get("type")
       value <- typ match {
@@ -143,7 +128,10 @@ object Annotations {
             serviceName = check.getOrElse("service-name", "")
 
             if port != 0 || serviceName != ""
-          } yield HttpCheck(port, serviceName, intervalSeconds, path)
+          } yield {
+            val checkPort = if (port != 0) Check.PortNumber(port) else Check.ServiceName(serviceName)
+            HttpCheck(checkPort, intervalSeconds, path)
+          }
 
         case "tcp" =>
           for {
@@ -152,23 +140,59 @@ object Annotations {
             serviceName = check.getOrElse("service-name", "")
 
             if port != 0 || serviceName != ""
-          } yield TcpCheck(port, serviceName, intervalSeconds)
+          } yield {
+            val checkPort = if (port != 0) Check.PortNumber(port) else Check.ServiceName(serviceName)
+            TcpCheck(checkPort, intervalSeconds)
+          }
       }
     } yield value
+  }
 
-  private[annotations] def endpoints(endpoints: Seq[Map[String, String]]): Map[String, Endpoint] =
-    endpoints
+  private[annotations] def endpoints(endpoints: Seq[Map[String, String]], version: Option[Version]): Map[String, Endpoint] =
+    endpoints.flatMap(endpoint(_, version)).toMap
+
+  private[annotations] def endpoint(entry: Map[String, String], version: Option[Version]): Option[(String, Endpoint)] =
+    entry.get("protocol")
+      .collect {
+        case "http" => endpointHttp(version, entry)
+        case "tcp" => endpointTcp(version, entry)
+        case "udp" => endpointUdp(version, entry)
+      }
+      .flatten
+      .map(v => v.name -> v)
+
+  private[annotations] def endpointHttp(version: Option[Version], entry: Map[String, String]): Option[HttpEndpoint] =
+    entry.get("name").map(
+      HttpEndpoint(
+        _,
+        entry.get("port").flatMap(decodeInt).getOrElse(0),
+        entry.get("version").flatMap(decodeInt).orElse(version.map(_.major)),
+        aclsHttp(selectArray(entry, "acls"))))
+
+  private[annotations] def endpointTcp(version: Option[Version], entry: Map[String, String]): Option[TcpEndpoint] =
+    entry.get("name").map(
+      TcpEndpoint(
+        _,
+        entry.get("port").flatMap(decodeInt).getOrElse(0),
+        entry.get("version").flatMap(decodeInt).orElse(version.map(_.major))))
+
+  private[annotations] def endpointUdp(version: Option[Version], entry: Map[String, String]): Option[UdpEndpoint] =
+    entry.get("name").map(
+      UdpEndpoint(
+        _,
+        entry.get("port").flatMap(decodeInt).getOrElse(0),
+        entry.get("version").flatMap(decodeInt).orElse(version.map(_.major))))
+
+  private[annotations] def aclsHttp(acls: Seq[Map[String, String]]): Seq[HttpAcl] =
+    acls
       .flatMap(entry =>
         for {
-          name <- entry.get("name")
-          protocol <- entry.get("protocol")
-        } yield {
-          val port = entry.get("port").flatMap(decodeInt).getOrElse(0)
-          val endpointAcls = acls(selectArray(entry, "acls"))
-
-          name -> Endpoint(protocol, port, endpointAcls)
-        })
-      .toMap
+          typ <- entry.get("type")
+          value <- typ match {
+            case "http" => entry.get("expression").map(HttpAcl.apply)
+            case _ => None
+          }
+        } yield value)
 
   private[annotations] def environmentVariables(variables: Seq[Map[String, String]]): Map[String, EnvironmentVariable] =
     variables
@@ -180,14 +204,14 @@ object Annotations {
             case "literal" =>
               entry.get("value").map(LiteralEnvironmentVariable.apply)
 
-            case "secret" =>
-              entry.get("secret").map(SecretEnvironmentVariable.apply)
-
             case "configMap" =>
               for {
                 mapName <- entry.get("map-name")
                 key <- entry.get("key")
               } yield kubernetes.ConfigMapEnvironmentVariable(mapName, key)
+
+            case "fieldRef" =>
+              entry.get("field-path").map(kubernetes.FieldRefEnvironmentVariable.apply)
 
             case _ =>
               None
@@ -276,6 +300,6 @@ object Annotations {
     }
   }
 
-  private def ns(key: Any*): String =
+  private def ns(key: String*): String =
     (Seq("com", "lightbend", "rp") ++ key.map(_.toString.filter(_ != "."))).mkString(".")
 }

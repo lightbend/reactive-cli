@@ -18,8 +18,16 @@ package com.lightbend.rp.reactivecli.annotations
 
 import scala.collection.immutable.Seq
 
-case class Endpoint(protocol: String, port: Int, acls: Seq[Acl])
-
-object Endpoint {
-  def apply(protocol: String, port: Int, acls: Acl*): Endpoint = new Endpoint(protocol, port, acls.toVector)
+sealed trait Endpoint {
+  def name: String
+  def port: Int
+  def version: Option[Int]
 }
+
+object HttpEndpoint {
+  case class HttpAcl(expression: String)
+}
+
+case class HttpEndpoint(name: String, port: Int, version: Option[Int], acls: Seq[HttpEndpoint.HttpAcl]) extends Endpoint
+case class TcpEndpoint(name: String, port: Int, version: Option[Int]) extends Endpoint
+case class UdpEndpoint(name: String, port: Int, version: Option[Int]) extends Endpoint

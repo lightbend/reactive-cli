@@ -16,9 +16,6 @@
 
 package com.lightbend.rp.reactivecli.annotations
 
-private[annotations] trait EnvironmentVariable
+private[reactivecli] trait EnvironmentVariable
 
 case class LiteralEnvironmentVariable(value: String) extends EnvironmentVariable
-
-case class SecretEnvironmentVariable(secret: String) extends EnvironmentVariable
-
