@@ -70,3 +70,7 @@ This project uses [SBT Native Packager](https://github.com/sbt/sbt-native-packag
 
 #### rpm
 `sbt clean rpm:packageBin`
+
+## Maintenance
+
+Enterprise Suite Platform Team <es-platform@lightbend.com>
