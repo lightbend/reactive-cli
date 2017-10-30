@@ -75,7 +75,7 @@ object IngressIstioJsonTest extends TestSuite {
             |  }
             |}
           """.stripMargin.parse.right.get
-        assert(generatedJson == expectedJson)
+        assert(generatedJson == IngressIstio("friendimpl", expectedJson))
       }
 
       "should fail if application name is not defined" - {

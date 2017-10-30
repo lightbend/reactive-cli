@@ -77,7 +77,7 @@ object IngressNginxJsonTest extends TestSuite {
             |  }
             |}
           """.stripMargin.parse.right.get
-        assert(generatedJson == expectedJson)
+        assert(generatedJson == IngressNginx("friendimpl", expectedJson))
       }
 
       "without secret tls" - {
@@ -112,7 +112,7 @@ object IngressNginxJsonTest extends TestSuite {
             |  }
             |}
           """.stripMargin.parse.right.get
-        assert(generatedJson == expectedJson)
+        assert(generatedJson == IngressNginx("friendimpl", expectedJson))
       }
 
       "should fail if application name is not defined" - {

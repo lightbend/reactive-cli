@@ -20,6 +20,8 @@ import argonaut._
 import Argonaut._
 import com.lightbend.rp.reactivecli.annotations._
 
+import scala.util.{ Failure, Success, Try }
+
 object Service {
   implicit def encodeEndpoint = EncodeJson[Endpoint] { endpoint =>
     val protocol = endpoint match {
@@ -39,18 +41,36 @@ object Service {
     endpoints.map(_._2.asJson).toList.asJson
   }
 
-  def generate(annotations: Annotations, clusterIp: Option[String]): Json =
-    Json(
-      "apiVersion" -> "v1".asJson,
-      "kind" -> "Service".asJson,
-      "metadata" -> Json(
-        "labels" -> Json(
-          "app" -> annotations.appName.asJson),
-        "name" -> annotations.appName.asJson),
-      "spec" -> Json(
-        "clusterIP" -> clusterIp.getOrElse("None").asJson,
-        "ports" -> annotations.endpoints.asJson,
-        "selector" -> Json(
-          "app" -> annotations.appName.asJson)))
+  /**
+   * Generates the [[Service]] resource.
+   */
+  def generate(annotations: Annotations, clusterIp: Option[String]): Try[Service] =
+    annotations.appName match {
+      case Some(appName) =>
+        Success(
+          Service(
+            appName,
+            Json(
+              "apiVersion" -> "v1".asJson,
+              "kind" -> "Service".asJson,
+              "metadata" -> Json(
+                "labels" -> Json(
+                  "app" -> annotations.appName.asJson),
+                "name" -> annotations.appName.asJson),
+              "spec" -> Json(
+                "clusterIP" -> clusterIp.getOrElse("None").asJson,
+                "ports" -> annotations.endpoints.asJson,
+                "selector" -> Json(
+                  "app" -> annotations.appName.asJson)))))
+      case _ =>
+        Failure(new IllegalArgumentException("Unable to generate Kubernetes service resource: application name is required"))
+    }
+
 }
 
+/**
+ * Represents the generated Kubernetes service resource.
+ */
+case class Service(name: String, payload: Json) extends GeneratedKubernetesResource {
+  val resourceType = "service"
+}

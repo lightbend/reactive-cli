@@ -50,11 +50,15 @@ object IngressIstio {
       .toList
       .asJson
   }
-  def generate(annotations: Annotations): Try[Json] =
+
+  /**
+   * Generates the [[IngressIstio]] resource.
+   */
+  def generate(annotations: Annotations): Try[IngressIstio] =
     serviceName(annotations) match {
       case Some(appName) =>
         Success(
-          Json(
+          IngressIstio(appName, Json(
             "apiVersion" -> "extensions/v1beta1".asJson,
             "kind" -> "Ingress".asJson,
             "metadata" -> Json(
@@ -62,9 +66,16 @@ object IngressIstio {
               "annotations" -> Json(
                 "kubernetes.io/ingress.class" -> "istio".asJson)),
             "spec" -> Json(
-              "rules" -> annotations.endpoints.asJson)))
+              "rules" -> annotations.endpoints.asJson))))
       case _ =>
         Failure(new IllegalArgumentException("Unable to generate Kubernetes ingress resource for Istio: application name is required"))
     }
 
+}
+
+/**
+ * Represents the generated Istion ingress resource.
+ */
+case class IngressIstio(name: String, payload: Json) extends GeneratedKubernetesResource {
+  val resourceType = "ingress"
 }

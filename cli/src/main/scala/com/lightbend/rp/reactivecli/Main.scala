@@ -16,92 +16,56 @@
 
 package com.lightbend.rp.reactivecli
 
-import libhttpsimple.{ LibHttpSimple, HttpRequest }
-import scopt.OptionParser
+import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
+import com.lightbend.rp.reactivecli.argparse.{ GenerateDeploymentArgs, InputArgs }
+import com.lightbend.rp.reactivecli.docker.{ Config, DockerRegistry }
+import com.lightbend.rp.reactivecli.runtime.kubernetes
+import libhttpsimple.LibHttpSimple
+import libhttpsimple.LibHttpSimple.HttpExchange
 import slogging._
-import argonaut._
-import Argonaut._
 
+import scala.annotation.tailrec
+import scala.util.Try
+
+/**
+ * This is the main entry of the Reactive CLI.
+ */
 object Main extends LazyLogging {
-  object LogLevels extends Enumeration {
-    type Level = Value
+  val CliName = "reactive-cli"
+  val ParserVersion = "0.1.0" // TODO: ParserVersion should come from build
 
-    val error, warn, info, debug, trace = Value
-  }
+  val http: HttpExchange = LibHttpSimple.http
 
-  implicit val logLevelsRead: scopt.Read[LogLevels.Value] =
-    scopt.Read.reads(LogLevels.withName)
+  def getDockerConfig(imageName: String): Try[Config] =
+    DockerRegistry.getConfig(http)(imageName, token = None).map(_._1)
 
-  case class InputArgs(foo: Option[String] = None,
-                       logLevel: LogLevels.Value = LogLevels.info,
-                       environmentVariables: Map[String, String] = Map.empty,
-                       nrOfCpus: Option[Double] = None,
-                       memory: Option[Long] = None,
-                       diskSpace: Option[Long] = None)
+  val parser = InputArgs.parser(CliName, ParserVersion)
 
-  val defaultInputArgs = InputArgs()
-
-  val parser = new OptionParser[InputArgs]("reactive-cli") {
-    head("reactive-cli", "0.1.0")
-
-    help("help").text("Print this help text")
-
-    opt[String]('f', "foo")
-      .text("test switch called foo")
-      .action((v, c) => c.copy(foo = Some(v)))
-
-    opt[LogLevels.Value]('l', "loglevel")
-      .text("Sets the log level. Available: error, warn, info, debug, trace")
-      .action((v, c) => c.copy(logLevel = v))
-
-    opt[String]("env")
-      .text("Sets an environment variable. Format: NAME=value")
-      .action { (v, c) =>
-        val parts = v.split("=", 2).lift
-        c.copy(
-          environmentVariables = c.environmentVariables.updated(
-            parts(0).get,
-            parts(1).getOrElse("")))
+  @tailrec
+  private def run(args: Array[String]): Unit = {
+    if (args.nonEmpty) {
+      parser.parse(args, InputArgs.default).foreach { inputArgs =>
+        inputArgs.commandArgs
+          .collect {
+            case generateDeploymentArgs @ GenerateDeploymentArgs(_, _, _, _, _, Some(kubernetesArgs: KubernetesArgs)) =>
+              val output = kubernetes.handleGeneratedResources(kubernetesArgs.output)
+              kubernetes.generateResources(getDockerConfig, output)(generateDeploymentArgs, kubernetesArgs)
+                .recover {
+                  case error =>
+                    logger.error(s"Failure generating kubernetes resources for docker image ${generateDeploymentArgs.dockerImage.get}", error)
+                }
+          }
       }
-
-    opt[Double]("nr-of-cpus")
-      .text("Specify the number of CPU shares")
-      .action((v, c) => c.copy(nrOfCpus = Some(v)))
-
-    opt[Long]("memory")
-      .text("Specify the memory limit")
-      .action((v, c) => c.copy(memory = Some(v)))
-
-    opt[Long]("disk-space")
-      .text("Specify the disk space limit")
-      .action((v, c) => c.copy(diskSpace = Some(v)))
+    } else {
+      run(Array("--help"))
+    }
   }
 
   def main(args: Array[String]): Unit = {
     LibHttpSimple.globalInit()
     LoggerConfig.factory = TerminalLoggerFactory
-
     try {
-      parser.parse(args, defaultInputArgs).foreach { inputArgs =>
-        LoggerConfig.level =
-          inputArgs.logLevel match {
-            case LogLevels.`error` => LogLevel.ERROR
-            case LogLevels.`warn` => LogLevel.WARN
-            case LogLevels.`info` => LogLevel.INFO
-            case LogLevels.`debug` => LogLevel.DEBUG
-            case LogLevels.`trace` => LogLevel.TRACE
-          }
-
-        logger.debug(s"input args: $inputArgs")
-
-        println(s"Got input args: $inputArgs")
-
-        val response = LibHttpSimple(HttpRequest("https://www.example.org"))
-        println(s"Got HTTP response:")
-        println(response)
-
-        println(docker.DockerRegistry.getConfig("dockercloud/hello-world", token = None))
-      }
+      run(args)
     } finally {
       LibHttpSimple.globalCleanup()
     }

@@ -50,11 +50,15 @@ object IngressNginx {
       .toList
       .asJson
   }
-  def generate(annotations: Annotations, tlsSecretName: Option[String], sslRedirect: Boolean): Try[Json] =
+
+  /**
+   * Generates the [[IngressNginx]] resource.
+   */
+  def generate(annotations: Annotations, tlsSecretName: Option[String], sslRedirect: Boolean): Try[IngressNginx] =
     serviceName(annotations) match {
       case Some(appName) =>
         Success(
-          Json(
+          IngressNginx(appName, Json(
             "apiVersion" -> "extensions/v1beta1".asJson,
             "kind" -> "Ingress".asJson,
             "metadata" -> Json(
@@ -62,7 +66,7 @@ object IngressNginx {
               "annotations" -> Json(
                 "ingress.kubernetes.io/ssl-redirect" -> sslRedirect.toString.asJson)),
             "spec" -> Json(
-              "rules" -> annotations.endpoints.asJson).deepmerge(generateTlsSecret(tlsSecretName))))
+              "rules" -> annotations.endpoints.asJson).deepmerge(generateTlsSecret(tlsSecretName)))))
       case _ =>
         Failure(new IllegalArgumentException("Unable to generate Kubernetes ingress resource for Nginx: application name is required"))
     }
@@ -70,4 +74,11 @@ object IngressNginx {
   private def generateTlsSecret(tlsSecretName: Option[String]): Json =
     tlsSecretName.fold(jEmptyObject)(v => Json("tls" -> List(Json("secretName" -> v.asJson)).asJson))
 
+}
+
+/**
+ * Represents the generated Kubernetes Nginx ingress resource.
+ */
+case class IngressNginx(name: String, payload: Json) extends GeneratedKubernetesResource {
+  val resourceType = "ingress"
 }
