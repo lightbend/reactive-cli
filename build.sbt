@@ -1,12 +1,23 @@
 import sbt._
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
+import com.typesafe.sbt.packager.linux.{LinuxPackageMapping, LinuxSymlink}
 import scala.collection.immutable.Seq
 import scalariform.formatter.preferences.AlignSingleLineCaseStatements
 
-val binaryName = SettingKey[String]("binary-name")
-val cSource = SettingKey[File]("c-source")
+lazy val binaryName = SettingKey[String]("binary-name")
+lazy val cSource = SettingKey[File]("c-source")
 
-val Versions = new {
+lazy val Names = new {
+  val `httpsimple.c` = "httpsimple.c"
+  val `httpsimple.o` = "httpsimple.o"
+  val `libhttpsimple.so` = "libhttpsimple.so"
+}
+
+lazy val Properties = new {
+  val nativeMode = System.getProperty("build.native-mode", "debug")
+}
+
+lazy val Versions = new {
   val argonaut = "6.3-SNAPSHOT"
   val scala    = "2.11.11"
   val scalaz   = "7.2.16"
@@ -66,12 +77,12 @@ lazy val libhttpsimple = project
       val output = (target in Compile).value
 
       val gccCode1 =
-        Seq("gcc", "-c", "-fPIC", "-o", (output / "httpsimple.o").toString, (sources / "httpsimple.c").toString).!
+        Seq("gcc", "-c", "-fPIC", "-o", (output / Names.`httpsimple.o`).toString, (sources / Names.`httpsimple.c`).toString).!
 
       assert(gccCode1 == 0, s"gcc exited with $gccCode1")
 
       val gccCode2 =
-        Seq("gcc", "-shared", "-fPIC", "-lcurl", "-o", (output / "libhttpsimple.so").toString, (output / "httpsimple.o").toString).!
+        Seq("gcc", "-shared", "-fPIC", "-lcurl", "-o", (output / Names.`libhttpsimple.so`).toString, (output / Names.`httpsimple.o`).toString).!
 
       assert(gccCode2 == 0, s"gcc exited with $gccCode2")
 
@@ -108,7 +119,19 @@ lazy val cli = project
       dest
     },
     packageName in Linux := "reactive-cli",
+    linuxPackageSymlinks += {
+      val pkgName = (packageName in Linux).value
+      LinuxSymlink(s"/usr/lib/${Names.`libhttpsimple.so`}", s"${defaultLinuxInstallLocation.value}/$pkgName/lib/${Names.`libhttpsimple.so`}")
+    },
+    nativeMode := Properties.nativeMode,
     mappings in Universal := Seq(
-      (nativeLink in Compile).value -> s"bin/${binaryName.value}"
+      (nativeLink in Compile).value -> s"bin/${binaryName.value}",
+      ((target in (libhttpsimple, Compile)).value / Names.`libhttpsimple.so`) -> s"lib/${Names.`libhttpsimple.so`}"
+    ),
+
+    debianPackageDependencies in Debian := Seq(
+      "libcurl3",
+      "libre2-1v5",
+      "libunwind8"
     )
   )

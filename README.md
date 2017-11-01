@@ -66,10 +66,10 @@ Usage: reactive-cli [options]
 This project uses [SBT Native Packager](https://github.com/sbt/sbt-native-packager) to produce release artifacts.
 
 #### deb
-`sbt clean debian:packageBin`
+`sbt -Dbuild.native-mode=release clean debian:packageBin`
 
 #### rpm
-`sbt clean rpm:packageBin`
+`sbt -Dbuild.native-mode=release clean rpm:packageBin`
 
 ## Maintenance
 
