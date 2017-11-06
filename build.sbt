@@ -78,7 +78,7 @@ lazy val root = project
       checkSnapshotDependencies,              // : ReleaseStep
       inquireVersions,                        // : ReleaseStep
       runClean,                               // : ReleaseStep
-      releaseStepCommandAndRemaining("""set cli/nativeMode := "release""""),
+      releaseStepCommandAndRemaining("""set nativeMode in cli := "release""""),
       runTest,                                // : ReleaseStep
       setReleaseVersion,                      // : ReleaseStep
       commitReleaseVersion,                   // : ReleaseStep, performs the initial git checks
