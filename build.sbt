@@ -38,6 +38,8 @@ lazy val commonSettings = Seq(
 
   maintainer := "info@lightbend.com",
 
+  scmInfo := Some(ScmInfo(url("https://github.com/lightbend/reactive-cli"), "git@github.com:lightbend/reactive-cli.git"))
+
   bintrayOrganization := Some("lightbend"),
 
   bintrayReleaseOnPublish in ThisBuild := false,
