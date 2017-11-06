@@ -82,6 +82,8 @@ lazy val root = project
       setReleaseVersion,                      // : ReleaseStep
       commitReleaseVersion,                   // : ReleaseStep, performs the initial git checks
       tagRelease,                             // : ReleaseStep
+      releaseStepCommandAndRemaining("debian:packageBin"),
+      releaseStepCommandAndRemaining("rpm:packageBin"),
       //publishArtifacts,                       // : ReleaseStep, checks whether `publishTo` is properly set up
       setNextVersion,                         // : ReleaseStep
       commitNextVersion//,                      // : ReleaseStep
