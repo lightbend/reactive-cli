@@ -3,6 +3,7 @@ import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 import com.typesafe.sbt.packager.linux.{LinuxPackageMapping, LinuxSymlink}
 import scala.collection.immutable.Seq
 import scalariform.formatter.preferences.AlignSingleLineCaseStatements
+import ReleaseTransformations._
 
 lazy val binaryName = SettingKey[String]("binary-name")
 lazy val cSource = SettingKey[File]("c-source")
@@ -14,7 +15,7 @@ lazy val Names = new {
 }
 
 lazy val Properties = new {
-  val nativeMode = System.getProperty("build.native-mode", "debug")
+  val nativeMode = System.getProperty("build.nativeMode", "debug")
 }
 
 lazy val Versions = new {
@@ -36,6 +37,12 @@ lazy val commonSettings = Seq(
   licenses += ("Apache-2.0", new URL("https://www.apache.org/licenses/LICENSE-2.0.txt")),
 
   maintainer := "info@lightbend.com",
+
+  bintrayOrganization := Some("lightbend"),
+
+  bintrayReleaseOnPublish in ThisBuild := false,
+
+  bintrayRepository := "deb",
 
   rpmVendor := organizationName.value,
 
@@ -64,7 +71,20 @@ lazy val root = project
     `cli`
   )
   .settings(
-    name := "reactive-cli"
+    name := "reactive-cli",
+    releaseProcess := Seq[ReleaseStep](
+      checkSnapshotDependencies,              // : ReleaseStep
+      inquireVersions,                        // : ReleaseStep
+      runClean,                               // : ReleaseStep
+      runTest,                                // : ReleaseStep
+      setReleaseVersion,                      // : ReleaseStep
+      commitReleaseVersion,                   // : ReleaseStep, performs the initial git checks
+      tagRelease,                             // : ReleaseStep
+      //publishArtifacts,                       // : ReleaseStep, checks whether `publishTo` is properly set up
+      setNextVersion,                         // : ReleaseStep
+      commitNextVersion,                      // : ReleaseStep
+      pushChanges                             // : ReleaseStep, also checks that an upstream branch is properly configured
+    )
   )
 
 lazy val libhttpsimple = project
@@ -111,7 +131,14 @@ lazy val cli = project
   ))
   .settings(
     binaryName := "rp",
+    bintrayPackage := "reactive-cli",
     packageSummary := "Tools for managing and deploying Lightbend Reactive Platform applications",
+    publishArtifact in (Compile, packageBin) := false,
+    publishArtifact in (Compile, packageDoc) := false,
+    publishArtifact in (Compile, packageSrc) := false,
+    publishMavenStyle := false,
+    //publishArtifact in (Debian, packageBin) := true,
+    addArtifact(Artifact("reactive-cli", "deb", "deb;deb_distribution=wheezy;deb_component=main;deb_architecture=amd64"), packageBin in Debian),
     nativeLink in Compile := {
       val out = (nativeLink in Compile).value
       val dest = out.getParentFile / binaryName.value
@@ -134,4 +161,10 @@ lazy val cli = project
       "libre2-1v5",
       "libunwind8"
     )
+
+    //,
+
+   // publish in Debian := {
+   //   println("hey")
+   // }
   )
