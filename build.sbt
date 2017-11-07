@@ -4,6 +4,7 @@ import com.typesafe.sbt.packager.linux.{LinuxPackageMapping, LinuxSymlink}
 import scala.collection.immutable.Seq
 import scalariform.formatter.preferences.AlignSingleLineCaseStatements
 import ReleaseTransformations._
+import _root_.bintray.BintrayExt
 
 lazy val binaryName = SettingKey[String]("binary-name")
 lazy val cSource = SettingKey[File]("c-source")
@@ -36,17 +37,13 @@ lazy val commonSettings = Seq(
 
   licenses += ("Apache-2.0", new URL("https://www.apache.org/licenses/LICENSE-2.0.txt")),
 
-  maintainer := "info@lightbend.com",
+  packageSummary in Linux := "Tooling for the Lightbend Reactive Platform",
+  maintainer in Linux := "Lightbend <info@lightbend.com>",
 
-  scmInfo := Some(ScmInfo(url("https://github.com/lightbend/reactive-cli"), "git@github.com:lightbend/reactive-cli.git")),
-
-  bintrayOrganization := Some("lightbend"),
-
-  bintrayReleaseOnPublish in ThisBuild := false,
-
-  bintrayRepository := "deb",
-
-  rpmVendor := organizationName.value,
+  packageArchitecture in Rpm := "x86_64",
+  rpmLicense := Some("Apache v2"),
+  rpmVendor := "com.lightbend.rp",
+  rpmUrl := Some("https://github.com/lightbend/reactive-cli"),
 
   scalaVersion := Versions.scala,
 
@@ -63,7 +60,10 @@ lazy val commonSettings = Seq(
 
   testFrameworks += new TestFramework("utest.runner.Framework"),
 
-  cSource in Compile := sourceDirectory.value / "main" / "c"
+  cSource in Compile := sourceDirectory.value / "main" / "c",
+
+  resolvers +=
+    Resolver.file("Mounted", file( Path.userHome.absolutePath + "/.ivy2/mounted"))(Resolver.ivyStylePatterns)
 )
 
 lazy val root = project
@@ -73,7 +73,7 @@ lazy val root = project
     `cli`
   )
   .settings(
-    name := "reactive-cli",
+    name := "reactive-cli-root",
     releaseProcess := Seq[ReleaseStep](
       checkSnapshotDependencies,              // : ReleaseStep
       inquireVersions,                        // : ReleaseStep
@@ -123,7 +123,7 @@ lazy val `libhttpsimple-bindings` = project
 
 lazy val cli = project
   .in(file("cli"))
-  .enablePlugins(ScalaNativePlugin, AutomateHeaderPlugin, JavaAppPackaging)
+  .enablePlugins(ScalaNativePlugin, AutomateHeaderPlugin, JavaAppPackaging, RpmPlugin)
   .dependsOn(`libhttpsimple-bindings`)
   .settings(commonSettings)
   .settings(Seq(
@@ -135,27 +135,26 @@ lazy val cli = project
     )
   ))
   .settings(
+    name := "reactive-cli",
+
+    packageName in Linux := "reactive-cli",
+    packageName in Rpm := "reactive-cli",
+
     binaryName := "rp",
-    bintrayPackage := "reactive-cli",
-    packageSummary := "Tools for managing and deploying Lightbend Reactive Platform applications",
-    publishArtifact in (Compile, packageBin) := false,
-    publishArtifact in (Compile, packageDoc) := false,
-    publishArtifact in (Compile, packageSrc) := false,
-    publishMavenStyle := false,
-    //publishArtifact in (Debian, packageBin) := true,
-    addArtifact(Artifact("reactive-cli", "deb", "deb;deb_distribution=wheezy;deb_component=main;deb_architecture=amd64"), packageBin in Debian),
+
     nativeLink in Compile := {
       val out = (nativeLink in Compile).value
       val dest = out.getParentFile / binaryName.value
       IO.move(out, dest)
       dest
     },
-    packageName in Linux := "reactive-cli",
+
     linuxPackageSymlinks += {
       val pkgName = (packageName in Linux).value
       LinuxSymlink(s"/usr/lib/${Names.`libhttpsimple.so`}", s"${defaultLinuxInstallLocation.value}/$pkgName/lib/${Names.`libhttpsimple.so`}")
     },
     nativeMode := Properties.nativeMode,
+
     mappings in Universal := Seq(
       (nativeLink in Compile).value -> s"bin/${binaryName.value}",
       ((target in (libhttpsimple, Compile)).value / Names.`libhttpsimple.so`) -> s"lib/${Names.`libhttpsimple.so`}"
@@ -165,11 +164,19 @@ lazy val cli = project
       "libcurl3",
       "libre2-1v5",
       "libunwind8"
-    )
+    ),
 
-    //,
+    TaskKey[Unit]("publishToBintray") := {
+      BintrayExt.publishDeb(
+        (packageBin in Debian).value,
+        version.value,
+        bintrayCredentialsFile.value,
+        streams.value.log)
 
-   // publish in Debian := {
-   //   println("hey")
-   // }
+      BintrayExt.publishRpm(
+        (packageBin in Rpm).value,
+        version.value,
+        bintrayCredentialsFile.value,
+        streams.value.log)
+    }
   )
