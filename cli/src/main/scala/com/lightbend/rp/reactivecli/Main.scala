@@ -32,12 +32,13 @@ object Main extends LazyLogging {
   implicit val logLevelsRead: scopt.Read[LogLevels.Value] =
     scopt.Read.reads(LogLevels.withName)
 
-  case class InputArgs(foo: Option[String] = None,
-                       logLevel: LogLevels.Value = LogLevels.info,
-                       environmentVariables: Map[String, String] = Map.empty,
-                       nrOfCpus: Option[Double] = None,
-                       memory: Option[Long] = None,
-                       diskSpace: Option[Long] = None)
+  case class InputArgs(
+    foo: Option[String] = None,
+    logLevel: LogLevels.Value = LogLevels.info,
+    environmentVariables: Map[String, String] = Map.empty,
+    nrOfCpus: Option[Double] = None,
+    memory: Option[Long] = None,
+    diskSpace: Option[Long] = None)
 
   val defaultInputArgs = InputArgs()
 

@@ -1,12 +1,25 @@
 import sbt._
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
+import com.typesafe.sbt.packager.linux.{LinuxPackageMapping, LinuxSymlink}
 import scala.collection.immutable.Seq
 import scalariform.formatter.preferences.AlignSingleLineCaseStatements
+import ReleaseTransformations._
+import _root_.bintray.BintrayExt
 
-val binaryName = SettingKey[String]("binary-name")
-val cSource = SettingKey[File]("c-source")
+lazy val binaryName = SettingKey[String]("binary-name")
+lazy val cSource = SettingKey[File]("c-source")
 
-val Versions = new {
+lazy val Names = new {
+  val `httpsimple.c` = "httpsimple.c"
+  val `httpsimple.o` = "httpsimple.o"
+  val `libhttpsimple.so` = "libhttpsimple.so"
+}
+
+lazy val Properties = new {
+  val nativeMode = System.getProperty("build.nativeMode", "debug")
+}
+
+lazy val Versions = new {
   val argonaut = "6.3-SNAPSHOT"
   val scala    = "2.11.11"
   val scalaz   = "7.2.16"
@@ -24,9 +37,13 @@ lazy val commonSettings = Seq(
 
   licenses += ("Apache-2.0", new URL("https://www.apache.org/licenses/LICENSE-2.0.txt")),
 
-  maintainer := "info@lightbend.com",
+  packageSummary in Linux := "Tooling for the Lightbend Reactive Platform",
+  maintainer in Linux := "Lightbend <info@lightbend.com>",
 
-  rpmVendor := organizationName.value,
+  packageArchitecture in Rpm := "x86_64",
+  rpmLicense := Some("Apache v2"),
+  rpmVendor := "com.lightbend.rp",
+  rpmUrl := Some("https://github.com/lightbend/reactive-cli"),
 
   scalaVersion := Versions.scala,
 
@@ -43,7 +60,10 @@ lazy val commonSettings = Seq(
 
   testFrameworks += new TestFramework("utest.runner.Framework"),
 
-  cSource in Compile := sourceDirectory.value / "main" / "c"
+  cSource in Compile := sourceDirectory.value / "main" / "c",
+
+  resolvers +=
+    Resolver.file("Mounted", file( Path.userHome.absolutePath + "/.ivy2/mounted"))(Resolver.ivyStylePatterns)
 )
 
 lazy val root = project
@@ -53,7 +73,23 @@ lazy val root = project
     `cli`
   )
   .settings(
-    name := "reactive-cli"
+    name := "reactive-cli-root",
+    releaseProcess := Seq[ReleaseStep](
+      checkSnapshotDependencies,              // : ReleaseStep
+      inquireVersions,                        // : ReleaseStep
+      runClean,                               // : ReleaseStep
+      releaseStepCommandAndRemaining("""set nativeMode in cli := "release""""),
+      runTest,                                // : ReleaseStep
+      setReleaseVersion,                      // : ReleaseStep
+      commitReleaseVersion,                   // : ReleaseStep, performs the initial git checks
+      tagRelease,                             // : ReleaseStep
+      releaseStepCommandAndRemaining("debian:packageBin"),
+      //releaseStepCommandAndRemaining("rpm:packageBin"),
+      //publishArtifacts,                       // : ReleaseStep, checks whether `publishTo` is properly set up
+      setNextVersion,                         // : ReleaseStep
+      commitNextVersion//,                      // : ReleaseStep
+      //pushChanges                             // : ReleaseStep, also checks that an upstream branch is properly configured
+    )
   )
 
 lazy val libhttpsimple = project
@@ -66,12 +102,12 @@ lazy val libhttpsimple = project
       val output = (target in Compile).value
 
       val gccCode1 =
-        Seq("gcc", "-c", "-fPIC", "-o", (output / "httpsimple.o").toString, (sources / "httpsimple.c").toString).!
+        Seq("gcc", "-c", "-fPIC", "-o", (output / Names.`httpsimple.o`).toString, (sources / Names.`httpsimple.c`).toString).!
 
       assert(gccCode1 == 0, s"gcc exited with $gccCode1")
 
       val gccCode2 =
-        Seq("gcc", "-shared", "-fPIC", "-lcurl", "-o", (output / "libhttpsimple.so").toString, (output / "httpsimple.o").toString).!
+        Seq("gcc", "-shared", "-fPIC", "-lcurl", "-o", (output / Names.`libhttpsimple.so`).toString, (output / Names.`httpsimple.o`).toString).!
 
       assert(gccCode2 == 0, s"gcc exited with $gccCode2")
 
@@ -87,7 +123,7 @@ lazy val `libhttpsimple-bindings` = project
 
 lazy val cli = project
   .in(file("cli"))
-  .enablePlugins(ScalaNativePlugin, AutomateHeaderPlugin, JavaAppPackaging)
+  .enablePlugins(ScalaNativePlugin, AutomateHeaderPlugin, JavaAppPackaging, RpmPlugin)
   .dependsOn(`libhttpsimple-bindings`)
   .settings(commonSettings)
   .settings(Seq(
@@ -99,16 +135,48 @@ lazy val cli = project
     )
   ))
   .settings(
+    name := "reactive-cli",
+
+    packageName in Linux := "reactive-cli",
+    packageName in Rpm := "reactive-cli",
+
     binaryName := "rp",
-    packageSummary := "Tools for managing and deploying Lightbend Reactive Platform applications",
+
     nativeLink in Compile := {
       val out = (nativeLink in Compile).value
       val dest = out.getParentFile / binaryName.value
       IO.move(out, dest)
       dest
     },
-    packageName in Linux := "reactive-cli",
+
+    linuxPackageSymlinks += {
+      val pkgName = (packageName in Linux).value
+      LinuxSymlink(s"/usr/lib/${Names.`libhttpsimple.so`}", s"${defaultLinuxInstallLocation.value}/$pkgName/lib/${Names.`libhttpsimple.so`}")
+    },
+    nativeMode := Properties.nativeMode,
+
     mappings in Universal := Seq(
-      (nativeLink in Compile).value -> s"bin/${binaryName.value}"
-    )
+      (nativeLink in Compile).value -> s"bin/${binaryName.value}",
+      ((target in (libhttpsimple, Compile)).value / Names.`libhttpsimple.so`) -> s"lib/${Names.`libhttpsimple.so`}"
+    ),
+
+    debianPackageDependencies in Debian := Seq(
+      "libcurl3",
+      "libre2-1v5",
+      "libunwind8"
+    ),
+
+    TaskKey[Unit]("publishToBintray") := {
+      BintrayExt.publishDeb(
+        (packageBin in Debian).value,
+        version.value,
+        bintrayCredentialsFile.value,
+        streams.value.log)
+
+      BintrayExt.publishRpm(
+        (packageBin in Rpm).value,
+        version.value,
+        bintrayCredentialsFile.value,
+        streams.value.log)
+    }
   )
