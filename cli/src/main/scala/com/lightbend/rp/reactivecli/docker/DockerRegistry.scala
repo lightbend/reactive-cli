@@ -19,21 +19,23 @@ package docker
 
 import argonaut._
 import libhttpsimple._
+
 import scala.util.{ Failure, Success, Try }
 import scalaz._
 import slogging._
-
 import Argonaut._
+import libhttpsimple.LibHttpSimple.HttpExchange
+
 import Scalaz._
 
 object DockerRegistry extends LazyLogging {
-  def blobUrl(img: Image, digest: String): String =
+  private[docker] def blobUrl(img: Image, digest: String): String =
     s"https://${img.url}/v2/${img.namespace}/${img.image}/blobs/$digest"
 
-  def manifestUrl(img: Image): String =
+  private[docker] def manifestUrl(img: Image): String =
     s"https://${img.url}/v2/${img.namespace}/${img.image}/manifests/${img.tag}"
 
-  def parseImageUri(uri: String): Try[Image] = {
+  private[docker] def parseImageUri(uri: String): Try[Image] = {
     val parts = uri.split("/", 3).toVector
 
     val providedUrl = (parts.length > 2).option(parts(0))
@@ -65,20 +67,27 @@ object DockerRegistry extends LazyLogging {
           providedTag = providedTag))
   }
 
-  def getBlob(uri: String, digest: String, token: Option[String]): Try[(HttpResponse, Option[String])] =
+  private def getBlob(http: HttpExchange)(uri: String, digest: String, token: Option[String]): Try[(HttpResponse, Option[String])] =
     for {
       i <- parseImageUri(uri)
-      r <- getWithToken(blobUrl(i, digest), HttpHeaders(Map.empty), token = token)
+      r <- getWithToken(http)(blobUrl(i, digest), HttpHeaders(Map.empty), token = token)
     } yield r
 
-  def getConfig(uri: String, token: Option[String]): Try[(Config, Option[String])] =
+  def getConfig(http: HttpExchange)(uri: String, token: Option[String]): Try[(Config, Option[String])] =
     for {
-      manifest <- getManifest(uri, token)
-      blob <- getBlob(uri, manifest._1.config.digest, token = manifest._2)
+      manifest <- getManifest(http)(uri, token)
+      blob <- getBlob(http)(uri, manifest._1.config.digest, token = manifest._2)
       config <- getDecoded[Config](blob._1)
     } yield config -> blob._2
 
-  def getDecoded[T](response: HttpResponse)(implicit decode: DecodeJson[T]): Try[T] =
+  private def getManifest(http: HttpExchange)(uri: String, token: Option[String]): Try[(Manifest, Option[String])] =
+    for {
+      i <- parseImageUri(uri)
+      r <- getWithToken(http)(manifestUrl(i), HttpHeaders(Map("Accept" -> DockerAcceptManifestHeader)), token = token)
+      v <- getDecoded[Manifest](r._1)
+    } yield v -> r._2
+
+  private def getDecoded[T](response: HttpResponse)(implicit decode: DecodeJson[T]): Try[T] =
     if (response.statusCode == 200)
       response.body.getOrElse("").decodeEither[T].fold(
         err => Failure(new IllegalArgumentException(s"Decode Failure: $err")),
@@ -86,20 +95,13 @@ object DockerRegistry extends LazyLogging {
     else
       Failure(new IllegalArgumentException(s"Expected code 200, received ${response.statusCode}"))
 
-  def getManifest(uri: String, token: Option[String]): Try[(Manifest, Option[String])] =
-    for {
-      i <- parseImageUri(uri)
-      r <- getWithToken(manifestUrl(i), HttpHeaders(Map("Accept" -> DockerAcceptManifestHeader)), token = token)
-      v <- getDecoded[Manifest](r._1)
-    } yield v -> r._2
-
-  private def getWithToken(url: String, headers: HttpHeaders, tryNewToken: Boolean = true, token: Option[String] = None): Try[(HttpResponse, Option[String])] = {
+  private def getWithToken(http: HttpExchange)(url: String, headers: HttpHeaders, tryNewToken: Boolean = true, token: Option[String] = None): Try[(HttpResponse, Option[String])] = {
     val request =
       HttpRequest(url)
         .headers(token.fold(headers)(t => headers.updated("Authorization", s"Bearer $t")))
         .enableFollowRedirects
 
-    LibHttpSimple(request).flatMap {
+    http.apply(request).flatMap {
       case response if response.statusCode == 401 && response.headers.contains("Www-Authenticate") && tryNewToken =>
         logger.debug("Received 401, attempting to get a token and try again")
 
@@ -118,7 +120,7 @@ object DockerRegistry extends LazyLogging {
             json <- JsonParser.parse(body).right.toOption
             token <- json.field("token")
             tokenStr <- token.string
-          } yield getWithToken(url, headers, tryNewToken = false, token = Some(tokenStr))
+          } yield getWithToken(http)(url, headers, tryNewToken = false, token = Some(tokenStr))
 
         maybeResponse.getOrElse {
           logger.error(s"Unable to obtain an OAuth token (${response.statusCode}${response.body.fold("")(" " + _)})")

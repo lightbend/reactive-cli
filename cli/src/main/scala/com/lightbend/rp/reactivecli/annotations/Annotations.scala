@@ -17,6 +17,7 @@
 package com.lightbend.rp.reactivecli.annotations
 
 import com.lightbend.rp.reactivecli.annotations.HttpEndpoint.HttpAcl
+import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
 
 import scala.collection.immutable.Seq
 import scala.util.Try
@@ -57,19 +58,20 @@ case class Annotations(
  * )
  */
 object Annotations {
-  def apply(labels: Map[String, String]): Annotations = {
+  def apply(labels: Map[String, String], args: GenerateDeploymentArgs): Annotations = {
     val appVersion = version(labels)
     Annotations(
       appName = appName(labels),
-      diskSpace = diskSpace(labels),
-      memory = memory(labels),
-      nrOfCpus = nrOfCpus(labels),
+      diskSpace = args.diskSpace.orElse(diskSpace(labels)),
+      memory = args.memory.orElse(memory(labels)),
+      nrOfCpus = args.nrOfCpus.orElse(nrOfCpus(labels)),
       endpoints = endpoints(selectArray(labels, ns("endpoints")), appVersion),
       volumes = volumes(selectArray(labels, ns("volumes"))),
       privileged = privileged(labels),
       healthCheck = check(selectSubset(labels, ns("health-check"))),
       readinessCheck = check(selectSubset(labels, ns("readiness-check"))),
-      environmentVariables = environmentVariables(selectArray(labels, ns("environment-variables"))),
+      environmentVariables = environmentVariables(selectArray(labels, ns("environment-variables"))) ++
+        args.environmentVariables.mapValues(LiteralEnvironmentVariable.apply),
       version = appVersion)
   }
 

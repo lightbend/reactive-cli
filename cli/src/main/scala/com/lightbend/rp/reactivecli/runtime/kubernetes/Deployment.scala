@@ -24,19 +24,22 @@ import com.lightbend.rp.reactivecli.annotations.{ Annotations, Check, CommandChe
 import scala.util.{ Failure, Success, Try }
 
 object Deployment {
-  type KubernetesMajorVersion = Int
-  type KubernetesMinorVersion = Int
 
-  object ImagePullPolicy {
-    case object Never extends ImagePullPolicy
-    case object IfNotPresent extends ImagePullPolicy
-    case object Always extends ImagePullPolicy
+  /**
+   * Represents Kubernetes major and minor version which is required for generating [[Deployment]] resource.
+   */
+  case class KubernetesVersion(major: Int, minor: Int)
+
+  /**
+   * Represents possible values for imagePullPolicy field within the Kubernetes deployment resource.
+   */
+  object ImagePullPolicy extends Enumeration {
+    val Never, IfNotPresent, Always = Value
   }
-  sealed trait ImagePullPolicy
 
   val VersionSeparator = "-v"
 
-  implicit def imagePullPolicyEncode = EncodeJson[ImagePullPolicy] {
+  implicit def imagePullPolicyEncode = EncodeJson[ImagePullPolicy.Value] {
     case ImagePullPolicy.Never => "Never".asJson
     case ImagePullPolicy.IfNotPresent => "IfNotPresent".asJson
     case ImagePullPolicy.Always => "Always".asJson
@@ -145,49 +148,57 @@ object Deployment {
       "containerPort" -> endpoint.port.asJson,
       "name" -> endpointName(endpoint).asJson)
 
-  def generate(annotations: Annotations, kubernetesVersion: (KubernetesMajorVersion, KubernetesMinorVersion),
-    imageName: String, imagePullPolicy: ImagePullPolicy, noOfReplicas: Int): Try[Json] =
+  /**
+   * Builds [[Deployment]] resource.
+   */
+  def generate(annotations: Annotations, kubernetesVersion: KubernetesVersion, imageName: String,
+    imagePullPolicy: ImagePullPolicy.Value, noOfReplicas: Int): Try[Deployment] =
     (annotations.appName, annotations.version) match {
       case (Some(appName), Some(version)) =>
         val appVersionMajor = s"$appName$VersionSeparator${version.major}"
         val appVersionMajorMinor = s"$appName$VersionSeparator${version.versionMajorMinor}"
         val appVersion = s"$appName$VersionSeparator${version.version}"
         Success(
-          Json(
-            "apiVersion" -> apiVersion(kubernetesVersion).asJson,
-            "kind" -> "Deployment".asJson,
-            "metadata" -> Json(
-              "name" -> appVersion.asJson,
-              "labels" -> Json(
-                "app" -> appName.asJson,
-                "appVersionMajor" -> appVersionMajor.asJson,
-                "appVersionMajorMinor" -> appVersionMajorMinor.asJson,
-                "appVersion" -> appVersion.asJson)),
-            "spec" -> Json(
-              "replicas" -> noOfReplicas.asJson,
-              "serviceName" -> appVersionMajor.asJson,
-              "template" -> Json(
-                "app" -> appName.asJson,
-                "appVersionMajor" -> appVersionMajor.asJson,
-                "appVersionMajorMinor" -> appVersionMajorMinor.asJson,
-                "appVersion" -> appVersion.asJson),
+          Deployment(
+            appVersion,
+            Json(
+              "apiVersion" -> apiVersion(kubernetesVersion).asJson,
+              "kind" -> "Deployment".asJson,
+              "metadata" -> Json(
+                "name" -> appVersion.asJson,
+                "labels" -> Json(
+                  "app" -> appName.asJson,
+                  "appVersionMajor" -> appVersionMajor.asJson,
+                  "appVersionMajorMinor" -> appVersionMajorMinor.asJson,
+                  "appVersion" -> appVersion.asJson)),
               "spec" -> Json(
-                "containers" -> List(
-                  Json(
-                    "name" -> appName.asJson,
-                    "image" -> imageName.asJson,
-                    "imagePullPolicy" -> imagePullPolicy.asJson,
-                    "env" -> annotations.environmentVariables.asJson,
-                    "ports" -> annotations.endpoints.asJson)
-                    .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
-                    .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson))))
+                "replicas" -> noOfReplicas.asJson,
+                "serviceName" -> appVersionMajor.asJson,
+                "template" -> Json(
+                  "app" -> appName.asJson,
+                  "appVersionMajor" -> appVersionMajor.asJson,
+                  "appVersionMajorMinor" -> appVersionMajorMinor.asJson,
+                  "appVersion" -> appVersion.asJson),
+                "spec" -> Json(
+                  "containers" -> List(
+                    Json(
+                      "name" -> appName.asJson,
+                      "image" -> imageName.asJson,
+                      "imagePullPolicy" -> imagePullPolicy.asJson,
+                      "env" -> annotations.environmentVariables.asJson,
+                      "ports" -> annotations.endpoints.asJson)
+                      .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
+                      .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson)))))
       case _ =>
         Failure(new IllegalArgumentException("Unable to generate Kubernetes Deployment: both application name and version are required"))
     }
 
-  private[kubernetes] def apiVersion(kubernetesVersion: (KubernetesMajorVersion, KubernetesMinorVersion)): String = {
-    val (major, minor) = kubernetesVersion
-    if (major >= 1 && minor >= 8)
+  private[kubernetes] def apiVersion(kubernetesVersion: KubernetesVersion): String = {
+    val version = (kubernetesVersion.major, kubernetesVersion.minor)
+    val kubernetes18 = (1, 8)
+    val versionCompare = Seq(version, kubernetes18).sorted
+
+    if (versionCompare.head == kubernetes18)
       "apps/v1beta2"
     else
       "apps/v1beta1"
@@ -195,3 +206,9 @@ object Deployment {
 
 }
 
+/**
+ * Represents the generated Kubernetes deployment resource.
+ */
+case class Deployment(name: String, payload: Json) extends GeneratedKubernetesResource {
+  val resourceType = "deployment"
+}

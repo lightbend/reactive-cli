@@ -21,6 +21,8 @@ import scala.scalanative.native._
 import scala.util.{ Failure, Success, Try }
 
 object LibHttpSimple {
+  type HttpExchange = HttpRequest => Try[HttpResponse]
+
   private val CRLF = "\r\n"
   private val HttpHeaderAndBodyPartsSeparator = CRLF + CRLF
   private val HttpHeaderNameAndValueSeparator = ":"
@@ -29,6 +31,8 @@ object LibHttpSimple {
   case class InternalNativeFailure(errorCode: Long, errorDescription: String) extends RuntimeException(s"$errorCode: $errorDescription")
 
   case class InfiniteRedirect(visited: List[String]) extends RuntimeException(s"Infinte redirect detected: $visited")
+
+  val http: HttpExchange = apply
 
   /**
    * Initializes libcurl` internal state by calling `curl_global_init` underneath.

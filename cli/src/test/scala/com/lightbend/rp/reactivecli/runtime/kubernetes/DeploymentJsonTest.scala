@@ -107,9 +107,9 @@ object DeploymentJsonTest extends TestSuite {
               |}
             """.stripMargin.parse.right.get
 
-          val generatedJson = Deployment.generate(annotations, kubernetesVersion = (1, 8),
-            imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1).get
-          assert(generatedJson == expectedJson)
+          val generatedJson = Deployment.generate(annotations, KubernetesVersion(1, 8), imageName,
+            Deployment.ImagePullPolicy.Never, noOfReplicas = 1).get
+          assert(generatedJson == Deployment("friendimpl-v3.2.1-SNAPSHOT", expectedJson))
         }
 
         "K8 < 1.8" - {
@@ -169,9 +169,9 @@ object DeploymentJsonTest extends TestSuite {
               |}
             """.stripMargin.parse.right.get
 
-          val generatedJson = Deployment.generate(annotations, kubernetesVersion = (1, 7),
-            imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1).get
-          assert(generatedJson == expectedJson)
+          val generatedJson = Deployment.generate(annotations, KubernetesVersion(1, 7), imageName,
+            Deployment.ImagePullPolicy.Never, noOfReplicas = 1).get
+          assert(generatedJson == Deployment("friendimpl-v3.2.1-SNAPSHOT", expectedJson))
         }
 
         "with checks" - {
@@ -245,14 +245,15 @@ object DeploymentJsonTest extends TestSuite {
           val input = annotations.copy(
             readinessCheck = Some(CommandCheck("ls", "-al")),
             healthCheck = Some(TcpCheck(Check.PortNumber(1234), intervalSeconds = 3)))
-          val generatedJson = Deployment.generate(input, kubernetesVersion = (1, 8),
-            imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1).get
-          assert(generatedJson == expectedJson)
+          val generatedJson = Deployment.generate(input, KubernetesVersion(1, 8), imageName,
+            Deployment.ImagePullPolicy.Never, noOfReplicas = 1).get
+          assert(generatedJson == Deployment("friendimpl-v3.2.1-SNAPSHOT", expectedJson))
         }
 
         "should fail if application name is not defined" - {
           val invalid = annotations.copy(appName = None)
-          assert(Deployment.generate(invalid, (1, 7), imageName, Deployment.ImagePullPolicy.Never, 1).isFailure)
+          assert(Deployment.generate(invalid, KubernetesVersion(1, 7), imageName,
+            Deployment.ImagePullPolicy.Never, 1).isFailure)
         }
       }
 

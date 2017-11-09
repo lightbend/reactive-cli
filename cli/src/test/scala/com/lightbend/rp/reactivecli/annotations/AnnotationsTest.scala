@@ -16,7 +16,9 @@
 
 package com.lightbend.rp.reactivecli.annotations
 
+import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
 import utest._
+
 import scala.collection.immutable.Seq
 
 object AnnotationsTest extends TestSuite {
@@ -107,7 +109,7 @@ object AnnotationsTest extends TestSuite {
 
     "Annotations.apply" - {
       assert(
-        Annotations(Map.empty) == Annotations(
+        Annotations(Map.empty, GenerateDeploymentArgs()) == Annotations(
           appName = None,
           diskSpace = None,
           memory = None,
@@ -122,7 +124,8 @@ object AnnotationsTest extends TestSuite {
 
       "all options (except checks)" - {
         assert(
-          Annotations(Map(
+          Annotations(
+            Map(
             "some.key" -> "test",
             "com.lightbend.rp.some-key" -> "test",
 
@@ -166,116 +169,159 @@ object AnnotationsTest extends TestSuite {
             "com.lightbend.rp.endpoints.1.port" -> "1234",
             "com.lightbend.rp.endpoints.2.name" -> "ep3",
             "com.lightbend.rp.endpoints.2.protocol" -> "udp",
-            "com.lightbend.rp.endpoints.2.port" -> "1234")) == Annotations(
-            appName = Some("my-app"),
-            diskSpace = Some(65536L),
-            memory = Some(8192L),
-            nrOfCpus = Some(0.5D),
-            endpoints = Map(
-              "ep1" -> HttpEndpoint("ep1", 0, version = Some(9), Seq(HttpEndpoint.HttpAcl("^/.*"))),
-              "ep2" -> TcpEndpoint("ep2", 1234, version = Some(1)),
-              "ep3" -> UdpEndpoint("ep3", 1234, version = Some(3))),
-            volumes = Map(
-              "/my/guest/path/1" -> HostPathVolume("/my/host/path"),
-              "/my/guest/path/2" -> SecretVolume("mysecret")),
-            privileged = true,
-            healthCheck = None,
-            readinessCheck = None,
-            environmentVariables = Map(
-              "testing1" -> LiteralEnvironmentVariable("testingvalue1"),
-              "testing2" -> kubernetes.ConfigMapEnvironmentVariable("mymap", "mykey"),
-              "testing3" -> kubernetes.FieldRefEnvironmentVariable("metadata.name")),
-            version = Some(Version(3, 2, 1, Some("SNAPSHOT")))))
+            "com.lightbend.rp.endpoints.2.port" -> "1234"),
+            GenerateDeploymentArgs()) == Annotations(
+              appName = Some("my-app"),
+              diskSpace = Some(65536L),
+              memory = Some(8192L),
+              nrOfCpus = Some(0.5D),
+              endpoints = Map(
+                "ep1" -> HttpEndpoint("ep1", 0, version = Some(9), Seq(HttpEndpoint.HttpAcl("^/.*"))),
+                "ep2" -> TcpEndpoint("ep2", 1234, version = Some(1)),
+                "ep3" -> UdpEndpoint("ep3", 1234, version = Some(3))),
+              volumes = Map(
+                "/my/guest/path/1" -> HostPathVolume("/my/host/path"),
+                "/my/guest/path/2" -> SecretVolume("mysecret")),
+              privileged = true,
+              healthCheck = None,
+              readinessCheck = None,
+              environmentVariables = Map(
+                "testing1" -> LiteralEnvironmentVariable("testingvalue1"),
+                "testing2" -> kubernetes.ConfigMapEnvironmentVariable("mymap", "mykey"),
+                "testing3" -> kubernetes.FieldRefEnvironmentVariable("metadata.name")),
+              version = Some(Version(3, 2, 1, Some("SNAPSHOT")))))
+      }
+
+      "argument overrides" - {
+        assert(
+          Annotations(
+            Map(
+              "com.lightbend.rp.disk-space" -> "65536",
+              "com.lightbend.rp.memory" -> "8192",
+              "com.lightbend.rp.nr-of-cpus" -> "0.5",
+              "com.lightbend.rp.environment-variables.0.type" -> "literal",
+              "com.lightbend.rp.environment-variables.0.name" -> "foo",
+              "com.lightbend.rp.environment-variables.0.value" -> "bar"),
+            GenerateDeploymentArgs(
+              nrOfCpus = Some(0.5),
+              memory = Some(1024),
+              diskSpace = Some(2048),
+              environmentVariables = Map(
+                "foo" -> "foo",
+                "hey" -> "there"))) == Annotations(
+              appName = None,
+              diskSpace = Some(2048),
+              memory = Some(1024),
+              nrOfCpus = Some(0.5),
+              endpoints = Map.empty,
+              volumes = Map.empty,
+              privileged = false,
+              healthCheck = None,
+              readinessCheck = None,
+              environmentVariables = Map(
+                "foo" -> LiteralEnvironmentVariable("foo"),
+                "hey" -> LiteralEnvironmentVariable("there")),
+              version = None))
+
       }
 
       "version (no label)" - {
         assert(
-          Annotations(Map(
+          Annotations(
+            Map(
             "com.lightbend.rp.version-major" -> "3",
             "com.lightbend.rp.version-minor" -> "2",
-            "com.lightbend.rp.version-patch" -> "1")) == Annotations(
-            appName = None,
-            diskSpace = None,
-            memory = None,
-            nrOfCpus = None,
-            endpoints = Map.empty,
-            volumes = Map.empty,
-            privileged = false,
-            healthCheck = None,
-            readinessCheck = None,
-            environmentVariables = Map.empty,
-            version = Some(Version(3, 2, 1, None))))
+            "com.lightbend.rp.version-patch" -> "1"),
+            GenerateDeploymentArgs()) == Annotations(
+              appName = None,
+              diskSpace = None,
+              memory = None,
+              nrOfCpus = None,
+              endpoints = Map.empty,
+              volumes = Map.empty,
+              privileged = false,
+              healthCheck = None,
+              readinessCheck = None,
+              environmentVariables = Map.empty,
+              version = Some(Version(3, 2, 1, None))))
       }
 
       "endpoint (no version)" - {
         assert(
-          Annotations(Map(
+          Annotations(
+            Map(
             "com.lightbend.rp.version-major" -> "3",
             "com.lightbend.rp.version-minor" -> "2",
             "com.lightbend.rp.version-patch" -> "1",
 
             "com.lightbend.rp.endpoints.1.name" -> "ep2",
             "com.lightbend.rp.endpoints.1.protocol" -> "tcp",
-            "com.lightbend.rp.endpoints.1.port" -> "1234")) == Annotations(
-            appName = None,
-            diskSpace = None,
-            memory = None,
-            nrOfCpus = None,
-            endpoints = Map(
-              "ep2" -> TcpEndpoint("ep2", 1234, version = Some(3))),
-            volumes = Map.empty,
-            privileged = false,
-            healthCheck = None,
-            readinessCheck = None,
-            environmentVariables = Map.empty,
-            version = Some(Version(3, 2, 1, None))))
+            "com.lightbend.rp.endpoints.1.port" -> "1234"),
+            GenerateDeploymentArgs()) == Annotations(
+              appName = None,
+              diskSpace = None,
+              memory = None,
+              nrOfCpus = None,
+              endpoints = Map(
+                "ep2" -> TcpEndpoint("ep2", 1234, version = Some(3))),
+              volumes = Map.empty,
+              privileged = false,
+              healthCheck = None,
+              readinessCheck = None,
+              environmentVariables = Map.empty,
+              version = Some(Version(3, 2, 1, None))))
       }
 
       "endpoint (no version and no app version)" - {
         assert(
-          Annotations(Map(
+          Annotations(
+            Map(
             "com.lightbend.rp.endpoints.1.name" -> "ep2",
             "com.lightbend.rp.endpoints.1.protocol" -> "tcp",
-            "com.lightbend.rp.endpoints.1.port" -> "1234")) == Annotations(
-            appName = None,
-            diskSpace = None,
-            memory = None,
-            nrOfCpus = None,
-            endpoints = Map(
-              "ep2" -> TcpEndpoint("ep2", 1234, version = None)),
-            volumes = Map.empty,
-            privileged = false,
-            healthCheck = None,
-            readinessCheck = None,
-            environmentVariables = Map.empty,
-            version = None))
+            "com.lightbend.rp.endpoints.1.port" -> "1234"),
+            GenerateDeploymentArgs()) == Annotations(
+              appName = None,
+              diskSpace = None,
+              memory = None,
+              nrOfCpus = None,
+              endpoints = Map(
+                "ep2" -> TcpEndpoint("ep2", 1234, version = None)),
+              volumes = Map.empty,
+              privileged = false,
+              healthCheck = None,
+              readinessCheck = None,
+              environmentVariables = Map.empty,
+              version = None))
       }
 
       "CommandCheck" - {
         assert(
-          Annotations(Map(
+          Annotations(
+            Map(
             "com.lightbend.rp.health-check.type" -> "command",
             "com.lightbend.rp.health-check.args.0" -> "/usr/bin/env",
             "com.lightbend.rp.health-check.args.1" -> "bash",
             "com.lightbend.rp.readiness-check.type" -> "command",
             "com.lightbend.rp.readiness-check.args.0" -> "/usr/bin/env",
-            "com.lightbend.rp.readiness-check.args.1" -> "bash")) == Annotations(
-            appName = None,
-            diskSpace = None,
-            memory = None,
-            nrOfCpus = None,
-            endpoints = Map.empty,
-            volumes = Map.empty,
-            privileged = false,
-            healthCheck = Some(CommandCheck("/usr/bin/env", "bash")),
-            readinessCheck = Some(CommandCheck("/usr/bin/env", "bash")),
-            environmentVariables = Map.empty,
-            version = None))
+            "com.lightbend.rp.readiness-check.args.1" -> "bash"),
+            GenerateDeploymentArgs()) == Annotations(
+              appName = None,
+              diskSpace = None,
+              memory = None,
+              nrOfCpus = None,
+              endpoints = Map.empty,
+              volumes = Map.empty,
+              privileged = false,
+              healthCheck = Some(CommandCheck("/usr/bin/env", "bash")),
+              readinessCheck = Some(CommandCheck("/usr/bin/env", "bash")),
+              environmentVariables = Map.empty,
+              version = None))
       }
 
       "HttpCheck" - {
         assert(
-          Annotations(Map(
+          Annotations(
+            Map(
             "com.lightbend.rp.health-check.type" -> "http",
             "com.lightbend.rp.health-check.service-name" -> "my-service",
             "com.lightbend.rp.health-check.interval" -> "5",
@@ -283,40 +329,43 @@ object AnnotationsTest extends TestSuite {
             "com.lightbend.rp.readiness-check.type" -> "http",
             "com.lightbend.rp.readiness-check.port" -> "1234",
             "com.lightbend.rp.readiness-check.interval" -> "5",
-            "com.lightbend.rp.readiness-check.path" -> "/hello")) == Annotations(
-            appName = None,
-            diskSpace = None,
-            memory = None,
-            nrOfCpus = None,
-            endpoints = Map.empty,
-            volumes = Map.empty,
-            privileged = false,
-            healthCheck = Some(HttpCheck(Check.ServiceName("my-service"), 5, "/hello")),
-            readinessCheck = Some(HttpCheck(Check.PortNumber(1234), 5, "/hello")),
-            environmentVariables = Map.empty,
-            version = None))
+            "com.lightbend.rp.readiness-check.path" -> "/hello"),
+            GenerateDeploymentArgs()) == Annotations(
+              appName = None,
+              diskSpace = None,
+              memory = None,
+              nrOfCpus = None,
+              endpoints = Map.empty,
+              volumes = Map.empty,
+              privileged = false,
+              healthCheck = Some(HttpCheck(Check.ServiceName("my-service"), 5, "/hello")),
+              readinessCheck = Some(HttpCheck(Check.PortNumber(1234), 5, "/hello")),
+              environmentVariables = Map.empty,
+              version = None))
       }
 
       "TcpCheck" - {
         assert(
-          Annotations(Map(
+          Annotations(
+            Map(
             "com.lightbend.rp.health-check.type" -> "tcp",
             "com.lightbend.rp.health-check.service-name" -> "my-service",
             "com.lightbend.rp.health-check.interval" -> "5",
             "com.lightbend.rp.readiness-check.type" -> "tcp",
             "com.lightbend.rp.readiness-check.port" -> "1234",
-            "com.lightbend.rp.readiness-check.interval" -> "5")) == Annotations(
-            appName = None,
-            diskSpace = None,
-            memory = None,
-            nrOfCpus = None,
-            endpoints = Map.empty,
-            volumes = Map.empty,
-            privileged = false,
-            healthCheck = Some(TcpCheck(Check.ServiceName("my-service"), 5)),
-            readinessCheck = Some(TcpCheck(Check.PortNumber(1234), 5)),
-            environmentVariables = Map.empty,
-            version = None))
+            "com.lightbend.rp.readiness-check.interval" -> "5"),
+            GenerateDeploymentArgs()) == Annotations(
+              appName = None,
+              diskSpace = None,
+              memory = None,
+              nrOfCpus = None,
+              endpoints = Map.empty,
+              volumes = Map.empty,
+              privileged = false,
+              healthCheck = Some(TcpCheck(Check.ServiceName("my-service"), 5)),
+              readinessCheck = Some(TcpCheck(Check.PortNumber(1234), 5)),
+              environmentVariables = Map.empty,
+              version = None))
       }
     }
   }
