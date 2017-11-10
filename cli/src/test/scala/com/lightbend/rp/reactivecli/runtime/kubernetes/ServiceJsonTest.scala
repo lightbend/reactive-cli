@@ -32,7 +32,7 @@ object ServiceJsonTest extends TestSuite {
     memory = Some(8192L),
     nrOfCpus = Some(0.5D),
     endpoints = Map(
-      "ep1" -> TcpEndpoint("ep1", 1234, version = Some(1))),
+      "ep1" -> TcpEndpoint(0, "ep1", 1234, version = Some(1))),
     volumes = Map(
       "/my/guest/path/1" -> HostPathVolume("/my/host/path"),
       "/my/guest/path/2" -> SecretVolume("mysecret")),

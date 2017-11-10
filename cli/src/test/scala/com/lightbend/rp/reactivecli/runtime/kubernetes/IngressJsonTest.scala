@@ -30,7 +30,7 @@ object IngressJsonTest extends TestSuite {
     memory = Some(8192L),
     nrOfCpus = Some(0.5D),
     endpoints = Map(
-      "ep1" -> HttpEndpoint("ep1", 1234, version = Some(1), acls = Seq(HttpEndpoint.HttpAcl("/api/friend")))),
+      "ep1" -> HttpEndpoint(0, "ep1", 1234, version = Some(1), acls = Seq(HttpEndpoint.HttpAcl("/api/friend")))),
     volumes = Map(
       "/my/guest/path/1" -> HostPathVolume("/my/host/path"),
       "/my/guest/path/2" -> SecretVolume("mysecret")),
@@ -44,7 +44,8 @@ object IngressJsonTest extends TestSuite {
   val tests = this{
     "json serialization" - {
       "without additional arguments" - {
-        val generatedJson = Ingress.generate(annotations,
+        val generatedJson = Ingress.generate(
+          annotations,
           ingressAnnotations = Map.empty,
           pathAppend = Option.empty).get
         val expectedJson =
@@ -78,7 +79,8 @@ object IngressJsonTest extends TestSuite {
       }
 
       "with ingress specific input" - {
-        val generatedJson = Ingress.generate(annotations,
+        val generatedJson = Ingress.generate(
+          annotations,
           ingressAnnotations = Map("kubernetes.io/ingress.class" -> "istio"),
           pathAppend = Some(".*")).get
 

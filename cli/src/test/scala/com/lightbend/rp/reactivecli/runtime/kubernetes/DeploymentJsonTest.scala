@@ -26,15 +26,17 @@ import scala.collection.immutable.Seq
 object DeploymentJsonTest extends TestSuite {
   import Deployment._
 
+  val endpoints = Map(
+    "ep1" -> HttpEndpoint(0, "ep1", 0, version = Some(9), Seq(HttpEndpoint.HttpAcl("^/.*"))),
+    "ep2" -> TcpEndpoint(1, "ep2", 1234, version = Some(1)),
+    "ep3" -> UdpEndpoint(2, "ep3", 0, version = None))
+
   val annotations = Annotations(
     appName = Some("friendimpl"),
     diskSpace = Some(65536L),
     memory = Some(8192L),
     nrOfCpus = Some(0.5D),
-    endpoints = Map(
-      "ep1" -> HttpEndpoint("ep1", 0, version = Some(9), Seq(HttpEndpoint.HttpAcl("^/.*"))),
-      "ep2" -> TcpEndpoint("ep2", 1234, version = Some(1)),
-      "ep3" -> UdpEndpoint("ep3", 1234, version = None)),
+    endpoints = endpoints,
     volumes = Map(
       "/my/guest/path/1" -> HostPathVolume("/my/host/path"),
       "/my/guest/path/2" -> SecretVolume("mysecret")),
@@ -82,7 +84,7 @@ object DeploymentJsonTest extends TestSuite {
               |          "imagePullPolicy": "Never",
               |          "ports": [
               |            {
-              |              "containerPort": 0,
+              |              "containerPort": 10000,
               |              "name": "ep1-v9"
               |            },
               |            {
@@ -90,11 +92,83 @@ object DeploymentJsonTest extends TestSuite {
               |              "name": "ep2-v1"
               |            },
               |            {
-              |              "containerPort": 1234,
+              |              "containerPort": 10001,
               |              "name": "ep3"
               |            }
               |          ],
               |          "env": [
+              |            {
+              |              "name": "RP_ENDPOINTS",
+              |              "value": "EP1-V9,EP2-V1,EP3"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINTS_COUNT",
+              |              "value": "3"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_0_PORT",
+              |              "value": "10000"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_1_PORT",
+              |              "value": "1234"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_2_PORT",
+              |              "value": "10001"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_EP1-V9_PORT",
+              |              "value": "10000"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_EP2-V1_PORT",
+              |              "value": "1234"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_EP3_PORT",
+              |              "value": "10001"
+              |            },
+              |            {
+              |              "name": "RP_KUBERNETES_POD_IP",
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "status.podIP"
+              |                }
+              |              }
+              |            },
+              |            {
+              |              "name": "RP_KUBERNETES_POD_NAME",
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "metadata.name"
+              |                }
+              |              }
+              |            },
+              |            {
+              |              "name": "RP_PLATFORM",
+              |              "value": "kubernetes"
+              |            },
+              |            {
+              |              "name": "RP_VERSION",
+              |              "value": "3.2.1-SNAPSHOT"
+              |            },
+              |            {
+              |              "name": "RP_VERSION_MAJOR",
+              |              "value": "3"
+              |            },
+              |            {
+              |              "name": "RP_VERSION_MINOR",
+              |              "value": "2"
+              |            },
+              |            {
+              |              "name": "RP_VERSION_PATCH",
+              |              "value": "1"
+              |            },
+              |            {
+              |              "name": "RP_VERSION_PATCH_LABEL",
+              |              "value": "SNAPSHOT"
+              |            },
               |            {
               |              "name": "testing1",
               |              "value": "testingvalue1"
@@ -107,9 +181,10 @@ object DeploymentJsonTest extends TestSuite {
               |}
             """.stripMargin.parse.right.get
 
-          val generatedJson = Deployment.generate(annotations, KubernetesVersion(1, 8), imageName,
+          val result = Deployment.generate(annotations, KubernetesVersion(1, 8), imageName,
             Deployment.ImagePullPolicy.Never, noOfReplicas = 1).get
-          assert(generatedJson == Deployment("friendimpl-v3.2.1-SNAPSHOT", expectedJson))
+
+          assert(result == Deployment("friendimpl-v3.2.1-SNAPSHOT", expectedJson))
         }
 
         "K8 < 1.8" - {
@@ -144,7 +219,7 @@ object DeploymentJsonTest extends TestSuite {
               |          "imagePullPolicy": "Never",
               |          "ports": [
               |            {
-              |              "containerPort": 0,
+              |              "containerPort": 10000,
               |              "name": "ep1-v9"
               |            },
               |            {
@@ -152,11 +227,83 @@ object DeploymentJsonTest extends TestSuite {
               |              "name": "ep2-v1"
               |            },
               |            {
-              |              "containerPort": 1234,
+              |              "containerPort": 10001,
               |              "name": "ep3"
               |            }
               |          ],
               |          "env": [
+              |            {
+              |              "name": "RP_ENDPOINTS",
+              |              "value": "EP1-V9,EP2-V1,EP3"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINTS_COUNT",
+              |              "value": "3"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_0_PORT",
+              |              "value": "10000"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_1_PORT",
+              |              "value": "1234"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_2_PORT",
+              |              "value": "10001"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_EP1-V9_PORT",
+              |              "value": "10000"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_EP2-V1_PORT",
+              |              "value": "1234"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_EP3_PORT",
+              |              "value": "10001"
+              |            },
+              |            {
+              |              "name": "RP_KUBERNETES_POD_IP",
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "status.podIP"
+              |                }
+              |              }
+              |            },
+              |            {
+              |              "name": "RP_KUBERNETES_POD_NAME",
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "metadata.name"
+              |                }
+              |              }
+              |            },
+              |            {
+              |              "name": "RP_PLATFORM",
+              |              "value": "kubernetes"
+              |            },
+              |            {
+              |              "name": "RP_VERSION",
+              |              "value": "3.2.1-SNAPSHOT"
+              |            },
+              |            {
+              |              "name": "RP_VERSION_MAJOR",
+              |              "value": "3"
+              |            },
+              |            {
+              |              "name": "RP_VERSION_MINOR",
+              |              "value": "2"
+              |            },
+              |            {
+              |              "name": "RP_VERSION_PATCH",
+              |              "value": "1"
+              |            },
+              |            {
+              |              "name": "RP_VERSION_PATCH_LABEL",
+              |              "value": "SNAPSHOT"
+              |            },
               |            {
               |              "name": "testing1",
               |              "value": "testingvalue1"
@@ -206,7 +353,7 @@ object DeploymentJsonTest extends TestSuite {
               |          "imagePullPolicy": "Never",
               |          "ports": [
               |            {
-              |              "containerPort": 0,
+              |              "containerPort": 10000,
               |              "name": "ep1-v9"
               |            },
               |            {
@@ -214,11 +361,83 @@ object DeploymentJsonTest extends TestSuite {
               |              "name": "ep2-v1"
               |            },
               |            {
-              |              "containerPort": 1234,
+              |              "containerPort": 10001,
               |              "name": "ep3"
               |            }
               |          ],
               |          "env": [
+              |            {
+              |              "name": "RP_ENDPOINTS",
+              |              "value": "EP1-V9,EP2-V1,EP3"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINTS_COUNT",
+              |              "value": "3"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_0_PORT",
+              |              "value": "10000"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_1_PORT",
+              |              "value": "1234"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_2_PORT",
+              |              "value": "10001"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_EP1-V9_PORT",
+              |              "value": "10000"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_EP2-V1_PORT",
+              |              "value": "1234"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_EP3_PORT",
+              |              "value": "10001"
+              |            },
+              |            {
+              |              "name": "RP_KUBERNETES_POD_IP",
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "status.podIP"
+              |                }
+              |              }
+              |            },
+              |            {
+              |              "name": "RP_KUBERNETES_POD_NAME",
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "metadata.name"
+              |                }
+              |              }
+              |            },
+              |            {
+              |              "name": "RP_PLATFORM",
+              |              "value": "kubernetes"
+              |            },
+              |            {
+              |              "name": "RP_VERSION",
+              |              "value": "3.2.1-SNAPSHOT"
+              |            },
+              |            {
+              |              "name": "RP_VERSION_MAJOR",
+              |              "value": "3"
+              |            },
+              |            {
+              |              "name": "RP_VERSION_MINOR",
+              |              "value": "2"
+              |            },
+              |            {
+              |              "name": "RP_VERSION_PATCH",
+              |              "value": "1"
+              |            },
+              |            {
+              |              "name": "RP_VERSION_PATCH_LABEL",
+              |              "value": "SNAPSHOT"
+              |            },
               |            {
               |              "name": "testing1",
               |              "value": "testingvalue1"
@@ -364,10 +583,13 @@ object DeploymentJsonTest extends TestSuite {
 
       }
 
-      "endpoint" - {
+      "assigned endpoint" - {
         "http" - {
           "with endpoint version" - {
-            val endpoint = HttpEndpoint("ep1", 9999, version = Some(1), acls = Seq(HttpEndpoint.HttpAcl("/visualizer")))
+            val endpoint = HttpEndpoint(0, "ep1", 0, version = Some(1), acls = Seq(HttpEndpoint.HttpAcl("/visualizer")))
+            val assigned = EndpointAutoPort.Assigned(
+              endpoint = endpoint,
+              port = 9999)
             val expectedJson =
               """
                 |{
@@ -375,13 +597,17 @@ object DeploymentJsonTest extends TestSuite {
                 |  "name": "ep1-v1"
                 |}
               """.stripMargin.parse.right.get
-            val generatedJson = endpoint.asJson
+            val generatedJson = assigned.asJson
 
             assert(expectedJson == generatedJson)
           }
 
           "without endpoint version" - {
-            val endpoint = HttpEndpoint("ep1", 9999, version = None, acls = Seq(HttpEndpoint.HttpAcl("/visualizer")))
+            val endpoint = HttpEndpoint(0, "ep1", 0, version = None, acls = Seq(HttpEndpoint.HttpAcl("/visualizer")))
+            val assigned = EndpointAutoPort.Assigned(
+              endpoint = endpoint,
+              port = 9999)
+
             val expectedJson =
               """
                 |{
@@ -389,7 +615,7 @@ object DeploymentJsonTest extends TestSuite {
                 |  "name": "ep1"
                 |}
               """.stripMargin.parse.right.get
-            val generatedJson = endpoint.asJson
+            val generatedJson = assigned.asJson
 
             assert(expectedJson == generatedJson)
 
@@ -398,7 +624,10 @@ object DeploymentJsonTest extends TestSuite {
 
         "tcp" - {
           "with endpoint version" - {
-            val endpoint = TcpEndpoint("ep1", 9999, version = Some(1))
+            val endpoint = TcpEndpoint(0, "ep1", 0, version = Some(1))
+            val assigned = EndpointAutoPort.Assigned(
+              endpoint = endpoint,
+              port = 9999)
             val expectedJson =
               """
                 |{
@@ -406,13 +635,16 @@ object DeploymentJsonTest extends TestSuite {
                 |  "name": "ep1-v1"
                 |}
               """.stripMargin.parse.right.get
-            val generatedJson = endpoint.asJson
+            val generatedJson = assigned.asJson
 
             assert(expectedJson == generatedJson)
           }
 
           "without endpoint version" - {
-            val endpoint = TcpEndpoint("ep1", 9999, version = None)
+            val endpoint = TcpEndpoint(0, "ep1", 0, version = None)
+            val assigned = EndpointAutoPort.Assigned(
+              endpoint = endpoint,
+              port = 9999)
             val expectedJson =
               """
                 |{
@@ -420,7 +652,7 @@ object DeploymentJsonTest extends TestSuite {
                 |  "name": "ep1"
                 |}
               """.stripMargin.parse.right.get
-            val generatedJson = endpoint.asJson
+            val generatedJson = assigned.asJson
 
             assert(expectedJson == generatedJson)
 
@@ -429,7 +661,10 @@ object DeploymentJsonTest extends TestSuite {
 
         "udp" - {
           "with endpoint version" - {
-            val endpoint = UdpEndpoint("ep1", 9999, version = Some(1))
+            val endpoint = UdpEndpoint(0, "ep1", 0, version = Some(1))
+            val assigned = EndpointAutoPort.Assigned(
+              endpoint = endpoint,
+              port = 9999)
             val expectedJson =
               """
                 |{
@@ -437,13 +672,16 @@ object DeploymentJsonTest extends TestSuite {
                 |  "name": "ep1-v1"
                 |}
               """.stripMargin.parse.right.get
-            val generatedJson = endpoint.asJson
+            val generatedJson = assigned.asJson
 
             assert(expectedJson == generatedJson)
           }
 
           "without endpoint version" - {
-            val endpoint = UdpEndpoint("ep1", 9999, version = None)
+            val endpoint = UdpEndpoint(0, "ep1", 0, version = None)
+            val assigned = EndpointAutoPort.Assigned(
+              endpoint = endpoint,
+              port = 9999)
             val expectedJson =
               """
                 |{
@@ -451,11 +689,120 @@ object DeploymentJsonTest extends TestSuite {
                 |  "name": "ep1"
                 |}
               """.stripMargin.parse.right.get
-            val generatedJson = endpoint.asJson
+            val generatedJson = assigned.asJson
 
             assert(expectedJson == generatedJson)
 
           }
+        }
+      }
+    }
+
+    "RP environment variables" - {
+      "versions" - {
+        "all fields" - {
+          val result = RpEnvironmentVariables.versionEnvs(Version(3, 2, 1, Some("SNAPSHOT")))
+          val expectedResult = Map(
+            "RP_VERSION" -> LiteralEnvironmentVariable("3.2.1-SNAPSHOT"),
+            "RP_VERSION_MAJOR" -> LiteralEnvironmentVariable("3"),
+            "RP_VERSION_MINOR" -> LiteralEnvironmentVariable("2"),
+            "RP_VERSION_PATCH" -> LiteralEnvironmentVariable("1"),
+            "RP_VERSION_PATCH_LABEL" -> LiteralEnvironmentVariable("SNAPSHOT"))
+          assert(result == expectedResult)
+        }
+
+        "major + minor + patch" - {
+          val result = RpEnvironmentVariables.versionEnvs(Version(3, 2, 1, None))
+          val expectedResult = Map(
+            "RP_VERSION" -> LiteralEnvironmentVariable("3.2.1"),
+            "RP_VERSION_MAJOR" -> LiteralEnvironmentVariable("3"),
+            "RP_VERSION_MINOR" -> LiteralEnvironmentVariable("2"),
+            "RP_VERSION_PATCH" -> LiteralEnvironmentVariable("1"))
+          assert(result == expectedResult)
+        }
+      }
+
+      "endpoints" - {
+        "when present" - {
+          val endpointsWithVersions = Map(
+            "ep1" -> HttpEndpoint(0, "ep1", 0, version = Some(1), Seq(HttpEndpoint.HttpAcl("^/.*"))),
+            "ep2" -> TcpEndpoint(1, "ep2", 1234, version = Some(3)),
+            "ep3" -> UdpEndpoint(2, "ep3", 1234, version = Some(2)))
+
+          val endpointsNoVersions = Map(
+            "ep1" -> HttpEndpoint(0, "ep1", 0, version = None, Seq(HttpEndpoint.HttpAcl("^/.*"))),
+            "ep2" -> TcpEndpoint(1, "ep2", 1234, version = None),
+            "ep3" -> UdpEndpoint(2, "ep3", 1234, version = None))
+
+          "with endpoint version" - {
+            val result = RpEnvironmentVariables.endpointEnvs(endpointsWithVersions)
+            val expectedResult = Map(
+              "RP_ENDPOINTS_COUNT" -> LiteralEnvironmentVariable("3"),
+              "RP_ENDPOINTS" -> LiteralEnvironmentVariable("EP1-V1,EP2-V3,EP3-V2"),
+              "RP_ENDPOINT_EP1-V1_PORT" -> LiteralEnvironmentVariable("10000"),
+              "RP_ENDPOINT_EP2-V3_PORT" -> LiteralEnvironmentVariable("1234"),
+              "RP_ENDPOINT_EP3-V2_PORT" -> LiteralEnvironmentVariable("1234"),
+              "RP_ENDPOINT_0_PORT" -> LiteralEnvironmentVariable("10000"),
+              "RP_ENDPOINT_1_PORT" -> LiteralEnvironmentVariable("1234"),
+              "RP_ENDPOINT_2_PORT" -> LiteralEnvironmentVariable("1234"))
+
+            assert(result == expectedResult)
+          }
+
+          "with no version" - {
+            val result = RpEnvironmentVariables.endpointEnvs(endpointsNoVersions)
+            val expectedResult = Map(
+              "RP_ENDPOINTS_COUNT" -> LiteralEnvironmentVariable("3"),
+              "RP_ENDPOINTS" -> LiteralEnvironmentVariable("EP1,EP2,EP3"),
+              "RP_ENDPOINT_EP1_PORT" -> LiteralEnvironmentVariable("10000"),
+              "RP_ENDPOINT_EP2_PORT" -> LiteralEnvironmentVariable("1234"),
+              "RP_ENDPOINT_EP3_PORT" -> LiteralEnvironmentVariable("1234"),
+              "RP_ENDPOINT_0_PORT" -> LiteralEnvironmentVariable("10000"),
+              "RP_ENDPOINT_1_PORT" -> LiteralEnvironmentVariable("1234"),
+              "RP_ENDPOINT_2_PORT" -> LiteralEnvironmentVariable("1234"))
+
+            assert(result == expectedResult)
+          }
+
+          "endpoints list should be ordered based on endpoint index" - {
+            val endpoints = Map(
+              "ep1" -> HttpEndpoint(2, "ep1", 0, version = Some(1), Seq(HttpEndpoint.HttpAcl("^/.*"))),
+              "ep2" -> TcpEndpoint(0, "ep2", 1234, version = Some(3)),
+              "ep3" -> UdpEndpoint(1, "ep3", 1234, version = Some(2)))
+
+            val result = RpEnvironmentVariables.endpointEnvs(endpoints)
+
+            assert(result("RP_ENDPOINTS") == LiteralEnvironmentVariable("EP2-V3,EP3-V2,EP1-V1"))
+          }
+
+          "auto port should be allocated for all undeclared ports" - {
+            val endpoints = Map(
+              "ep1" -> HttpEndpoint(0, "ep1", 0, version = Some(1), Seq(HttpEndpoint.HttpAcl("^/.*"))),
+              "ep2" -> TcpEndpoint(1, "ep2", 1234, version = Some(3)),
+              "ep3" -> UdpEndpoint(2, "ep3", 0, version = Some(2)))
+
+            val result = RpEnvironmentVariables.endpointEnvs(endpoints)
+
+            val expectedResult = Map(
+              "RP_ENDPOINTS_COUNT" -> LiteralEnvironmentVariable("3"),
+              "RP_ENDPOINTS" -> LiteralEnvironmentVariable("EP1-V1,EP2-V3,EP3-V2"),
+              "RP_ENDPOINT_EP1-V1_PORT" -> LiteralEnvironmentVariable("10000"),
+              "RP_ENDPOINT_EP2-V3_PORT" -> LiteralEnvironmentVariable("1234"),
+              "RP_ENDPOINT_EP3-V2_PORT" -> LiteralEnvironmentVariable("10001"),
+              "RP_ENDPOINT_0_PORT" -> LiteralEnvironmentVariable("10000"),
+              "RP_ENDPOINT_1_PORT" -> LiteralEnvironmentVariable("1234"),
+              "RP_ENDPOINT_2_PORT" -> LiteralEnvironmentVariable("10001"))
+
+            assert(result == expectedResult)
+          }
+        }
+
+        "when empty" - {
+          val result = RpEnvironmentVariables.endpointEnvs(Map.empty)
+          val expectedResult = Map(
+            "RP_ENDPOINTS_COUNT" -> LiteralEnvironmentVariable("0"))
+
+          assert(result == expectedResult)
         }
       }
     }

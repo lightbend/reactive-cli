@@ -20,15 +20,14 @@ import com.lightbend.rp.reactivecli.argparse.InputArgs
 
 object IngressArgs {
   /**
-    * Convenience method to set the [[IngressArgs]] values when parsing the complete user input.
-    * Refer to [[com.lightbend.rp.reactivecli.argparse.InputArgs.parser()]] for more details.
-    */
+   * Convenience method to set the [[IngressArgs]] values when parsing the complete user input.
+   * Refer to [[com.lightbend.rp.reactivecli.argparse.InputArgs.parser()]] for more details.
+   */
   def set[T](f: (T, IngressArgs) => IngressArgs): (T, InputArgs) => InputArgs = { (val1: T, inputArgs: InputArgs) =>
     KubernetesArgs
       .set { (val2: T, kubernetesArgs) =>
         kubernetesArgs.copy(
-          ingressArgs = f(val2, kubernetesArgs.ingressArgs)
-        )
+          ingressArgs = f(val2, kubernetesArgs.ingressArgs))
       }
       .apply(val1, inputArgs)
   }
@@ -39,6 +38,5 @@ object IngressArgs {
  */
 case class IngressArgs(
   ingressAnnotations: Map[String, String] = Map.empty,
-  pathAppend: Option[String] = None
-)
+  pathAppend: Option[String] = None)
 

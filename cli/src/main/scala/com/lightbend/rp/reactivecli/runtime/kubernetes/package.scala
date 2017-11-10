@@ -32,6 +32,16 @@ import scala.util.{ Failure, Success, Try }
 
 package object kubernetes extends LazyLogging {
   /**
+   * Valid characters for endpoint name.
+   * The declared endpoint name will be made uppercase, and all characters outside the valid chars range will be
+   * swapped with '_'.
+   */
+  private val ValidEndpointChars =
+    ('0' to '9') ++
+      ('A' to 'Z') ++
+      Seq('_', '-')
+
+  /**
    * This is the main method which generates the kubernetes resources.
    *
    * This method accepts a docker config supplied by `getDockerConfig`, generates the Kubernetes resources, and
@@ -110,9 +120,17 @@ package object kubernetes extends LazyLogging {
       out.println(formattedJson)
     }
 
-  private[kubernetes] def endpointName(endpoint: Endpoint): String =
-    endpoint.version.fold(endpoint.name)(v => s"${endpoint.name}$VersionSeparator$v")
+  private[kubernetes] def endpointName(endpoint: Endpoint): String = {
+    val endpointNameNormalized = normalizeEndpointName(endpoint.name)
+    endpoint.version.fold(endpointNameNormalized)(v => s"$endpointNameNormalized$VersionSeparator$v").toUpperCase
+  }
 
   private[kubernetes] def serviceName(annotations: Annotations): Option[String] =
     annotations.appName
+
+  private def normalizeEndpointName(endpointName: String): String =
+    endpointName
+      .toUpperCase
+      .map(c => if (ValidEndpointChars.contains(c)) c else '_')
+      .mkString
 }
