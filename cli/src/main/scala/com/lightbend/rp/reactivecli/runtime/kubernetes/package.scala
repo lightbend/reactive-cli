@@ -22,7 +22,6 @@ import java.nio.file.{ Files, Path }
 import argonaut.PrettyParams
 import com.lightbend.rp.reactivecli.annotations.{ Annotations, Endpoint }
 import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
-import com.lightbend.rp.reactivecli.argparse.kubernetes.IngressArgs.{ IngressIstioArgs, IngressNgnixArgs }
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
 import com.lightbend.rp.reactivecli.Done
 import com.lightbend.rp.reactivecli.docker.Config
@@ -49,13 +48,6 @@ package object kubernetes extends LazyLogging {
         case _ => Failure(new IllegalArgumentException("Unable to generate Kubernetes resources from empty labels."))
       }
 
-    def generateIngress(annotations: Annotations): Try[Seq[GeneratedKubernetesResource]] =
-      kubernetesArgs.ingressArgs match {
-        case Some(IngressIstioArgs) => IngressIstio.generate(annotations).map(Seq(_))
-        case Some(v: IngressNgnixArgs) => IngressNginx.generate(annotations, v.tlsSecretName, v.sslRedirect).map(Seq(_))
-        case _ => Success(Seq.empty)
-      }
-
     for {
       config <- getDockerConfig(generateDeploymentArgs.dockerImage.get)
 
@@ -72,9 +64,12 @@ package object kubernetes extends LazyLogging {
 
       serviceJson <- Service.generate(annotations, kubernetesArgs.serviceArgs.clusterIp)
 
-      ingressJson <- generateIngress(annotations)
+      ingressJson <- Ingress.generate(
+        annotations,
+        kubernetesArgs.ingressArgs.ingressAnnotations,
+        kubernetesArgs.ingressArgs.pathAppend)
     } yield {
-      outputHandler(Seq(deploymentJson, serviceJson) ++ ingressJson)
+      outputHandler(Seq(deploymentJson, serviceJson, ingressJson))
       Done
     }
   }

@@ -18,8 +18,7 @@ package com.lightbend.rp.reactivecli.argparse
 
 import java.nio.file.Paths
 
-import com.lightbend.rp.reactivecli.argparse.kubernetes.IngressArgs.{ IngressIstioArgs, IngressNgnixArgs }
-import com.lightbend.rp.reactivecli.argparse.kubernetes.{ DeploymentArgs, KubernetesArgs, ServiceArgs }
+import com.lightbend.rp.reactivecli.argparse.kubernetes.{DeploymentArgs, IngressArgs, KubernetesArgs, ServiceArgs}
 import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment
 import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment.KubernetesVersion
 import slogging.LogLevel
@@ -52,7 +51,7 @@ object InputArgsTest extends TestSuite {
                       kubernetesVersion = Some(KubernetesVersion(1, 7)))))))))
           }
 
-          "all arguments + nginx ingress" - {
+          "all arguments" - {
             val result = parser.parse(
               Seq(
                 "generate-deployment",
@@ -62,9 +61,8 @@ object InputArgsTest extends TestSuite {
                 "--kubernetes-deployment-nr-of-replicas", "10",
                 "--kubernetes-deployment-image-pull-policy", "Always",
                 "--kubernetes-service-cluster-ip", "10.0.0.1",
-                "--kubernetes-ingress", "nginx",
-                "--kubernetes-ingress-nginx-tls-secret-name", "secret",
-                "--kubernetes-ingress-nginx-ssl-redirect", "true",
+                "--kubernetes-ingress-annotation", "ing=123",
+                "--kubernetes-ingress-path-append", ".*",
                 "--env", "test1=test2",
                 "--nr-of-cpus", "0.5",
                 "--memory", "1024",
@@ -85,34 +83,14 @@ object InputArgsTest extends TestSuite {
                         numberOfReplicas = 10,
                         imagePullPolicy = Deployment.ImagePullPolicy.Always),
                       serviceArgs = ServiceArgs(clusterIp = Some("10.0.0.1")),
-                      ingressArgs = Some(IngressNgnixArgs(
-                        tlsSecretName = Some("secret"),
-                        sslRedirect = true)))),
+                      ingressArgs = IngressArgs(
+                        ingressAnnotations = Map("ing" -> "123"),
+                        pathAppend = Some(".*")
+                      ))),
                     environmentVariables = Map("test1" -> "test2"),
                     nrOfCpus = Some(0.5),
                     memory = Some(1024),
                     diskSpace = Some(2048))))))
-          }
-
-          "default argument + istio ingress" - {
-            "minimum arguments" - {
-              val result = parser.parse(
-                Seq(
-                  "generate-deployment",
-                  "dockercloud/hello-world:1.0.0-SNAPSHOT",
-                  "--target", "kubernetes",
-                  "--kubernetes-version", "1.7",
-                  "--kubernetes-ingress", "istio"),
-                InputArgs.default)
-              assert(
-                result.contains(
-                  InputArgs(
-                    commandArgs = Some(GenerateDeploymentArgs(
-                      dockerImage = Some("dockercloud/hello-world:1.0.0-SNAPSHOT"),
-                      targetRuntimeArgs = Some(KubernetesArgs(
-                        kubernetesVersion = Some(KubernetesVersion(1, 7)),
-                        ingressArgs = Some(IngressIstioArgs))))))))
-            }
           }
         }
       }

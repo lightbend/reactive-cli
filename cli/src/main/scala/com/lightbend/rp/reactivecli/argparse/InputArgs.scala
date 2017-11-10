@@ -109,26 +109,25 @@ object InputArgs {
                 .text("Sets the cluster IP for Kubernetes service resource")
                 .action(ServiceArgs.set((v, args) => args.copy(clusterIp = Some(v)))),
 
-              opt[String]("kubernetes-ingress")
-                .optional()
-                .text("Specifies the Kubernetes ingress options. Supported: istio, nginx")
-                .validate {
-                  case v if v.toLowerCase == "nginx" || v.toLowerCase == "istio" => success
-                  case v => failure(s"Unsupported ingress option: $v")
-                }
-                .action(KubernetesArgs.set {
-                  case (v, args) if v.toLowerCase == "nginx" => args.copy(ingressArgs = Some(IngressArgs.IngressNgnixArgs()))
-                  case (v, args) if v.toLowerCase == "istio" => args.copy(ingressArgs = Some(IngressArgs.IngressIstioArgs))
-                  case (_, args) => args
-                })
-                .children(
-                  opt[String]("kubernetes-ingress-nginx-tls-secret-name")
-                    .text("Specifies the TLS secret name for Kubernetes nginx ingress resource")
-                    .action(IngressArgs.IngressNgnixArgs.set((v, args) => args.copy(tlsSecretName = Some(v)))),
+              opt[String]("kubernetes-ingress-annotation")
+                .text("Specifies the Kubernetes ingress annotation. Format: NAME=value")
+                .minOccurs(0)
+                .unbounded()
+                .action(IngressArgs.set {
+                  (v, c) =>
+                    val parts = v.split("=", 2).lift
+                    c.copy(
+                      ingressAnnotations = c.ingressAnnotations.updated(
+                        parts(0).get,
+                        parts(1).getOrElse("")
+                      )
+                    )
+                  }),
 
-                  opt[Boolean]("kubernetes-ingress-nginx-ssl-redirect")
-                    .text("Enables/disables the SSL redirect for Kubernetes nginx ingress resource")
-                    .action(IngressArgs.IngressNgnixArgs.set((v, args) => args.copy(sslRedirect = v))))),
+              opt[String]("kubernetes-ingress-path-append")
+                .text("Appends the expression specified to the ingress path. For example: if .* is specified, then the ingress path /my-path will be rendered as /my-path.*")
+                .action(IngressArgs.set((v, c) => c.copy(pathAppend = Some(v))))
+            ),
 
           opt[String]("env")
             .text("Sets an environment variable. Format: NAME=value")

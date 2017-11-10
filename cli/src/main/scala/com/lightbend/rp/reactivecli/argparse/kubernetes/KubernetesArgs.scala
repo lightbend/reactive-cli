@@ -69,5 +69,5 @@ case class KubernetesArgs(
   kubernetesVersion: Option[Deployment.KubernetesVersion] = None,
   deploymentArgs: DeploymentArgs = DeploymentArgs(),
   serviceArgs: ServiceArgs = ServiceArgs(),
-  ingressArgs: Option[IngressArgs] = None,
+  ingressArgs: IngressArgs = IngressArgs(),
   output: KubernetesArgs.Output = KubernetesArgs.Output.PipeToKubeCtl(System.out)) extends TargetRuntimeArgs
