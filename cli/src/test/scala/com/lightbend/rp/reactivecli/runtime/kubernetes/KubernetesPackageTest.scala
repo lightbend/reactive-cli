@@ -77,7 +77,7 @@ object KubernetesPackageTest extends TestSuite {
               "com.lightbend.rp.endpoints.0.protocol" -> "http",
               "com.lightbend.rp.endpoints.0.version" -> "9",
               "com.lightbend.rp.endpoints.0.acls.0.type" -> "http",
-              "com.lightbend.rp.endpoints.0.acls.0.expression" -> "^/.*",
+              "com.lightbend.rp.endpoints.0.acls.0.expression" -> "/pizza",
               "com.lightbend.rp.endpoints.0.some-key" -> "test",
               "com.lightbend.rp.endpoints.0.acls.0.some-key" -> "test",
               "com.lightbend.rp.endpoints.1.name" -> "ep2",
@@ -95,9 +95,9 @@ object KubernetesPackageTest extends TestSuite {
 
         "generates kubernetes deployment + service resource" - {
           def handleOutput(generatedResources: Seq[GeneratedKubernetesResource]): Unit = {
-            val (deployment, service) = generatedResources match {
-              case Seq(deployment: Deployment, service: Service) =>
-                deployment -> service
+            val (deployment, service, ingress) = generatedResources match {
+              case Seq(deployment: Deployment, service: Service, ingress: Ingress) =>
+                (deployment, service, ingress)
             }
 
             assert(deployment.name == "my-app-v3.2.1-SNAPSHOT")
@@ -202,111 +202,35 @@ object KubernetesPackageTest extends TestSuite {
                 |}
               """.stripMargin.parse.right.get
             assert(service.payload == serviceJsonExpected)
+
+            assert(ingress.name == "my-app")
+            val ingressJsonExpected =
+              """
+                |{
+                |	"apiVersion": "extensions/v1beta1",
+                |	"kind": "Ingress",
+                |	"metadata": {
+                |		"name": "my-app"
+                |	},
+                |	"spec": {
+                |		"rules": [{
+                |			"http": {
+                |				"paths": [{
+                |					"path": "/pizza",
+                |					"backend": {
+                |						"serviceName": "ep1-v9",
+                |						"servicePort": 0
+                |					}
+                |				}]
+                |			}
+                |		}]
+                |	}
+                |}
+              """.stripMargin.parse.right.get
+            assert(ingress.payload == ingressJsonExpected)
           }
 
           val result = generateResources(getDockerConfig, handleOutput)(generateDeploymentArgs, kubernetesArgs)
-
-          assert(result.isSuccess)
-        }
-
-        "generates kubernetes nginx ingress resource" - {
-          val kubernetesArgsWithNginxIngress = kubernetesArgs.copy(
-            ingressArgs = Some(IngressArgs.IngressNgnixArgs(
-              tlsSecretName = Some("secret"),
-              sslRedirect = true)))
-
-          val generateDeploymentArgsWithIngress = generateDeploymentArgs.copy(
-            targetRuntimeArgs = Some(kubernetesArgsWithNginxIngress))
-
-          def handleOutput(generatedResources: Seq[GeneratedKubernetesResource]): Unit = {
-            val (_, _, ingress) = generatedResources match {
-              case Seq(deployment: Deployment, service: Service, ingress: IngressNginx) =>
-                (deployment, service, ingress)
-            }
-
-            assert(ingress.name == "my-app")
-            val ingressJsonExpected =
-              """
-                |{
-                |	"apiVersion": "extensions/v1beta1",
-                |	"kind": "Ingress",
-                |	"metadata": {
-                |		"name": "my-app",
-                |		"annotations": {
-                |			"ingress.kubernetes.io/ssl-redirect": "true"
-                |		}
-                |	},
-                |	"spec": {
-                |		"rules": [{
-                |			"http": {
-                |				"paths": [{
-                |					"path": "^/.*",
-                |					"backend": {
-                |						"serviceName": "ep1-v9",
-                |						"servicePort": 0
-                |					}
-                |				}]
-                |			}
-                |		}],
-                |		"tls": [{
-                |			"secretName": "secret"
-                |		}]
-                |	}
-                |}
-              """.stripMargin.parse.right.get
-            assert(ingress.payload == ingressJsonExpected)
-          }
-
-          val result = generateResources(getDockerConfig, handleOutput)(generateDeploymentArgsWithIngress, kubernetesArgsWithNginxIngress)
-
-          assert(result.isSuccess)
-        }
-
-        "generates kubernetes istio ingress resource" - {
-          val kubernetesArgsWithIstioIngress = kubernetesArgs.copy(
-            ingressArgs = Some(IngressArgs.IngressIstioArgs))
-
-          val generateDeploymentArgsWithIngress = generateDeploymentArgs.copy(
-            targetRuntimeArgs = Some(kubernetesArgsWithIstioIngress))
-
-          def handleOutput(generatedResources: Seq[GeneratedKubernetesResource]): Unit = {
-            val (_, _, ingress) = generatedResources match {
-              case Seq(deployment: Deployment, service: Service, ingress: IngressIstio) =>
-                (deployment, service, ingress)
-            }
-
-            assert(ingress.name == "my-app")
-            val ingressJsonExpected =
-              """
-                |{
-                |	"apiVersion": "extensions/v1beta1",
-                |	"kind": "Ingress",
-                |	"metadata": {
-                |		"name": "my-app",
-                |		"annotations": {
-                |			"kubernetes.io/ingress.class": "istio"
-                |		}
-                |	},
-                |	"spec": {
-                |		"rules": [{
-                |			"http": {
-                |				"paths": [{
-                |					"path": "^/.*.*",
-                |					"backend": {
-                |						"serviceName": "ep1-v9",
-                |						"servicePort": 0
-                |					}
-                |				}]
-                |			}
-                |		}]
-                |	}
-                |}
-              """.stripMargin.parse.right.get
-
-            assert(ingress.payload == ingressJsonExpected)
-          }
-
-          val result = generateResources(getDockerConfig, handleOutput)(generateDeploymentArgsWithIngress, kubernetesArgsWithIstioIngress)
 
           assert(result.isSuccess)
         }

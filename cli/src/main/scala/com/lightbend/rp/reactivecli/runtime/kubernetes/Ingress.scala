@@ -23,26 +23,30 @@ import com.lightbend.rp.reactivecli.annotations._
 
 import scala.util.{ Failure, Success, Try }
 
-object IngressIstio {
-  implicit def encodeHttpAcl(endpointName: String, port: Int) = EncodeJson[HttpAcl] { acl =>
+object Ingress {
+  def encodeHttpAcl(endpointName: String, port: Int, pathAppend: Option[String]) = EncodeJson[HttpAcl] { acl =>
     Json(
-      "path" -> s"${acl.expression}.*".asJson,
+      "path" -> s"${acl.expression}${pathAppend.getOrElse("")}".asJson,
       "backend" -> Json(
         "serviceName" -> endpointName.asJson,
         "servicePort" -> port.asJson))
   }
 
-  implicit def encodeHttpEndpointIngressRule = EncodeJson[HttpEndpoint] { endpoint =>
+  def encodeHttpEndpointIngressRule(pathAppend: Option[String]) = EncodeJson[HttpEndpoint] { endpoint =>
     val name = endpointName(endpoint)
+    implicit val httpAclJsonEncoder: EncodeJson[HttpAcl] = encodeHttpAcl(name, endpoint.port, pathAppend)
+
     Json(
       "http" -> Json(
         "paths" -> endpoint.acls
-          .map(_.asJson(encodeHttpAcl(name, endpoint.port)))
+          .map(_.asJson)
           .toList
           .asJson))
   }
 
-  implicit def encodeEndpointsIngressRule = EncodeJson[Map[String, Endpoint]] { endpoints =>
+  def encodeEndpointsIngressRule(pathAppend: Option[String]) = EncodeJson[Map[String, Endpoint]] { endpoints =>
+    implicit val httpEndpointIngressRuleJsonEncoder: EncodeJson[HttpEndpoint] = encodeHttpEndpointIngressRule(pathAppend)
+
     endpoints
       .collect {
         case (_, httpEndpoint: HttpEndpoint) => httpEndpoint.asJson
@@ -52,30 +56,44 @@ object IngressIstio {
   }
 
   /**
-   * Generates the [[IngressIstio]] resource.
+   * Generates the [[Ingress]] resource.
    */
-  def generate(annotations: Annotations): Try[IngressIstio] =
+  def generate(annotations: Annotations, ingressAnnotations: Map[String, String], pathAppend: Option[String]): Try[Ingress] =
     serviceName(annotations) match {
       case Some(appName) =>
+        implicit val endpointIngressRuleJsonEncoder: EncodeJson[Map[String, Endpoint]] = encodeEndpointsIngressRule(pathAppend)
+
         Success(
-          IngressIstio(appName, Json(
+          Ingress(appName, Json(
             "apiVersion" -> "extensions/v1beta1".asJson,
             "kind" -> "Ingress".asJson,
             "metadata" -> Json(
-              "name" -> appName.asJson,
-              "annotations" -> Json(
-                "kubernetes.io/ingress.class" -> "istio".asJson)),
+              "name" -> appName.asJson
+              ).deepmerge(generateIngressAnnotations(ingressAnnotations)),
             "spec" -> Json(
               "rules" -> annotations.endpoints.asJson))))
       case _ =>
         Failure(new IllegalArgumentException("Unable to generate Kubernetes ingress resource for Istio: application name is required"))
     }
 
+  private def generateIngressAnnotations(ingressAnnotations: Map[String, String]): Json =
+    if (ingressAnnotations.isEmpty)
+      Json.jEmptyObject
+    else
+      Json(
+        "annotations" -> ingressAnnotations
+          .map {
+            case (k, v) =>
+              Json(k -> v.asJson)
+          }
+          .reduce(_.deepmerge(_))
+      )
+
 }
 
 /**
  * Represents the generated Istion ingress resource.
  */
-case class IngressIstio(name: String, payload: Json) extends GeneratedKubernetesResource {
+case class Ingress(name: String, payload: Json) extends GeneratedKubernetesResource {
   val resourceType = "ingress"
 }

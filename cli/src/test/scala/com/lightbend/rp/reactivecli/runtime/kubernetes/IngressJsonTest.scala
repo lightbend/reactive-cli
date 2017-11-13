@@ -23,7 +23,7 @@ import utest._
 
 import scala.collection.immutable.Seq
 
-object IngressIstioJsonTest extends TestSuite {
+object IngressJsonTest extends TestSuite {
   val annotations = Annotations(
     appName = Some("friendimpl"),
     diskSpace = Some(65536L),
@@ -43,8 +43,45 @@ object IngressIstioJsonTest extends TestSuite {
 
   val tests = this{
     "json serialization" - {
-      "with secret tls and ssl redirect" - {
-        val generatedJson = IngressIstio.generate(annotations).get
+      "without additional arguments" - {
+        val generatedJson = Ingress.generate(annotations,
+          ingressAnnotations = Map.empty,
+          pathAppend = Option.empty).get
+        val expectedJson =
+          """
+            |{
+            |  "apiVersion": "extensions/v1beta1",
+            |  "kind": "Ingress",
+            |  "metadata": {
+            |    "name": "friendimpl"
+            |  },
+            |  "spec": {
+            |    "rules": [
+            |      {
+            |        "http": {
+            |          "paths": [
+            |            {
+            |              "path": "/api/friend",
+            |              "backend": {
+            |                "serviceName": "ep1-v1",
+            |                "servicePort": 1234
+            |              }
+            |            }
+            |          ]
+            |        }
+            |      }
+            |    ]
+            |  }
+            |}
+          """.stripMargin.parse.right.get
+        assert(generatedJson == Ingress("friendimpl", expectedJson))
+      }
+
+      "with ingress specific input" - {
+        val generatedJson = Ingress.generate(annotations,
+          ingressAnnotations = Map("kubernetes.io/ingress.class" -> "istio"),
+          pathAppend = Some(".*")).get
+
         val expectedJson =
           """
             |{
@@ -75,11 +112,11 @@ object IngressIstioJsonTest extends TestSuite {
             |  }
             |}
           """.stripMargin.parse.right.get
-        assert(generatedJson == IngressIstio("friendimpl", expectedJson))
+        assert(generatedJson == Ingress("friendimpl", expectedJson))
       }
 
       "should fail if application name is not defined" - {
-        assert(IngressIstio.generate(annotations.copy(appName = None)).isFailure)
+        assert(Ingress.generate(annotations.copy(appName = None), Map.empty, Option.empty).isFailure)
       }
 
     }

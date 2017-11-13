@@ -19,40 +19,26 @@ package com.lightbend.rp.reactivecli.argparse.kubernetes
 import com.lightbend.rp.reactivecli.argparse.InputArgs
 
 object IngressArgs {
-
-  object IngressNgnixArgs {
-
-    /**
-     * Convenience method to set the [[IngressNgnixArgs]] values when parsing the complete user input.
-     * Refer to [[InputArgs.parser()]] for more details.
-     */
-    def set[T](f: (T, IngressNgnixArgs) => IngressNgnixArgs): (T, InputArgs) => InputArgs = { (val1: T, inputArgs: InputArgs) =>
-      KubernetesArgs
-        .set { (val2: T, kubernetesArgs) =>
-          kubernetesArgs.ingressArgs match {
-            case Some(ingressNginxArgs: IngressNgnixArgs) =>
-              kubernetesArgs.copy(
-                ingressArgs = Some(f(val2, ingressNginxArgs)))
-            case _ => kubernetesArgs
-          }
-        }
-        .apply(val1, inputArgs)
-    }
+  /**
+    * Convenience method to set the [[IngressArgs]] values when parsing the complete user input.
+    * Refer to [[com.lightbend.rp.reactivecli.argparse.InputArgs.parser()]] for more details.
+    */
+  def set[T](f: (T, IngressArgs) => IngressArgs): (T, InputArgs) => InputArgs = { (val1: T, inputArgs: InputArgs) =>
+    KubernetesArgs
+      .set { (val2: T, kubernetesArgs) =>
+        kubernetesArgs.copy(
+          ingressArgs = f(val2, kubernetesArgs.ingressArgs)
+        )
+      }
+      .apply(val1, inputArgs)
   }
-
-  /**
-   * Represents user input arguments required to build Kubernetes Ingress resource using Nginx.
-   */
-  case class IngressNgnixArgs(tlsSecretName: Option[String] = None, sslRedirect: Boolean = false) extends IngressArgs
-
-  /**
-   * Represents user input arguments required to build Kubernetes Deployment resource using Istio.
-   */
-  case object IngressIstioArgs extends IngressArgs
 }
 
 /**
- * Base trait which represents user input arguments required to build Kubernetes Ingress resource.
+ * Represents user input arguments required to build Kubernetes Ingress resource.
  */
-sealed trait IngressArgs
+case class IngressArgs(
+  ingressAnnotations: Map[String, String] = Map.empty,
+  pathAppend: Option[String] = None
+)
 
