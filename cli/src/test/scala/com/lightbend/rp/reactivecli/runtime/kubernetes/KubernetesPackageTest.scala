@@ -227,7 +227,6 @@ object KubernetesPackageTest extends TestSuite {
                 |	}
                 |}
               """.stripMargin.parse.right.get
-            println(ingress.payload)
             assert(ingress.payload == ingressJsonExpected)
           }
 
