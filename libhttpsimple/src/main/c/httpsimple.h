@@ -27,7 +27,7 @@ extern int global_init();
 
 extern void global_cleanup();
 
-extern struct http_response *do_http(char *http_method, char *url, char *request_headers_raw, char *request_body);
+extern struct http_response *do_http(long validate_tls, char *tls_cacerts_path, char *http_method, char *url, char *request_headers_raw, char *auth_type, char *auth_value, char *request_body);
 
 extern long get_error_code(struct http_response *s);
 

@@ -16,6 +16,8 @@
 
 package com.lightbend.rp.reactivecli.argparse
 
+import GenerateDeploymentArgs.{ DockerRegistryUseHttpsDefault, DockerRegistryValidateTlsDefault }
+
 /**
  * Base type which represents input argument for a specific command invoked by the user.
  */
@@ -24,6 +26,9 @@ sealed trait CommandArgs
 object VersionArgs extends CommandArgs
 
 object GenerateDeploymentArgs {
+  val DockerRegistryUseHttpsDefault = true
+  val DockerRegistryValidateTlsDefault = true
+
   /**
    * Convenience method to set the [[GenerateDeploymentArgs]] values when parsing the complete user input.
    * Refer to [[InputArgs.parser()]] for more details.
@@ -49,4 +54,8 @@ case class GenerateDeploymentArgs(
   nrOfCpus: Option[Double] = None,
   memory: Option[Long] = None,
   diskSpace: Option[Long] = None,
-  targetRuntimeArgs: Option[TargetRuntimeArgs] = None) extends CommandArgs
+  targetRuntimeArgs: Option[TargetRuntimeArgs] = None,
+  registryUsername: Option[String] = None,
+  registryPassword: Option[String] = None,
+  registryUseHttps: Boolean = DockerRegistryUseHttpsDefault,
+  registryValidateTls: Boolean = DockerRegistryValidateTlsDefault) extends CommandArgs

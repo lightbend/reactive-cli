@@ -29,11 +29,14 @@ import libhttpsimple.LibHttpSimple.HttpExchange
 import Scalaz._
 
 object DockerRegistry extends LazyLogging {
-  private[docker] def blobUrl(img: Image, digest: String): String =
-    s"https://${img.url}/v2/${img.namespace}/${img.image}/blobs/$digest"
+  private[docker] def blobUrl(img: Image, digest: String, useHttps: Boolean): String =
+    s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/blobs/$digest"
 
-  private[docker] def manifestUrl(img: Image): String =
-    s"https://${img.url}/v2/${img.namespace}/${img.image}/manifests/${img.tag}"
+  private[docker] def manifestUrl(img: Image, useHttps: Boolean): String =
+    s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/manifests/${img.tag}"
+
+  private def protocol(useHttps: Boolean): String =
+    if (useHttps) "https" else "http"
 
   private[docker] def parseImageUri(uri: String): Try[Image] = {
     val parts = uri.split("/", 3).toVector
@@ -67,23 +70,23 @@ object DockerRegistry extends LazyLogging {
           providedTag = providedTag))
   }
 
-  private def getBlob(http: HttpExchange)(uri: String, digest: String, token: Option[String]): Try[(HttpResponse, Option[String])] =
+  private def getBlob(http: HttpExchange, credentials: Option[HttpRequest.BasicAuth], useHttps: Boolean, validateTls: Boolean)(uri: String, digest: String, token: Option[HttpRequest.BearerToken]): Try[(HttpResponse, Option[HttpRequest.BearerToken])] =
     for {
       i <- parseImageUri(uri)
-      r <- getWithToken(http)(blobUrl(i, digest), HttpHeaders(Map.empty), token = token)
+      r <- getWithToken(http, credentials, validateTls)(blobUrl(i, digest, useHttps), HttpHeaders(Map.empty), token = token)
     } yield r
 
-  def getConfig(http: HttpExchange)(uri: String, token: Option[String]): Try[(Config, Option[String])] =
+  def getConfig(http: HttpExchange, credentials: Option[HttpRequest.BasicAuth], useHttps: Boolean, validateTls: Boolean)(uri: String, token: Option[HttpRequest.BearerToken])(implicit settings: LibHttpSimple.Settings): Try[(Config, Option[HttpRequest.BearerToken])] =
     for {
-      manifest <- getManifest(http)(uri, token)
-      blob <- getBlob(http)(uri, manifest._1.config.digest, token = manifest._2)
+      manifest <- getManifest(http, credentials, useHttps, validateTls)(uri, token)
+      blob <- getBlob(http, credentials, useHttps, validateTls)(uri, manifest._1.config.digest, token = manifest._2)
       config <- getDecoded[Config](blob._1)
     } yield config -> blob._2
 
-  private def getManifest(http: HttpExchange)(uri: String, token: Option[String]): Try[(Manifest, Option[String])] =
+  private def getManifest(http: HttpExchange, credentials: Option[HttpRequest.BasicAuth], useHttps: Boolean, validateTls: Boolean)(uri: String, token: Option[HttpRequest.BearerToken]): Try[(Manifest, Option[HttpRequest.BearerToken])] =
     for {
       i <- parseImageUri(uri)
-      r <- getWithToken(http)(manifestUrl(i), HttpHeaders(Map("Accept" -> DockerAcceptManifestHeader)), token = token)
+      r <- getWithToken(http, credentials, validateTls)(manifestUrl(i, useHttps), HttpHeaders(Map("Accept" -> DockerAcceptManifestHeader)), token = token)
       v <- getDecoded[Manifest](r._1)
     } yield v -> r._2
 
@@ -95,11 +98,11 @@ object DockerRegistry extends LazyLogging {
     else
       Failure(new IllegalArgumentException(s"Expected code 200, received ${response.statusCode}"))
 
-  private def getWithToken(http: HttpExchange)(url: String, headers: HttpHeaders, tryNewToken: Boolean = true, token: Option[String] = None): Try[(HttpResponse, Option[String])] = {
+  private def getWithToken(http: HttpExchange, credentials: Option[HttpRequest.BasicAuth], validateTls: Boolean)(url: String, headers: HttpHeaders, tryNewToken: Boolean = true, token: Option[HttpRequest.BearerToken] = None): Try[(HttpResponse, Option[HttpRequest.BearerToken])] = {
     val request =
       HttpRequest(url)
         .headers(token.fold(headers)(t => headers.updated("Authorization", s"Bearer $t")))
-        .enableFollowRedirects
+        .copy(tlsValidationEnabled = Some(validateTls))
 
     http.apply(request).flatMap {
       case response if response.statusCode == 401 && response.headers.contains("Www-Authenticate") && tryNewToken =>
@@ -112,7 +115,8 @@ object DockerRegistry extends LazyLogging {
             realm <- parseWwwAuthenticate(authenticateHeader, "realm")
             service <- parseWwwAuthenticate(authenticateHeader, "service")
             scope <- parseWwwAuthenticate(authenticateHeader, "scope")
-            tokenResponse <- LibHttpSimple(HttpRequest(tokenUrl(realm, service, scope, "LightbendReactiveCLI"))).toOption
+            tokenRequest = HttpRequest(tokenUrl(realm, service, scope, "LightbendReactiveCLI"))
+            tokenResponse <- http(credentials.fold(tokenRequest)(tokenRequest.withAuth)).toOption
 
             if tokenResponse.statusCode == 200
 
@@ -120,7 +124,7 @@ object DockerRegistry extends LazyLogging {
             json <- JsonParser.parse(body).right.toOption
             token <- json.field("token")
             tokenStr <- token.string
-          } yield getWithToken(http)(url, headers, tryNewToken = false, token = Some(tokenStr))
+          } yield getWithToken(http, credentials, validateTls)(url, headers, tryNewToken = false, token = Some(HttpRequest.BearerToken(tokenStr)))
 
         maybeResponse.getOrElse {
           logger.error(s"Unable to obtain an OAuth token (${response.statusCode}${response.body.fold("")(" " + _)})")

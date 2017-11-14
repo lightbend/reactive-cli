@@ -16,6 +16,8 @@
 
 package libhttpsimple
 
+import java.nio.file.Path
+
 import scala.scalanative.native
 import scala.scalanative.native._
 import scala.util.{ Failure, Success, Try }
@@ -26,13 +28,36 @@ object LibHttpSimple {
   private val CRLF = "\r\n"
   private val HttpHeaderAndBodyPartsSeparator = CRLF + CRLF
   private val HttpHeaderNameAndValueSeparator = ":"
-  private val MaxRedirects = 5
 
   case class InternalNativeFailure(errorCode: Long, errorDescription: String) extends RuntimeException(s"$errorCode: $errorDescription")
 
   case class InfiniteRedirect(visited: List[String]) extends RuntimeException(s"Infinte redirect detected: $visited")
 
-  val http: HttpExchange = apply
+  /**
+   * Common settings for [[LibHttpSimple]].
+   *
+   * @param followRedirect If true, follow redirect up to the number of hops specified by [[maxRedirects]].
+   *                       Else, doesn't follow redirect, i.e. returns the response with `Location` header.
+   * @param tlsValidationEnabled If true, instructs the underlying `libcurl` to perform TLS validation.
+   *                             Else, `libcurl` will set `CURLOPT_SSL_VERIFYPEER` to `0`.
+   * @param tlsCacertsPath Paths to CA certs used for TLS validation.
+   *                       Optional. If specified, this will be supplied to `libcurl` via `CURLOPT_CAINFO` option.
+   * @param maxRedirects The maximum number of redirects allowed when attempting HTTP request.
+   *                     This setting is in place to prevent infinite redirect loop.
+   */
+  case class Settings(
+    followRedirect: Boolean = true,
+    tlsValidationEnabled: Boolean = true,
+    tlsCacertsPath: Option[Path] = None,
+    maxRedirects: Int = Settings.DefaultMaxRedirects)
+
+  object Settings {
+    val DefaultMaxRedirects = 5
+  }
+
+  val defaultSettings = Settings()
+
+  def http(implicit settings: Settings): HttpExchange = apply
 
   /**
    * Initializes libcurl` internal state by calling `curl_global_init` underneath.
@@ -56,21 +81,38 @@ object LibHttpSimple {
       nativebinding.httpsimple.global_cleanup()
     }
 
-  def apply(request: HttpRequest): Try[HttpResponse] =
-    doHttp(request.requestMethod, request.requestUrl, request.requestHeaders.headers, request.requestBody, request.requestFollowRedirects, Nil)
+  def apply(request: HttpRequest)(implicit settings: Settings): Try[HttpResponse] =
+    doHttp(
+      request.requestMethod,
+      request.requestUrl,
+      request.requestHeaders.headers,
+      request.auth,
+      request.requestBody,
+      request.requestFollowRedirects,
+      request.tlsValidationEnabled,
+      Nil)
 
   private def doHttp(
     method: String,
     url: String,
     headers: Map[String, String],
+    auth: Option[HttpRequest.Auth],
     requestBody: Option[String],
-    followRedirects: Boolean,
-    visitedUrls: List[String]): Try[HttpResponse] =
+    followRedirects: Option[Boolean],
+    tlsValidationEnabled: Option[Boolean],
+    visitedUrls: List[String])(implicit settings: Settings): Try[HttpResponse] =
     native.Zone { implicit z =>
+      val isFollowRedirect = followRedirects.getOrElse(settings.followRedirect)
+      val isTlsValidationEnabled = tlsValidationEnabled.getOrElse(settings.tlsValidationEnabled)
+
       val http_response_struct = nativebinding.httpsimple.do_http(
+        validate_tls = if (isTlsValidationEnabled) 1 else 0,
+        native.toCString(settings.tlsCacertsPath.fold("")(_.toString)),
         native.toCString(method),
         native.toCString(url),
         native.toCString(httpHeadersToDelimitedString(headers)),
+        native.toCString(auth.fold("")(authType)),
+        native.toCString(auth.fold("")(authValue)),
         native.toCString(requestBody.getOrElse("")))
 
       val errorCode = nativebinding.httpsimple.get_error_code(http_response_struct).cast[Long]
@@ -81,13 +123,13 @@ object LibHttpSimple {
           val (headers, body) = rawHttpResponseToHttpHeadersAndBody(rawHttpResponse)
           val hs = HttpHeaders(headers)
 
-          if (followRedirects && httpStatus >= 300 && httpStatus <= 399 && hs.contains("Location")) {
+          if (isFollowRedirect && httpStatus >= 300 && httpStatus <= 399 && hs.contains("Location")) {
             val location = hs("Location")
 
-            if (visitedUrls.contains(location) || visitedUrls.length >= MaxRedirects)
+            if (visitedUrls.contains(location) || visitedUrls.length >= settings.maxRedirects)
               Failure(InfiniteRedirect(visitedUrls))
             else
-              doHttp("GET", location, Map.empty, None, true, location :: visitedUrls)
+              doHttp("GET", location, Map.empty, auth, None, followRedirects, tlsValidationEnabled, location :: visitedUrls)
           } else {
             Success(HttpResponse(httpStatus, hs, body))
           }
@@ -116,7 +158,7 @@ object LibHttpSimple {
     }
 
     Option(input) match {
-      case v @ Some(rawResponse) =>
+      case Some(rawResponse) =>
         val (headerText, responseBody) = splitBySeparator(rawResponse, HttpHeaderAndBodyPartsSeparator)
 
         // Exclude the first line which is the HTTP status line
@@ -130,6 +172,18 @@ object LibHttpSimple {
         Map.empty[String, String] -> Option.empty[String]
     }
   }
+
+  private def authType(auth: HttpRequest.Auth): String =
+    auth match {
+      case _: HttpRequest.BasicAuth => "basic"
+      case _: HttpRequest.BearerToken => "bearer"
+    }
+
+  private def authValue(auth: HttpRequest.Auth): String =
+    auth match {
+      case HttpRequest.BasicAuth(username, password) => s"$username:$password"
+      case HttpRequest.BearerToken(token) => token
+    }
 
   private def errorMessageFromCode(errorCode: Long): String =
     if (errorCode == 1)

@@ -20,7 +20,7 @@ import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
 import com.lightbend.rp.reactivecli.argparse.{ GenerateDeploymentArgs, InputArgs, VersionArgs }
 import com.lightbend.rp.reactivecli.docker.{ Config, DockerRegistry }
 import com.lightbend.rp.reactivecli.runtime.kubernetes
-import libhttpsimple.LibHttpSimple
+import libhttpsimple.{ HttpRequest, LibHttpSimple }
 import libhttpsimple.LibHttpSimple.HttpExchange
 import slogging._
 
@@ -33,23 +33,38 @@ import scala.util.Try
 object Main extends LazyLogging {
   val CliName = "reactive-cli"
 
-  val http: HttpExchange = LibHttpSimple.http
-
-  def getDockerConfig(imageName: String): Try[Config] =
-    DockerRegistry.getConfig(http)(imageName, token = None).map(_._1)
-
   val parser = InputArgs.parser(CliName, ProgramVersion.current)
 
   @tailrec
   private def run(args: Array[String]): Unit = {
     if (args.nonEmpty) {
       parser.parse(args, InputArgs.default).foreach { inputArgs =>
-        inputArgs.commandArgs
+        val inputArgsMerged = InputArgs.Envs.mergeWithEnvs(inputArgs, sys.env)
+
+        inputArgsMerged.commandArgs
           .collect {
             case VersionArgs =>
               System.out.println(s"rp (Reactive CLI) ${ProgramVersion.current}")
 
-            case generateDeploymentArgs @ GenerateDeploymentArgs(_, _, _, _, _, Some(kubernetesArgs: KubernetesArgs)) =>
+            case generateDeploymentArgs @ GenerateDeploymentArgs(_, _, _, _, _, Some(kubernetesArgs: KubernetesArgs), _, _, _, _) =>
+              implicit val httpSettings: LibHttpSimple.Settings =
+                inputArgs.tlsCacertsPath.fold(LibHttpSimple.defaultSettings)(v => LibHttpSimple.defaultSettings.copy(tlsCacertsPath = Some(v)))
+
+              val http: HttpExchange = LibHttpSimple.http
+
+              val dockerRegistryAuth =
+                for {
+                  username <- generateDeploymentArgs.registryUsername
+                  password <- generateDeploymentArgs.registryPassword
+                } yield HttpRequest.BasicAuth(username, password)
+
+              def getDockerConfig(imageName: String): Try[Config] =
+                DockerRegistry.getConfig(
+                  http,
+                  dockerRegistryAuth,
+                  generateDeploymentArgs.registryUseHttps,
+                  generateDeploymentArgs.registryValidateTls)(imageName, token = None).map(_._1)
+
               val output = kubernetes.handleGeneratedResources(kubernetesArgs.output)
               kubernetes.generateResources(getDockerConfig, output)(generateDeploymentArgs, kubernetesArgs)
                 .recover {

@@ -8,22 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <curl/curl.h>
-
-struct http_response {
-  /*
-  has_error: error code which indicates internal error within the httpsimple.
-  IMPORTANT: This error code has nothing to do with HTTP response.
-  - `0`: all ok, no error.
-  - `1`: failure to `malloc` when initializing `raw_response`.
-  - `2`: failure to `realloc` when writing HTTP response body into to `raw_response`.
-  - `77`: failure to invoke `curl_easy_perform`.
-  */
-  long has_error;
-  char *error_message;
-  long http_status;
-  char *raw_response;
-  size_t len;
-};
+#include "httpsimple.h"
 
 int global_init() {
   CURLcode res_curl_code;
@@ -66,7 +51,7 @@ size_t writefunc(void *ptr, size_t size, size_t nmemb, struct http_response *s)
   return size * nmemb;
 }
 
-struct http_response *do_http(char *http_method, char *url, char *request_headers_raw, char *request_body) {
+struct http_response *do_http(long validate_tls, char *tls_cacerts_path, char *http_method, char *url, char *request_headers_raw, char *auth_type, char *auth_value, char *request_body) {
   CURL *curl;
   CURLcode res_curl_code;
   struct http_response *s = malloc(sizeof(struct http_response));
@@ -79,6 +64,23 @@ struct http_response *do_http(char *http_method, char *url, char *request_header
       curl_easy_setopt(curl, CURLOPT_URL, url);
       curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, http_method);
       curl_easy_setopt(curl, CURLOPT_HEADER, 1L); // Return header as part of the response text
+
+      if (validate_tls == 0L) {
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+      }
+
+      if (tls_cacerts_path && strlen(tls_cacerts_path) > 0) {
+        curl_easy_setopt(curl, CURLOPT_CAINFO, tls_cacerts_path);
+      }
+
+      if (auth_type && strlen(auth_type) > 0 &&
+            auth_value && strlen(auth_value) > 0) {
+        if (strcmp("basic", auth_type) == 0) {
+            curl_easy_setopt(curl, CURLOPT_USERPWD, auth_value);
+        } else if (strcmp(auth_type, "bearer")) {
+            curl_easy_setopt(curl, CURLOPT_XOAUTH2_BEARER, auth_value);
+        }
+      }
 
       // Append request headers if defined
       if (request_headers_raw && strlen(request_headers_raw) > 0) {
