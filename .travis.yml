@@ -1,6 +1,8 @@
 language: scala
 scala:
   - 2.11.11
+services:
+  - docker
 jdk:
   - oraclejdk8
 sudo: required
@@ -16,6 +18,5 @@ before_cache:
 before_install:
   - bash setup-travis.sh
 script:
-  - sbt test
-  - sbt cli/nativeLink
-  - LD_LIBRARY_PATH=libhttpsimple/target cli/target/scala-2.11/rp --help
+  - sbt clean test package buildAll
+  - LD_LIBRARY_PATH=libhttpsimple/target cli/target/scala-2.11/reactive-cli-out --help
