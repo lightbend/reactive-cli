@@ -63,13 +63,23 @@ Usage: reactive-cli [options]
 
 ## Packaging
 
-This project uses [SBT Native Packager](https://github.com/sbt/sbt-native-packager) to produce release artifacts.
+This project uses a Docker-based build system that builds `.rpm` and `.deb` files inside Docker containers for each
+supported distribution. To add a distribution, add a `BuildInfo` instance in `project/BuildInfo.scala` emulating
+the ones already created.
 
-#### deb
-`sbt clean debian:packageBin`
+#### Building a single distribution package locally
 
-#### rpm
-`sbt clean rpm:packageBin`
+```sbt build ubuntu-16-04```
+
+#### Building every distribution in parallel
+
+```sbt buildAll```
+
+Once built, you can find the packages in `target/stage/<name>/output`.
+
+## Releasing
+
+Consult the _Platform Tooling Release Process_ document in Google Drive. 
 
 ## Maintenance
 

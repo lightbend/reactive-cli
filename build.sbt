@@ -1,12 +1,25 @@
 import sbt._
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
+import complete.DefaultParsers._
 import scala.collection.immutable.Seq
 import scalariform.formatter.preferences.AlignSingleLineCaseStatements
+import ReleaseTransformations._
+import _root_.bintray.BintrayExt
 
-val binaryName = SettingKey[String]("binary-name")
-val cSource = SettingKey[File]("c-source")
+lazy val binaryName = SettingKey[String]("binary-name")
+lazy val cSource = SettingKey[File]("c-source")
+lazy val build = inputKey[Seq[(BuildInfo, Seq[File])]]("build")
+lazy val buildAll = TaskKey[Seq[(BuildInfo, Seq[File])]]("buildAll")
+lazy val publishToBintray = TaskKey[Unit]("publishToBintray")
 
-val Versions = new {
+lazy val Names = new {
+  val `httpsimple.c`     = "httpsimple.c"
+  val `httpsimple.o`     = "httpsimple.o"
+  val `libhttpsimple.so` = "libhttpsimple.so"
+  val rp                 = "rp"
+}
+
+lazy val Versions = new {
   val argonaut = "6.3-SNAPSHOT"
   val scala    = "2.11.11"
   val scalaz   = "7.2.16"
@@ -23,10 +36,6 @@ lazy val commonSettings = Seq(
   startYear := Some(2017),
 
   licenses += ("Apache-2.0", new URL("https://www.apache.org/licenses/LICENSE-2.0.txt")),
-
-  maintainer := "info@lightbend.com",
-
-  rpmVendor := organizationName.value,
 
   scalaVersion := Versions.scala,
 
@@ -53,25 +62,120 @@ lazy val root = project
     `cli`
   )
   .settings(
-    name := "reactive-cli"
+    name := "reactive-cli-root",
+
+    releaseProcess := Seq[ReleaseStep](
+      inquireVersions,
+      runClean,
+      releaseStepCommandAndRemaining("update"),
+      setReleaseVersion,
+      commitReleaseVersion,
+      tagRelease,
+      releaseStepCommandAndRemaining("compile:publishToBintray"),
+      setNextVersion,
+      commitNextVersion,
+      pushChanges
+    ),
+
+    build in Compile := {
+      for {
+        name <- spaceDelimited("<arg>").parsed.toVector
+        result <- BuildInfo.Builds.find(_.name == name) match {
+          case None =>
+            streams.value.log.error(s"Unable to find build for name: $name")
+
+            Seq.empty
+
+          case Some(b) =>
+            val stage = target.value / "stage" / b.name
+            Seq(b -> b.run(baseDirectory.value, stage, version.value, streams.value.log))
+        }
+      } yield result
+    },
+
+    buildAll in Compile := {
+      for {
+        g <- BuildInfo.Builds.grouped(Properties.concurrentBuilds)
+        b <- g.par
+      } yield {
+        val stage = target.value / "stage" / b.name
+
+        IO.createDirectory(stage)
+
+        b -> b.run(baseDirectory.value, stage, version.value, streams.value.log)
+      }
+    }.toVector,
+
+    publishToBintray in Compile := {
+      val info = (buildAll in Compile).value
+      val log = streams.value.log
+
+      for {
+        (b, files) <- info
+        file       <- files
+      } {
+        b.target match {
+          case tgt @ DebBuildTarget(distributions, components, _, _) =>
+            BintrayExt.publishDeb(
+              file,
+              distributions,
+              components,
+              tgt.architecture,
+              version.value,
+              bintrayCredentialsFile.value,
+              log)
+
+          case RpmBuildTarget(_, _, _) =>
+            BintrayExt.publishRpm(file, version.value, bintrayCredentialsFile.value, log)
+        }
+      }
+    },
+
+    Keys.`package` in Compile := {
+      val cliOut = (Keys.`package` in (cli, Compile)).value
+      val libHttpSimpleOut = (Keys.`package` in (libhttpsimple, Compile)).value
+      val outputDirectory = target.value / "output"
+
+      IO.deleteFilesEmptyDirs(Seq(outputDirectory))
+      IO.createDirectory(outputDirectory / "lib")
+      IO.createDirectory(outputDirectory / "bin")
+
+      IO.copyFile(cliOut, outputDirectory / "bin" / Names.rp)
+      AdditionalIO.setExecutable(outputDirectory / "bin" / Names.rp)
+      IO.copyFile(libHttpSimpleOut, outputDirectory / "lib" / Names.`libhttpsimple.so`)
+
+      (outputDirectory / Names.rp).setExecutable(true)
+
+      streams.value.log.info(s"Created files in $outputDirectory")
+
+      outputDirectory
+    }
   )
 
 lazy val libhttpsimple = project
   .in(file("libhttpsimple"))
   .settings(commonSettings)
   .settings(
+    Keys.`package` in Compile := {
+      (compile in Compile).value
+
+      target.value / Names.`libhttpsimple.so`
+    },
+
     compile in Compile := {
       val result = (compile in Compile).value
       val sources = (cSource in Compile).value
       val output = (target in Compile).value
 
+      streams.value.log.info("Compiling C sources")
+
       val gccCode1 =
-        Seq("gcc", "-c", "-fPIC", "-o", (output / "httpsimple.o").toString, (sources / "httpsimple.c").toString).!
+        Seq("gcc", "-c", "-fPIC", "-o", (output / Names.`httpsimple.o`).toString, (sources / Names.`httpsimple.c`).toString).!
 
       assert(gccCode1 == 0, s"gcc exited with $gccCode1")
 
       val gccCode2 =
-        Seq("gcc", "-shared", "-fPIC", "-lcurl", "-o", (output / "libhttpsimple.so").toString, (output / "httpsimple.o").toString).!
+        Seq("gcc", "-shared", "-fPIC", "-lcurl", "-o", (output / Names.`libhttpsimple.so`).toString, (output / Names.`httpsimple.o`).toString).!
 
       assert(gccCode2 == 0, s"gcc exited with $gccCode2")
 
@@ -84,10 +188,11 @@ lazy val `libhttpsimple-bindings` = project
   .enablePlugins(ScalaNativePlugin, AutomateHeaderPlugin)
   .dependsOn(libhttpsimple)
   .settings(commonSettings)
+  .settings(test in Compile := ())
 
 lazy val cli = project
   .in(file("cli"))
-  .enablePlugins(ScalaNativePlugin, AutomateHeaderPlugin, JavaAppPackaging)
+  .enablePlugins(ScalaNativePlugin, AutomateHeaderPlugin)
   .dependsOn(`libhttpsimple-bindings`)
   .settings(commonSettings)
   .settings(Seq(
@@ -99,16 +204,7 @@ lazy val cli = project
     )
   ))
   .settings(
-    binaryName := "rp",
-    packageSummary := "Tools for managing and deploying Lightbend Reactive Platform applications",
-    nativeLink in Compile := {
-      val out = (nativeLink in Compile).value
-      val dest = out.getParentFile / binaryName.value
-      IO.move(out, dest)
-      dest
-    },
-    packageName in Linux := "reactive-cli",
-    mappings in Universal := Seq(
-      (nativeLink in Compile).value -> s"bin/${binaryName.value}"
-    )
+    name := "reactive-cli",
+    nativeMode := Properties.nativeMode,
+    Keys.`package` in Compile := (nativeLink in Compile).value
   )
