@@ -141,24 +141,144 @@ object KubernetesPackageTest extends TestSuite {
                 |              "value": "3"
                 |            },
                 |            {
+                |              "name": "RP_ENDPOINT_0_BIND_HOST",
+                |              "valueFrom": {
+                |                "fieldRef": {
+                |                  "fieldPath": "status.podIP"
+                |                }
+                |              }
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINT_0_BIND_PORT",
+                |              "value": "10000"
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINT_0_HOST",
+                |              "valueFrom": {
+                |                "fieldRef": {
+                |                  "fieldPath": "status.podIP"
+                |                }
+                |              }
+                |            },
+                |            {
                 |              "name": "RP_ENDPOINT_0_PORT",
                 |              "value": "10000"
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINT_1_BIND_HOST",
+                |              "valueFrom": {
+                |                "fieldRef": {
+                |                  "fieldPath": "status.podIP"
+                |                }
+                |              }
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINT_1_BIND_PORT",
+                |              "value": "1234"
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINT_1_HOST",
+                |              "valueFrom": {
+                |                "fieldRef": {
+                |                  "fieldPath": "status.podIP"
+                |                }
+                |              }
                 |            },
                 |            {
                 |              "name": "RP_ENDPOINT_1_PORT",
                 |              "value": "1234"
                 |            },
                 |            {
+                |              "name": "RP_ENDPOINT_2_BIND_HOST",
+                |              "valueFrom": {
+                |                "fieldRef": {
+                |                  "fieldPath": "status.podIP"
+                |                }
+                |              }
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINT_2_BIND_PORT",
+                |              "value": "1234"
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINT_2_HOST",
+                |              "valueFrom": {
+                |                "fieldRef": {
+                |                  "fieldPath": "status.podIP"
+                |                }
+                |              }
+                |            },
+                |            {
                 |              "name": "RP_ENDPOINT_2_PORT",
                 |              "value": "1234"
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINT_EP1-V9_BIND_HOST",
+                |              "valueFrom": {
+                |                "fieldRef": {
+                |                  "fieldPath": "status.podIP"
+                |                }
+                |              }
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINT_EP1-V9_BIND_PORT",
+                |              "value": "10000"
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINT_EP1-V9_HOST",
+                |              "valueFrom": {
+                |                "fieldRef": {
+                |                  "fieldPath": "status.podIP"
+                |                }
+                |              }
                 |            },
                 |            {
                 |              "name": "RP_ENDPOINT_EP1-V9_PORT",
                 |              "value": "10000"
                 |            },
                 |            {
+                |              "name": "RP_ENDPOINT_EP2-V1_BIND_HOST",
+                |              "valueFrom": {
+                |                "fieldRef": {
+                |                  "fieldPath": "status.podIP"
+                |                }
+                |              }
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINT_EP2-V1_BIND_PORT",
+                |              "value": "1234"
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINT_EP2-V1_HOST",
+                |              "valueFrom": {
+                |                "fieldRef": {
+                |                  "fieldPath": "status.podIP"
+                |                }
+                |              }
+                |            },
+                |            {
                 |              "name": "RP_ENDPOINT_EP2-V1_PORT",
                 |              "value": "1234"
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINT_EP3-V3_BIND_HOST",
+                |              "valueFrom": {
+                |                "fieldRef": {
+                |                  "fieldPath": "status.podIP"
+                |                }
+                |              }
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINT_EP3-V3_BIND_PORT",
+                |              "value": "1234"
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINT_EP3-V3_HOST",
+                |              "valueFrom": {
+                |                "fieldRef": {
+                |                  "fieldPath": "status.podIP"
+                |                }
+                |              }
                 |            },
                 |            {
                 |              "name": "RP_ENDPOINT_EP3-V3_PORT",
@@ -246,6 +366,7 @@ object KubernetesPackageTest extends TestSuite {
                 |  }
                 |}
               """.stripMargin.parse.right.get
+
             assert(deployment.payload == deploymentJsonExpected)
 
             assert(service.name == "my-app")

@@ -55,7 +55,7 @@ object Deployment {
         }
     }
 
-    private[kubernetes] def endpointEnvs(endpoints: Map[String, Endpoint]): Map[String, LiteralEnvironmentVariable] =
+    private[kubernetes] def endpointEnvs(endpoints: Map[String, Endpoint]): Map[String, EnvironmentVariable] =
       if (endpoints.isEmpty)
         Map(
           "RP_ENDPOINTS_COUNT" -> LiteralEnvironmentVariable("0"))
@@ -69,13 +69,22 @@ object Deployment {
               .mkString(","))) ++
           endpointPortEnvs(endpoints)
 
-    private[kubernetes] def endpointPortEnvs(endpoints: Map[String, Endpoint]): Map[String, LiteralEnvironmentVariable] =
+    private[kubernetes] def endpointPortEnvs(endpoints: Map[String, Endpoint]): Map[String, EnvironmentVariable] =
       EndpointAutoPort.assignPorts(endpoints)
         .flatMap { assigned =>
           val assignedPortEnv = LiteralEnvironmentVariable(assigned.port.toString)
+          val hostEnv = FieldRefEnvironmentVariable("status.podIP")
+
           Seq(
+            s"RP_ENDPOINT_${endpointName(assigned.endpoint)}_HOST" -> hostEnv,
+            s"RP_ENDPOINT_${endpointName(assigned.endpoint)}_BIND_HOST" -> hostEnv,
             s"RP_ENDPOINT_${endpointName(assigned.endpoint)}_PORT" -> assignedPortEnv,
-            s"RP_ENDPOINT_${assigned.endpoint.index}_PORT" -> assignedPortEnv)
+            s"RP_ENDPOINT_${endpointName(assigned.endpoint)}_BIND_PORT" -> assignedPortEnv,
+            s"RP_ENDPOINT_${assigned.endpoint.index}_HOST" -> hostEnv,
+            s"RP_ENDPOINT_${assigned.endpoint.index}_BIND_HOST" -> hostEnv,
+            s"RP_ENDPOINT_${assigned.endpoint.index}_PORT" -> assignedPortEnv,
+            s"RP_ENDPOINT_${assigned.endpoint.index}_BIND_PORT" -> assignedPortEnv)
+
         }
         .toMap
   }
