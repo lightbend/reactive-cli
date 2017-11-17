@@ -65,7 +65,7 @@ object Deployment {
           "RP_ENDPOINTS" -> LiteralEnvironmentVariable(
             endpoints.values.toList
               .sortBy(_.index)
-              .map(v => endpointName(v))
+              .map(v => endpointEnvName(v))
               .mkString(","))) ++
           endpointPortEnvs(endpoints)
 
@@ -76,10 +76,10 @@ object Deployment {
           val hostEnv = FieldRefEnvironmentVariable("status.podIP")
 
           Seq(
-            s"RP_ENDPOINT_${endpointName(assigned.endpoint)}_HOST" -> hostEnv,
-            s"RP_ENDPOINT_${endpointName(assigned.endpoint)}_BIND_HOST" -> hostEnv,
-            s"RP_ENDPOINT_${endpointName(assigned.endpoint)}_PORT" -> assignedPortEnv,
-            s"RP_ENDPOINT_${endpointName(assigned.endpoint)}_BIND_PORT" -> assignedPortEnv,
+            s"RP_ENDPOINT_${endpointEnvName(assigned.endpoint)}_HOST" -> hostEnv,
+            s"RP_ENDPOINT_${endpointEnvName(assigned.endpoint)}_BIND_HOST" -> hostEnv,
+            s"RP_ENDPOINT_${endpointEnvName(assigned.endpoint)}_PORT" -> assignedPortEnv,
+            s"RP_ENDPOINT_${endpointEnvName(assigned.endpoint)}_BIND_PORT" -> assignedPortEnv,
             s"RP_ENDPOINT_${assigned.endpoint.index}_HOST" -> hostEnv,
             s"RP_ENDPOINT_${assigned.endpoint.index}_BIND_HOST" -> hostEnv,
             s"RP_ENDPOINT_${assigned.endpoint.index}_PORT" -> assignedPortEnv,
@@ -234,7 +234,7 @@ object Deployment {
   implicit def assignedEncode = EncodeJson[EndpointAutoPort.Assigned] { assigned =>
     Json(
       "containerPort" -> assigned.port.asJson,
-      "name" -> endpointName(assigned.endpoint).toLowerCase.asJson)
+      "name" -> endpointEnvName(assigned.endpoint).toLowerCase.asJson)
   }
 
   implicit def endpointsEncode = EncodeJson[Map[String, Endpoint]] { endpoints =>

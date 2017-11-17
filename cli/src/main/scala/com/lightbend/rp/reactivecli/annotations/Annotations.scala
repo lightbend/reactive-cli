@@ -16,7 +16,6 @@
 
 package com.lightbend.rp.reactivecli.annotations
 
-import com.lightbend.rp.reactivecli.annotations.HttpEndpoint.HttpAcl
 import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
 
 import scala.collection.immutable.Seq
@@ -170,7 +169,7 @@ object Annotations {
         _,
         entry.get("port").flatMap(decodeInt).getOrElse(0),
         entry.get("version").flatMap(decodeInt).orElse(version.map(_.major)),
-        aclsHttp(selectArray(entry, "acls"))))
+        httpIngress(selectArray(entry, "ingress"))))
 
   private[annotations] def endpointTcp(version: Option[Version], entry: Map[String, String], index: Int): Option[TcpEndpoint] =
     entry.get("name").map(
@@ -188,16 +187,31 @@ object Annotations {
         entry.get("port").flatMap(decodeInt).getOrElse(0),
         entry.get("version").flatMap(decodeInt).orElse(version.map(_.major))))
 
-  private[annotations] def aclsHttp(acls: Seq[Map[String, String]]): Seq[HttpAcl] =
-    acls
-      .flatMap(entry =>
+  private[annotations] def httpIngress(ingress: Seq[Map[String, String]]): Seq[HttpIngress] =
+    ingress
+      .flatMap { entry =>
         for {
           typ <- entry.get("type")
-          value <- typ match {
-            case "http" => entry.get("expression").map(HttpAcl.apply)
-            case _ => None
-          }
-        } yield value)
+
+          if typ == "http"
+
+          ports = for {
+            ingressPortEntry <- selectArray(entry, "ingress-ports")
+            value <- ingressPortEntry.values
+            port <- decodeInt(value)
+          } yield port
+
+          hosts = for {
+            pathEntry <- selectArray(entry, "hosts")
+            path <- pathEntry.values
+          } yield path
+
+          paths = for {
+            pathEntry <- selectArray(entry, "paths")
+            path <- pathEntry.values
+          } yield path
+        } yield HttpIngress(ports, hosts, paths)
+      }
 
   private[annotations] def environmentVariables(variables: Seq[Map[String, String]]): Map[String, EnvironmentVariable] =
     variables

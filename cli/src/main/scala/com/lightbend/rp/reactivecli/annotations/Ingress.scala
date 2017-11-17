@@ -18,15 +18,10 @@ package com.lightbend.rp.reactivecli.annotations
 
 import scala.collection.immutable.Seq
 
-sealed trait Endpoint {
-  def index: Int
-  def name: String
-  def port: Int
-  def version: Option[Int]
+sealed trait Ingress {
+  def ingressPorts: Seq[Int]
 }
 
-case class HttpEndpoint(index: Int, name: String, port: Int, version: Option[Int], ingress: Seq[HttpIngress]) extends Endpoint
+case class PortIngress(ingressPorts: Seq[Int]) extends Ingress
 
-case class TcpEndpoint(index: Int, name: String, port: Int, version: Option[Int]) extends Endpoint
-
-case class UdpEndpoint(index: Int, name: String, port: Int, version: Option[Int]) extends Endpoint
+case class HttpIngress(ingressPorts: Seq[Int], hosts: Seq[String], paths: Seq[String]) extends Ingress

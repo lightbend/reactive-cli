@@ -17,8 +17,8 @@
 package com.lightbend.rp.reactivecli
 
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
-import com.lightbend.rp.reactivecli.argparse.{GenerateDeploymentArgs, InputArgs, VersionArgs}
-import com.lightbend.rp.reactivecli.docker.{Config, DockerRegistry}
+import com.lightbend.rp.reactivecli.argparse.{ GenerateDeploymentArgs, InputArgs, VersionArgs }
+import com.lightbend.rp.reactivecli.docker.{ Config, DockerRegistry }
 import com.lightbend.rp.reactivecli.runtime.kubernetes
 import libhttpsimple.LibHttpSimple
 import libhttpsimple.LibHttpSimple.HttpExchange

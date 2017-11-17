@@ -27,7 +27,7 @@ object DeploymentJsonTest extends TestSuite {
   import Deployment._
 
   val endpoints = Map(
-    "ep1" -> HttpEndpoint(0, "ep1", 0, version = Some(9), Seq(HttpEndpoint.HttpAcl("^/.*"))),
+    "ep1" -> HttpEndpoint(0, "ep1", 0, version = Some(9), Seq(HttpIngress(Seq(80, 443), Seq.empty, Seq("^/.*")))),
     "ep2" -> TcpEndpoint(1, "ep2", 1234, version = Some(1)),
     "ep3" -> UdpEndpoint(2, "ep3", 0, version = None))
 
@@ -946,7 +946,7 @@ object DeploymentJsonTest extends TestSuite {
       "assigned endpoint" - {
         "http" - {
           "with endpoint version" - {
-            val endpoint = HttpEndpoint(0, "ep1", 0, version = Some(1), acls = Seq(HttpEndpoint.HttpAcl("/visualizer")))
+            val endpoint = HttpEndpoint(0, "ep1", 0, version = Some(1), ingress = Seq.empty)
             val assigned = EndpointAutoPort.Assigned(
               endpoint = endpoint,
               port = 9999)
@@ -963,7 +963,7 @@ object DeploymentJsonTest extends TestSuite {
           }
 
           "without endpoint version" - {
-            val endpoint = HttpEndpoint(0, "ep1", 0, version = None, acls = Seq(HttpEndpoint.HttpAcl("/visualizer")))
+            val endpoint = HttpEndpoint(0, "ep1", 0, version = None, ingress = Seq.empty)
             val assigned = EndpointAutoPort.Assigned(
               endpoint = endpoint,
               port = 9999)
@@ -1085,12 +1085,12 @@ object DeploymentJsonTest extends TestSuite {
       "endpoints" - {
         "when present" - {
           val endpointsWithVersions = Map(
-            "ep1" -> HttpEndpoint(0, "ep1", 0, version = Some(1), Seq(HttpEndpoint.HttpAcl("^/.*"))),
+            "ep1" -> HttpEndpoint(0, "ep1", 0, version = Some(1), Seq.empty),
             "ep2" -> TcpEndpoint(1, "ep2", 1234, version = Some(3)),
             "ep3" -> UdpEndpoint(2, "ep3", 1234, version = Some(2)))
 
           val endpointsNoVersions = Map(
-            "ep1" -> HttpEndpoint(0, "ep1", 0, version = None, Seq(HttpEndpoint.HttpAcl("^/.*"))),
+            "ep1" -> HttpEndpoint(0, "ep1", 0, version = None, Seq.empty),
             "ep2" -> TcpEndpoint(1, "ep2", 1234, version = None),
             "ep3" -> UdpEndpoint(2, "ep3", 1234, version = None))
 
@@ -1178,7 +1178,7 @@ object DeploymentJsonTest extends TestSuite {
 
           "endpoints list should be ordered based on endpoint index" - {
             val endpoints = Map(
-              "ep1" -> HttpEndpoint(2, "ep1", 0, version = Some(1), Seq(HttpEndpoint.HttpAcl("^/.*"))),
+              "ep1" -> HttpEndpoint(2, "ep1", 0, version = Some(1), Seq.empty),
               "ep2" -> TcpEndpoint(0, "ep2", 1234, version = Some(3)),
               "ep3" -> UdpEndpoint(1, "ep3", 1234, version = Some(2)))
 
@@ -1189,7 +1189,7 @@ object DeploymentJsonTest extends TestSuite {
 
           "auto port should be allocated for all undeclared ports" - {
             val endpoints = Map(
-              "ep1" -> HttpEndpoint(0, "ep1", 0, version = Some(1), Seq(HttpEndpoint.HttpAcl("^/.*"))),
+              "ep1" -> HttpEndpoint(0, "ep1", 0, version = Some(1), Seq.empty),
               "ep2" -> TcpEndpoint(1, "ep2", 1234, version = Some(3)),
               "ep3" -> UdpEndpoint(2, "ep3", 0, version = Some(2)))
 
