@@ -119,15 +119,12 @@ object InputArgs {
                     c.copy(
                       ingressAnnotations = c.ingressAnnotations.updated(
                         parts(0).get,
-                        parts(1).getOrElse("")
-                      )
-                    )
-                  }),
+                        parts(1).getOrElse("")))
+                }),
 
               opt[String]("kubernetes-ingress-path-append")
                 .text("Appends the expression specified to the ingress path. For example: if .* is specified, then the ingress path /my-path will be rendered as /my-path.*")
-                .action(IngressArgs.set((v, c) => c.copy(pathAppend = Some(v))))
-            ),
+                .action(IngressArgs.set((v, c) => c.copy(pathAppend = Some(v))))),
 
           opt[String]("env")
             .text("Sets an environment variable. Format: NAME=value")

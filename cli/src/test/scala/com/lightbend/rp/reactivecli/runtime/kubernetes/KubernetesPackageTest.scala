@@ -22,8 +22,9 @@ import java.util.UUID
 
 import argonaut._
 import Argonaut._
+import com.lightbend.rp.reactivecli.annotations.TcpEndpoint
 import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
-import com.lightbend.rp.reactivecli.argparse.kubernetes.{ IngressArgs, KubernetesArgs }
+import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
 import com.lightbend.rp.reactivecli.docker.Config
 import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment.KubernetesVersion
 import utest._
@@ -104,63 +105,145 @@ object KubernetesPackageTest extends TestSuite {
             val deploymentJsonExpected =
               """
                 |{
-                |	"apiVersion": "apps/v1beta1",
-                |	"kind": "Deployment",
-                |	"metadata": {
-                |		"name": "my-app-v3.2.1-SNAPSHOT",
-                |		"labels": {
-                |			"app": "my-app",
-                |			"appVersionMajor": "my-app-v3",
-                |			"appVersionMajorMinor": "my-app-v3.2",
-                |			"appVersion": "my-app-v3.2.1-SNAPSHOT"
-                |		}
-                |	},
-                |	"spec": {
-                |		"replicas": 1,
-                |		"serviceName": "my-app-v3",
-                |		"template": {
-                |			"app": "my-app",
-                |			"appVersionMajor": "my-app-v3",
-                |			"appVersionMajorMinor": "my-app-v3.2",
-                |			"appVersion": "my-app-v3.2.1-SNAPSHOT"
-                |		},
-                |		"spec": {
-                |			"containers": [{
-                |				"name": "my-app",
-                |				"image": "fsat/testimpl:1.0.0-SNAPSHOT",
-                |				"imagePullPolicy": "IfNotPresent",
-                |				"env": [{
-                |					"name": "testing1",
-                |					"value": "testingvalue1"
-                |				}, {
-                |					"name": "testing2",
-                |					"valueFrom": {
-                |						"configMapKeyRef": {
-                |							"name": "mymap",
-                |							"key": "mykey"
-                |						}
-                |					}
-                |				}, {
-                |					"name": "testing3",
-                |					"valueFrom": {
-                |						"fieldRef": {
-                |							"fieldPath": "metadata.name"
-                |						}
-                |					}
-                |				}],
-                |				"ports": [{
-                |					"containerPort": 0,
-                |					"name": "ep1-v9"
-                |				}, {
-                |					"containerPort": 1234,
-                |					"name": "ep2-v1"
-                |				}, {
-                |					"containerPort": 1234,
-                |					"name": "ep3-v3"
-                |				}]
-                |			}]
-                |		}
-                |	}
+                |  "apiVersion": "apps/v1beta1",
+                |  "kind": "Deployment",
+                |  "metadata": {
+                |    "name": "my-app-v3.2.1-SNAPSHOT",
+                |    "labels": {
+                |      "app": "my-app",
+                |      "appVersionMajor": "my-app-v3",
+                |      "appVersionMajorMinor": "my-app-v3.2",
+                |      "appVersion": "my-app-v3.2.1-SNAPSHOT"
+                |    }
+                |  },
+                |  "spec": {
+                |    "replicas": 1,
+                |    "serviceName": "my-app-v3",
+                |    "template": {
+                |      "app": "my-app",
+                |      "appVersionMajor": "my-app-v3",
+                |      "appVersionMajorMinor": "my-app-v3.2",
+                |      "appVersion": "my-app-v3.2.1-SNAPSHOT"
+                |    },
+                |    "spec": {
+                |      "containers": [
+                |        {
+                |          "name": "my-app",
+                |          "image": "fsat/testimpl:1.0.0-SNAPSHOT",
+                |          "imagePullPolicy": "IfNotPresent",
+                |          "env": [
+                |            {
+                |              "name": "RP_ENDPOINTS",
+                |              "value": "EP1-V9,EP2-V1,EP3-V3"
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINTS_COUNT",
+                |              "value": "3"
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINT_0_PORT",
+                |              "value": "10000"
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINT_1_PORT",
+                |              "value": "1234"
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINT_2_PORT",
+                |              "value": "1234"
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINT_EP1-V9_PORT",
+                |              "value": "10000"
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINT_EP2-V1_PORT",
+                |              "value": "1234"
+                |            },
+                |            {
+                |              "name": "RP_ENDPOINT_EP3-V3_PORT",
+                |              "value": "1234"
+                |            },
+                |            {
+                |              "name": "RP_KUBERNETES_POD_IP",
+                |              "valueFrom": {
+                |                "fieldRef": {
+                |                  "fieldPath": "status.podIP"
+                |                }
+                |              }
+                |            },
+                |            {
+                |              "name": "RP_KUBERNETES_POD_NAME",
+                |              "valueFrom": {
+                |                "fieldRef": {
+                |                  "fieldPath": "metadata.name"
+                |                }
+                |              }
+                |            },
+                |            {
+                |              "name": "RP_PLATFORM",
+                |              "value": "kubernetes"
+                |            },
+                |            {
+                |              "name": "RP_VERSION",
+                |              "value": "3.2.1-SNAPSHOT"
+                |            },
+                |            {
+                |              "name": "RP_VERSION_MAJOR",
+                |              "value": "3"
+                |            },
+                |            {
+                |              "name": "RP_VERSION_MINOR",
+                |              "value": "2"
+                |            },
+                |            {
+                |              "name": "RP_VERSION_PATCH",
+                |              "value": "1"
+                |            },
+                |            {
+                |              "name": "RP_VERSION_PATCH_LABEL",
+                |              "value": "SNAPSHOT"
+                |            },
+                |            {
+                |              "name": "testing1",
+                |              "value": "testingvalue1"
+                |            },
+                |            {
+                |              "name": "testing2",
+                |              "valueFrom": {
+                |                "configMapKeyRef": {
+                |                  "name": "mymap",
+                |                  "key": "mykey"
+                |                }
+                |              }
+                |            },
+                |            {
+                |              "name": "testing3",
+                |              "valueFrom": {
+                |                "fieldRef": {
+                |                  "fieldPath": "metadata.name"
+                |                }
+                |              }
+                |            }
+                |          ],
+                |          "ports": [
+                |            {
+                |              "containerPort": 10000,
+                |              "name": "ep1-v9"
+                |            },
+                |            {
+                |              "containerPort": 1234,
+                |              "name": "ep2-v1"
+                |            },
+                |            {
+                |              "containerPort": 1234,
+                |              "name": "ep3-v3"
+                |            }
+                |          ]
+                |        }
+                |      ]
+                |    }
+                |  }
                 |}
               """.stripMargin.parse.right.get
             assert(deployment.payload == deploymentJsonExpected)
@@ -169,36 +252,40 @@ object KubernetesPackageTest extends TestSuite {
             val serviceJsonExpected =
               """
                 |{
-                |	"apiVersion": "v1",
-                |	"kind": "Service",
-                |	"metadata": {
-                |		"labels": {
-                |			"app": "my-app"
-                |		},
-                |		"name": "my-app"
-                |	},
-                |	"spec": {
-                |		"clusterIP": "None",
-                |		"ports": [{
-                |			"name": "ep1-v9",
-                |			"port": 0,
-                |			"protocol": "TCP",
-                |			"targetPort": 0
-                |		}, {
-                |			"name": "ep2-v1",
-                |			"port": 1234,
-                |			"protocol": "TCP",
-                |			"targetPort": 1234
-                |		}, {
-                |			"name": "ep3-v3",
-                |			"port": 1234,
-                |			"protocol": "UDP",
-                |			"targetPort": 1234
-                |		}],
-                |		"selector": {
-                |			"app": "my-app"
-                |		}
-                |	}
+                |  "apiVersion": "v1",
+                |  "kind": "Service",
+                |  "metadata": {
+                |    "labels": {
+                |      "app": "my-app"
+                |    },
+                |    "name": "my-app"
+                |  },
+                |  "spec": {
+                |    "clusterIP": "None",
+                |    "ports": [
+                |      {
+                |        "name": "ep1-v9",
+                |        "port": 0,
+                |        "protocol": "TCP",
+                |        "targetPort": 0
+                |      },
+                |      {
+                |        "name": "ep2-v1",
+                |        "port": 1234,
+                |        "protocol": "TCP",
+                |        "targetPort": 1234
+                |      },
+                |      {
+                |        "name": "ep3-v3",
+                |        "port": 1234,
+                |        "protocol": "UDP",
+                |        "targetPort": 1234
+                |      }
+                |    ],
+                |    "selector": {
+                |      "app": "my-app"
+                |    }
+                |  }
                 |}
               """.stripMargin.parse.right.get
             assert(service.payload == serviceJsonExpected)
@@ -310,6 +397,32 @@ object KubernetesPackageTest extends TestSuite {
             |{"key2":"value2"}
             |""".stripMargin
         assert(generatedText == expectedText)
+      }
+    }
+
+    "endpointName" - {
+      "normalize endpoint names with version" - {
+        Seq(
+          "akka_remote" -> "AKKA_REMOTE-V1",
+          "user-search" -> "USER-SEARCH-V1",
+          "h!e**(l+l??O" -> "H_E___L_L__O-V1").foreach {
+            case (input, expectedResult) =>
+              val endpoint = TcpEndpoint(0, input, 0, Some(1))
+              val result = endpointName(endpoint)
+              assert(result == expectedResult)
+          }
+      }
+
+      "normalize endpoint names without version" - {
+        Seq(
+          "akka_remote" -> "AKKA_REMOTE",
+          "user-search" -> "USER-SEARCH",
+          "h!e**(l+l??O" -> "H_E___L_L__O").foreach {
+            case (input, expectedResult) =>
+              val endpoint = TcpEndpoint(0, input, 0, Option.empty)
+              val result = endpointName(endpoint)
+              assert(result == expectedResult)
+          }
       }
     }
   }

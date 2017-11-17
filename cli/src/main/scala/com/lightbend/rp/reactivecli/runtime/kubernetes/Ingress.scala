@@ -33,7 +33,7 @@ object Ingress {
   }
 
   def encodeHttpEndpointIngressRule(pathAppend: Option[String]) = EncodeJson[HttpEndpoint] { endpoint =>
-    val name = endpointName(endpoint)
+    val name = endpointName(endpoint).toLowerCase
     implicit val httpAclJsonEncoder: EncodeJson[HttpAcl] = encodeHttpAcl(name, endpoint.port, pathAppend)
 
     Json(
@@ -68,8 +68,7 @@ object Ingress {
             "apiVersion" -> "extensions/v1beta1".asJson,
             "kind" -> "Ingress".asJson,
             "metadata" -> Json(
-              "name" -> appName.asJson
-              ).deepmerge(generateIngressAnnotations(ingressAnnotations)),
+              "name" -> appName.asJson).deepmerge(generateIngressAnnotations(ingressAnnotations)),
             "spec" -> Json(
               "rules" -> annotations.endpoints.asJson))))
       case _ =>
@@ -86,8 +85,7 @@ object Ingress {
             case (k, v) =>
               Json(k -> v.asJson)
           }
-          .reduce(_.deepmerge(_))
-      )
+          .reduce(_.deepmerge(_)))
 
 }
 

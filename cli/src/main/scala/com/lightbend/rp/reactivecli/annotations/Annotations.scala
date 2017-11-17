@@ -65,7 +65,7 @@ object Annotations {
       diskSpace = args.diskSpace.orElse(diskSpace(labels)),
       memory = args.memory.orElse(memory(labels)),
       nrOfCpus = args.nrOfCpus.orElse(nrOfCpus(labels)),
-      endpoints = endpoints(selectArray(labels, ns("endpoints")), appVersion),
+      endpoints = endpoints(selectArrayWithIndex(labels, ns("endpoints")), appVersion),
       volumes = volumes(selectArray(labels, ns("volumes"))),
       privileged = privileged(labels),
       healthCheck = check(selectSubset(labels, ns("health-check"))),
@@ -150,37 +150,40 @@ object Annotations {
     } yield value
   }
 
-  private[annotations] def endpoints(endpoints: Seq[Map[String, String]], version: Option[Version]): Map[String, Endpoint] =
-    endpoints.flatMap(endpoint(_, version)).toMap
+  private[annotations] def endpoints(endpoints: Seq[(Int, Map[String, String])], version: Option[Version]): Map[String, Endpoint] =
+    endpoints.flatMap(v => endpoint(v._2, v._1, version)).toMap
 
-  private[annotations] def endpoint(entry: Map[String, String], version: Option[Version]): Option[(String, Endpoint)] =
+  private[annotations] def endpoint(entry: Map[String, String], index: Int, version: Option[Version]): Option[(String, Endpoint)] =
     entry.get("protocol")
       .collect {
-        case "http" => endpointHttp(version, entry)
-        case "tcp" => endpointTcp(version, entry)
-        case "udp" => endpointUdp(version, entry)
+        case "http" => endpointHttp(version, entry, index)
+        case "tcp" => endpointTcp(version, entry, index)
+        case "udp" => endpointUdp(version, entry, index)
       }
       .flatten
       .map(v => v.name -> v)
 
-  private[annotations] def endpointHttp(version: Option[Version], entry: Map[String, String]): Option[HttpEndpoint] =
+  private[annotations] def endpointHttp(version: Option[Version], entry: Map[String, String], index: Int): Option[HttpEndpoint] =
     entry.get("name").map(
       HttpEndpoint(
+        index,
         _,
         entry.get("port").flatMap(decodeInt).getOrElse(0),
         entry.get("version").flatMap(decodeInt).orElse(version.map(_.major)),
         aclsHttp(selectArray(entry, "acls"))))
 
-  private[annotations] def endpointTcp(version: Option[Version], entry: Map[String, String]): Option[TcpEndpoint] =
+  private[annotations] def endpointTcp(version: Option[Version], entry: Map[String, String], index: Int): Option[TcpEndpoint] =
     entry.get("name").map(
       TcpEndpoint(
+        index,
         _,
         entry.get("port").flatMap(decodeInt).getOrElse(0),
         entry.get("version").flatMap(decodeInt).orElse(version.map(_.major))))
 
-  private[annotations] def endpointUdp(version: Option[Version], entry: Map[String, String]): Option[UdpEndpoint] =
+  private[annotations] def endpointUdp(version: Option[Version], entry: Map[String, String], index: Int): Option[UdpEndpoint] =
     entry.get("name").map(
       UdpEndpoint(
+        index,
         _,
         entry.get("port").flatMap(decodeInt).getOrElse(0),
         entry.get("version").flatMap(decodeInt).orElse(version.map(_.major))))
@@ -264,7 +267,10 @@ object Annotations {
   private[annotations] def decodeLong(s: String) =
     Try(s.toLong).toOption
 
-  private[annotations] def selectArray(keys: Map[String, String], namespace: String): Seq[Map[String, String]] = {
+  private[annotations] def selectArray(keys: Map[String, String], namespace: String): Seq[Map[String, String]] =
+    selectArrayWithIndex(keys, namespace).map(_._2)
+
+  private[annotations] def selectArrayWithIndex(keys: Map[String, String], namespace: String): Seq[(Int, Map[String, String])] = {
     val nsPattern = s"^${Regex.quote(namespace)}\\.([0-9]+)(\\.(.+))?$$".r
 
     keys
@@ -287,7 +293,7 @@ object Annotations {
       .groupBy(_._1)
       .toVector
       .sortBy(_._1)
-      .map(_._2.map(entry => (entry._2, entry._3)).toMap)
+      .map(v => v._1 -> v._2.map(entry => (entry._2, entry._3)).toMap)
   }
 
   private[annotations] def selectSubset(keys: Map[String, String], namespace: String): Map[String, String] = {

@@ -18,7 +18,7 @@ package com.lightbend.rp.reactivecli.argparse
 
 import java.nio.file.Paths
 
-import com.lightbend.rp.reactivecli.argparse.kubernetes.{DeploymentArgs, IngressArgs, KubernetesArgs, ServiceArgs}
+import com.lightbend.rp.reactivecli.argparse.kubernetes.{ DeploymentArgs, IngressArgs, KubernetesArgs, ServiceArgs }
 import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment
 import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment.KubernetesVersion
 import slogging.LogLevel
@@ -85,8 +85,7 @@ object InputArgsTest extends TestSuite {
                       serviceArgs = ServiceArgs(clusterIp = Some("10.0.0.1")),
                       ingressArgs = IngressArgs(
                         ingressAnnotations = Map("ing" -> "123"),
-                        pathAppend = Some(".*")
-                      ))),
+                        pathAppend = Some(".*")))),
                     environmentVariables = Map("test1" -> "test2"),
                     nrOfCpus = Some(0.5),
                     memory = Some(1024),

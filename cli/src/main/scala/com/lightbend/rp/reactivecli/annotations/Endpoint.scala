@@ -19,6 +19,7 @@ package com.lightbend.rp.reactivecli.annotations
 import scala.collection.immutable.Seq
 
 sealed trait Endpoint {
+  def index: Int
   def name: String
   def port: Int
   def version: Option[Int]
@@ -28,6 +29,6 @@ object HttpEndpoint {
   case class HttpAcl(expression: String)
 }
 
-case class HttpEndpoint(name: String, port: Int, version: Option[Int], acls: Seq[HttpEndpoint.HttpAcl]) extends Endpoint
-case class TcpEndpoint(name: String, port: Int, version: Option[Int]) extends Endpoint
-case class UdpEndpoint(name: String, port: Int, version: Option[Int]) extends Endpoint
+case class HttpEndpoint(index: Int, name: String, port: Int, version: Option[Int], acls: Seq[HttpEndpoint.HttpAcl]) extends Endpoint
+case class TcpEndpoint(index: Int, name: String, port: Int, version: Option[Int]) extends Endpoint
+case class UdpEndpoint(index: Int, name: String, port: Int, version: Option[Int]) extends Endpoint

@@ -19,11 +19,106 @@ package com.lightbend.rp.reactivecli.runtime.kubernetes
 import argonaut._
 import Argonaut._
 import com.lightbend.rp.reactivecli.annotations.kubernetes.{ ConfigMapEnvironmentVariable, FieldRefEnvironmentVariable }
-import com.lightbend.rp.reactivecli.annotations.{ Annotations, Check, CommandCheck, Endpoint, EnvironmentVariable, HttpCheck, HttpEndpoint, LiteralEnvironmentVariable, TcpCheck, TcpEndpoint, UdpEndpoint }
+import com.lightbend.rp.reactivecli.annotations.{ Annotations, Check, CommandCheck, Endpoint, EnvironmentVariable, HttpCheck, LiteralEnvironmentVariable, TcpCheck, Version }
 
 import scala.util.{ Failure, Success, Try }
 
 object Deployment {
+
+  object RpEnvironmentVariables {
+    /**
+     * Creates pod related environment variables using the Kubernetes Downward API:
+     *
+     * https://kubernetes.io/docs/tasks/inject-data-application/environment-variable-expose-pod-information/#use-pod-fields-as-values-for-environment-variables
+     */
+    private val PodEnvs = Map(
+      "RP_PLATFORM" -> LiteralEnvironmentVariable("kubernetes"),
+      "RP_KUBERNETES_POD_NAME" -> FieldRefEnvironmentVariable("metadata.name"),
+      "RP_KUBERNETES_POD_IP" -> FieldRefEnvironmentVariable("status.podIP"))
+
+    /**
+     * Generates pod environment variables specific for RP applications.
+     */
+    def envs(annotations: Annotations): Map[String, EnvironmentVariable] =
+      PodEnvs ++
+        annotations.version.fold(Map.empty[String, LiteralEnvironmentVariable])(versionEnvs) ++
+        endpointEnvs(annotations.endpoints)
+
+    private[kubernetes] def versionEnvs(version: Version): Map[String, LiteralEnvironmentVariable] = {
+      Map(
+        "RP_VERSION" -> LiteralEnvironmentVariable(version.version),
+        "RP_VERSION_MAJOR" -> LiteralEnvironmentVariable(version.major.toString),
+        "RP_VERSION_MINOR" -> LiteralEnvironmentVariable(version.minor.toString),
+        "RP_VERSION_PATCH" -> LiteralEnvironmentVariable(version.patch.toString)) ++
+        version.patchLabel.fold(Map.empty[String, LiteralEnvironmentVariable]) { v =>
+          Map("RP_VERSION_PATCH_LABEL" -> LiteralEnvironmentVariable(v))
+        }
+    }
+
+    private[kubernetes] def endpointEnvs(endpoints: Map[String, Endpoint]): Map[String, LiteralEnvironmentVariable] =
+      if (endpoints.isEmpty)
+        Map(
+          "RP_ENDPOINTS_COUNT" -> LiteralEnvironmentVariable("0"))
+      else
+        Map(
+          "RP_ENDPOINTS_COUNT" -> LiteralEnvironmentVariable(endpoints.size.toString),
+          "RP_ENDPOINTS" -> LiteralEnvironmentVariable(
+            endpoints.values.toList
+              .sortBy(_.index)
+              .map(v => endpointName(v))
+              .mkString(","))) ++
+          endpointPortEnvs(endpoints)
+
+    private[kubernetes] def endpointPortEnvs(endpoints: Map[String, Endpoint]): Map[String, LiteralEnvironmentVariable] =
+      EndpointAutoPort.assignPorts(endpoints)
+        .flatMap { assigned =>
+          val assignedPortEnv = LiteralEnvironmentVariable(assigned.port.toString)
+          Seq(
+            s"RP_ENDPOINT_${endpointName(assigned.endpoint)}_PORT" -> assignedPortEnv,
+            s"RP_ENDPOINT_${assigned.endpoint.index}_PORT" -> assignedPortEnv)
+        }
+        .toMap
+  }
+
+  object EndpointAutoPort {
+    /**
+     * If an endpoint port is undeclared, i.e. `0` it will be assigned a port number starting from this number.
+     */
+    private val AutoPortNumberStart = 10000
+
+    /**
+     * If an endpoint is undeclared, its port number will be of this value.
+     */
+    private val UndeclaredPortNumber = 0
+
+    /**
+     * Represents [[Endpoint]] with its assigned [[port]] number.
+     */
+    case class Assigned(endpoint: Endpoint, port: Int)
+
+    /**
+     * Allocate port number to each endpoint based on:
+     * - the endpoint's own declared port number, or,
+     * - if the endpoint point is undeclared, it will be obtained based on the incremented value of
+     * [[AutoPortNumberStart]].
+     */
+    def assignPorts(endpoints: Map[String, Endpoint]): Seq[Assigned] =
+      endpoints.values.toList
+        .foldLeft((AutoPortNumberStart, Seq.empty[Assigned])) { (acc, endpoint) =>
+          val (autoPortNumberLast, endpointsAndAssignedPort) = acc
+
+          val (autoPortNumberNext, assignedPort) =
+            if (endpoint.port == UndeclaredPortNumber) {
+              autoPortNumberLast + 1 -> autoPortNumberLast
+            } else {
+              autoPortNumberLast -> endpoint.port
+            }
+
+          autoPortNumberNext -> (endpointsAndAssignedPort :+ Assigned(endpoint, assignedPort))
+        }
+        ._2
+
+  }
 
   /**
    * Represents Kubernetes major and minor version which is required for generating [[Deployment]] resource.
@@ -118,35 +213,28 @@ object Deployment {
 
   implicit def environmentVariablesEncode = EncodeJson[Map[String, EnvironmentVariable]] { envs =>
     envs
+      .toList
+      .sortBy(_._1)
       .map {
         case (envName, env) =>
           Json("name" -> envName.asJson).deepmerge(env.asJson)
       }
-      .toList
       .asJson
   }
 
-  implicit def httpEndpointEncode = EncodeJson[HttpEndpoint](endpointToJson)
-  implicit def tcpEndpointEncode = EncodeJson[TcpEndpoint](endpointToJson)
-  implicit def udpEndpointEncode = EncodeJson[UdpEndpoint](endpointToJson)
-
-  implicit def endpointEncode = EncodeJson[Endpoint] {
-    case v: HttpEndpoint => v.asJson
-    case v: TcpEndpoint => v.asJson
-    case v: UdpEndpoint => v.asJson
+  implicit def assignedEncode = EncodeJson[EndpointAutoPort.Assigned] { assigned =>
+    Json(
+      "containerPort" -> assigned.port.asJson,
+      "name" -> endpointName(assigned.endpoint).toLowerCase.asJson)
   }
 
   implicit def endpointsEncode = EncodeJson[Map[String, Endpoint]] { endpoints =>
-    endpoints
-      .map(_._2.asJson)
+    EndpointAutoPort.assignPorts(endpoints)
       .toList
+      .sortBy(_.endpoint.index)
+      .map(_.asJson)
       .asJson
   }
-
-  private def endpointToJson(endpoint: Endpoint): Json =
-    Json(
-      "containerPort" -> endpoint.port.asJson,
-      "name" -> endpointName(endpoint).asJson)
 
   /**
    * Builds [[Deployment]] resource.
@@ -185,7 +273,7 @@ object Deployment {
                       "name" -> appName.asJson,
                       "image" -> imageName.asJson,
                       "imagePullPolicy" -> imagePullPolicy.asJson,
-                      "env" -> annotations.environmentVariables.asJson,
+                      "env" -> (annotations.environmentVariables ++ RpEnvironmentVariables.envs(annotations)).asJson,
                       "ports" -> annotations.endpoints.asJson)
                       .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
                       .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson)))))
