@@ -17,8 +17,8 @@
 package com.lightbend.rp.reactivecli
 
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
-import com.lightbend.rp.reactivecli.argparse.{ GenerateDeploymentArgs, InputArgs }
-import com.lightbend.rp.reactivecli.docker.{ Config, DockerRegistry }
+import com.lightbend.rp.reactivecli.argparse.{GenerateDeploymentArgs, InputArgs, VersionArgs}
+import com.lightbend.rp.reactivecli.docker.{Config, DockerRegistry}
 import com.lightbend.rp.reactivecli.runtime.kubernetes
 import libhttpsimple.LibHttpSimple
 import libhttpsimple.LibHttpSimple.HttpExchange
@@ -32,14 +32,13 @@ import scala.util.Try
  */
 object Main extends LazyLogging {
   val CliName = "reactive-cli"
-  val ParserVersion = "0.1.0" // TODO: ParserVersion should come from build
 
   val http: HttpExchange = LibHttpSimple.http
 
   def getDockerConfig(imageName: String): Try[Config] =
     DockerRegistry.getConfig(http)(imageName, token = None).map(_._1)
 
-  val parser = InputArgs.parser(CliName, ParserVersion)
+  val parser = InputArgs.parser(CliName, ProgramVersion.current)
 
   @tailrec
   private def run(args: Array[String]): Unit = {
@@ -47,6 +46,9 @@ object Main extends LazyLogging {
       parser.parse(args, InputArgs.default).foreach { inputArgs =>
         inputArgs.commandArgs
           .collect {
+            case VersionArgs =>
+              System.out.println(s"rp (Reactive CLI) ${ProgramVersion.current}")
+
             case generateDeploymentArgs @ GenerateDeploymentArgs(_, _, _, _, _, Some(kubernetesArgs: KubernetesArgs)) =>
               val output = kubernetes.handleGeneratedResources(kubernetesArgs.output)
               kubernetes.generateResources(getDockerConfig, output)(generateDeploymentArgs, kubernetesArgs)

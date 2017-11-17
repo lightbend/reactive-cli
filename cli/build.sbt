@@ -16,3 +16,19 @@ nativeLinkingOptions := {
     "-L", (baseDirectory.value / ".." / "libhttpsimple" / "target").toPath.toAbsolutePath.toString
   ) ++ sys.props.get("nativeLinkingOptions").fold(Seq.empty[String])(_.split(" ").toVector)
 }
+
+sourceGenerators in Compile += Def.task {
+  val versionFile = (sourceManaged in Compile).value / "ProgramVersion.scala"
+
+  val versionSource =
+    """|package com.lightbend.rp.reactivecli
+       |
+       |object ProgramVersion {
+       |  val current = "%s"
+       |}
+    """.stripMargin.format(version.value)
+
+  IO.write(versionFile, versionSource)
+
+  Seq(versionFile)
+}

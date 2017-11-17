@@ -21,6 +21,8 @@ package com.lightbend.rp.reactivecli.argparse
  */
 sealed trait CommandArgs
 
+object VersionArgs extends CommandArgs
+
 object GenerateDeploymentArgs {
   /**
    * Convenience method to set the [[GenerateDeploymentArgs]] values when parsing the complete user input.
