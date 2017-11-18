@@ -232,16 +232,20 @@ object Annotations {
             case "literal" =>
               entry.get("value").map(LiteralEnvironmentVariable.apply)
 
-            case "configMap" =>
+            case "kubernetes.configMap" =>
               for {
                 mapName <- entry.get("map-name")
                 key <- entry.get("key")
               } yield kubernetes.ConfigMapEnvironmentVariable(mapName, key)
 
-            case "fieldRef" =>
+            case "kubernetes.fieldRef" =>
               entry.get("field-path").map(kubernetes.FieldRefEnvironmentVariable.apply)
 
             case _ =>
+              // We don't expose kubernetes.SecretKeyRefEnvironmentVariable
+              // as we encourage using reactive-lib instead, it is only used
+              // internally
+
               None
           }
         } yield name -> value)
