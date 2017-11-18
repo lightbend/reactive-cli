@@ -16,7 +16,9 @@
 
 package libhttpsimple
 
+import java.nio.charset.StandardCharsets
 import java.nio.file.Path
+import java.util.Base64
 
 import scala.scalanative.native
 import scala.scalanative.native._
@@ -105,14 +107,22 @@ object LibHttpSimple {
       val isFollowRedirect = followRedirects.getOrElse(settings.followRedirect)
       val isTlsValidationEnabled = tlsValidationEnabled.getOrElse(settings.tlsValidationEnabled)
 
+      val allHeaders = auth.foldLeft(headers) {
+        case (hs, HttpRequest.BasicAuth(username, password)) =>
+          hs.updated(
+            "Authorization",
+            s"Basic ${Base64Encoder(s"${username}:${password}")}")
+
+        case (hs, HttpRequest.BearerToken(bearer)) =>
+          hs.updated("Authorization", s"Bearer $bearer")
+      }
+
       val http_response_struct = nativebinding.httpsimple.do_http(
         validate_tls = if (isTlsValidationEnabled) 1 else 0,
         native.toCString(settings.tlsCacertsPath.fold("")(_.toString)),
         native.toCString(method),
         native.toCString(url),
         native.toCString(httpHeadersToDelimitedString(headers)),
-        native.toCString(auth.fold("")(authType)),
-        native.toCString(auth.fold("")(authValue)),
         native.toCString(requestBody.getOrElse("")))
 
       val errorCode = nativebinding.httpsimple.get_error_code(http_response_struct).cast[Long]
@@ -172,18 +182,6 @@ object LibHttpSimple {
         Map.empty[String, String] -> Option.empty[String]
     }
   }
-
-  private def authType(auth: HttpRequest.Auth): String =
-    auth match {
-      case _: HttpRequest.BasicAuth => "basic"
-      case _: HttpRequest.BearerToken => "bearer"
-    }
-
-  private def authValue(auth: HttpRequest.Auth): String =
-    auth match {
-      case HttpRequest.BasicAuth(username, password) => s"$username:$password"
-      case HttpRequest.BearerToken(token) => token
-    }
 
   private def errorMessageFromCode(errorCode: Long): String =
     if (errorCode == 1)
