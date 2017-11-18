@@ -41,11 +41,11 @@ object Deployment {
      */
     def envs(annotations: Annotations): Map[String, EnvironmentVariable] =
       PodEnvs ++
-        annotations.version.fold(Map.empty[String, LiteralEnvironmentVariable])(versionEnvs) ++
+        annotations.version.fold(Map.empty[String, EnvironmentVariable])(versionEnvs) ++
         endpointEnvs(annotations.endpoints) ++
         secretEnvs(annotations.secrets)
 
-    private[kubernetes] def versionEnvs(version: Version): Map[String, LiteralEnvironmentVariable] = {
+    private[kubernetes] def versionEnvs(version: Version): Map[String, EnvironmentVariable] = {
       Map(
         "RP_VERSION" -> LiteralEnvironmentVariable(version.version),
         "RP_VERSION_MAJOR" -> LiteralEnvironmentVariable(version.major.toString),
@@ -71,11 +71,10 @@ object Deployment {
           endpointPortEnvs(endpoints)
 
     private[kubernetes] def endpointPortEnvs(endpoints: Map[String, Endpoint]): Map[String, EnvironmentVariable] =
-      EndpointAutoPort.assignPorts(endpoints)
+      AssignedPort.assignPorts(endpoints)
         .flatMap { assigned =>
           val assignedPortEnv = LiteralEnvironmentVariable(assigned.port.toString)
           val hostEnv = FieldRefEnvironmentVariable("status.podIP")
-
           Seq(
             s"RP_ENDPOINT_${endpointEnvName(assigned.endpoint)}_HOST" -> hostEnv,
             s"RP_ENDPOINT_${endpointEnvName(assigned.endpoint)}_BIND_HOST" -> hostEnv,
@@ -102,46 +101,6 @@ object Deployment {
       s"RP_SECRETS_${namespace}_$name"
         .toUpperCase
         .map(c => if (c.isLetterOrDigit) c else '_')
-  }
-
-  object EndpointAutoPort {
-    /**
-     * If an endpoint port is undeclared, i.e. `0` it will be assigned a port number starting from this number.
-     */
-    private val AutoPortNumberStart = 10000
-
-    /**
-     * If an endpoint is undeclared, its port number will be of this value.
-     */
-    private val UndeclaredPortNumber = 0
-
-    /**
-     * Represents [[Endpoint]] with its assigned [[port]] number.
-     */
-    case class Assigned(endpoint: Endpoint, port: Int)
-
-    /**
-     * Allocate port number to each endpoint based on:
-     * - the endpoint's own declared port number, or,
-     * - if the endpoint point is undeclared, it will be obtained based on the incremented value of
-     * [[AutoPortNumberStart]].
-     */
-    def assignPorts(endpoints: Map[String, Endpoint]): Seq[Assigned] =
-      endpoints.values.toList
-        .foldLeft((AutoPortNumberStart, Seq.empty[Assigned])) { (acc, endpoint) =>
-          val (autoPortNumberLast, endpointsAndAssignedPort) = acc
-
-          val (autoPortNumberNext, assignedPort) =
-            if (endpoint.port == UndeclaredPortNumber) {
-              autoPortNumberLast + 1 -> autoPortNumberLast
-            } else {
-              autoPortNumberLast -> endpoint.port
-            }
-
-          autoPortNumberNext -> (endpointsAndAssignedPort :+ Assigned(endpoint, assignedPort))
-        }
-        ._2
-
   }
 
   /**
@@ -255,14 +214,14 @@ object Deployment {
       .asJson
   }
 
-  implicit def assignedEncode = EncodeJson[EndpointAutoPort.Assigned] { assigned =>
+  implicit def assignedEncode = EncodeJson[AssignedPort] { assigned =>
     Json(
       "containerPort" -> assigned.port.asJson,
       "name" -> endpointEnvName(assigned.endpoint).toLowerCase.asJson)
   }
 
   implicit def endpointsEncode = EncodeJson[Map[String, Endpoint]] { endpoints =>
-    EndpointAutoPort.assignPorts(endpoints)
+    AssignedPort.assignPorts(endpoints)
       .toList
       .sortBy(_.endpoint.index)
       .map(_.asJson)
@@ -279,6 +238,8 @@ object Deployment {
         val appVersionMajor = s"$appName$VersionSeparator${version.major}"
         val appVersionMajorMinor = s"$appName$VersionSeparator${version.versionMajorMinor}"
         val appVersion = s"$appName$VersionSeparator${version.version}"
+          .replaceAllLiterally(".", "-")
+          .toLowerCase
         Success(
           Deployment(
             appVersion,
@@ -294,22 +255,26 @@ object Deployment {
                   "appVersion" -> appVersion.asJson)),
               "spec" -> Json(
                 "replicas" -> noOfReplicas.asJson,
-                "serviceName" -> appVersionMajor.asJson,
+                "selector" -> Json(
+                  "matchLabels" -> Json(
+                    "appVersionMajorMinor" -> appVersionMajorMinor.asJson)),
                 "template" -> Json(
-                  "app" -> appName.asJson,
-                  "appVersionMajor" -> appVersionMajor.asJson,
-                  "appVersionMajorMinor" -> appVersionMajorMinor.asJson,
-                  "appVersion" -> appVersion.asJson),
-                "spec" -> Json(
-                  "containers" -> List(
-                    Json(
-                      "name" -> appName.asJson,
-                      "image" -> imageName.asJson,
-                      "imagePullPolicy" -> imagePullPolicy.asJson,
-                      "env" -> (annotations.environmentVariables ++ RpEnvironmentVariables.envs(annotations)).asJson,
-                      "ports" -> annotations.endpoints.asJson)
-                      .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
-                      .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson)))))
+                  "metadata" -> Json(
+                    "labels" -> Json(
+                      "app" -> appName.asJson,
+                      "appVersionMajor" -> appVersionMajor.asJson,
+                      "appVersionMajorMinor" -> appVersionMajorMinor.asJson,
+                      "appVersion" -> appVersion.asJson)),
+                  "spec" -> Json(
+                    "containers" -> List(
+                      Json(
+                        "name" -> appName.asJson,
+                        "image" -> imageName.asJson,
+                        "imagePullPolicy" -> imagePullPolicy.asJson,
+                        "env" -> (annotations.environmentVariables ++ RpEnvironmentVariables.envs(annotations)).asJson,
+                        "ports" -> annotations.endpoints.asJson)
+                        .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
+                        .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson))))))
       case _ =>
         Failure(new IllegalArgumentException("Unable to generate Kubernetes Deployment: both application name and version are required"))
     }

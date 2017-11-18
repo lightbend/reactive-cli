@@ -24,6 +24,8 @@ import scala.util.{ Failure, Success, Try }
 
 object Ingress {
   def encodeEndpoints(endpoints: Map[String, Endpoint], pathAppend: Option[String]): List[Json] = {
+    val ports = AssignedPort.assignPorts(endpoints)
+
     val httpEndpoints =
       endpoints
         .collect {
@@ -33,7 +35,8 @@ object Ingress {
 
     for {
       endpoint <- httpEndpoints
-      backend = Json("serviceName" -> endpointServiceName(endpoint).asJson, "servicePort" -> endpoint.port.asJson)
+      port <- ports.find(_.endpoint == endpoint).toVector
+      backend = Json("serviceName" -> endpointServiceName(endpoint).asJson, "servicePort" -> port.port.asJson)
       ingress <- endpoint.ingress
       host <- if (ingress.hosts.isEmpty) Seq("") else ingress.hosts
       paths = if (ingress.paths.isEmpty) Seq("") else ingress.paths

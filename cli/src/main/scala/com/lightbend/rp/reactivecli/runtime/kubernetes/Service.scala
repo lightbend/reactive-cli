@@ -23,7 +23,7 @@ import com.lightbend.rp.reactivecli.annotations._
 import scala.util.{ Failure, Success, Try }
 
 object Service {
-  implicit def encodeEndpoint = EncodeJson[Endpoint] { endpoint =>
+  def encodeEndpoint(endpoint: Endpoint, port: AssignedPort): Json = {
     val protocol = endpoint match {
       case v: HttpEndpoint => "TCP"
       case v: TcpEndpoint => "TCP"
@@ -32,13 +32,20 @@ object Service {
 
     Json(
       "name" -> endpointEnvName(endpoint).toLowerCase.asJson,
-      "port" -> endpoint.port.asJson,
+      "port" -> port.port.asJson,
       "protocol" -> protocol.asJson,
-      "targetPort" -> endpoint.port.asJson)
+      "targetPort" -> port.port.asJson)
   }
 
   implicit def encodeEndpoints = EncodeJson[Map[String, Endpoint]] { endpoints =>
-    endpoints.map(_._2.asJson).toList.asJson
+    val ports = AssignedPort.assignPorts(endpoints)
+    val encoded =
+      for {
+        (name, endpoint) <- endpoints
+        port <- ports.find(_.endpoint == endpoint)
+      } yield encodeEndpoint(endpoint, port)
+
+    encoded.toList.asJson
   }
 
   /**
