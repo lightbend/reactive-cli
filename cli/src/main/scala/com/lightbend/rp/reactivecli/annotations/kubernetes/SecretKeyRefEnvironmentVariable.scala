@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-package com.lightbend.rp.reactivecli.annotations
+package com.lightbend.rp.reactivecli.annotations.kubernetes
 
-sealed trait Volume
+import com.lightbend.rp.reactivecli.annotations.EnvironmentVariable
 
-case class HostPathVolume(path: String) extends Volume
+case class SecretKeyRefEnvironmentVariable(name: String, key: String) extends EnvironmentVariable

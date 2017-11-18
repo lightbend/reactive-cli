@@ -38,8 +38,8 @@ object DeploymentJsonTest extends TestSuite {
     nrOfCpus = Some(0.5D),
     endpoints = endpoints,
     volumes = Map(
-      "/my/guest/path/1" -> HostPathVolume("/my/host/path"),
-      "/my/guest/path/2" -> SecretVolume("mysecret")),
+      "/my/guest/path/1" -> HostPathVolume("/my/host/path")),
+    secrets = Seq(Secret("acme.co", "my-secret")),
     privileged = true,
     healthCheck = None,
     readinessCheck = None,
@@ -270,6 +270,15 @@ object DeploymentJsonTest extends TestSuite {
               |              "value": "kubernetes"
               |            },
               |            {
+              |              "name": "RP_SECRETS_ACME_CO_MY_SECRET",
+              |              "valueFrom": {
+              |                "secretKeyRef": {
+              |                  "name": "acme.co",
+              |                  "key": "my-secret"
+              |                }
+              |              }
+              |            },
+              |            {
               |              "name": "RP_VERSION",
               |              "value": "3.2.1-SNAPSHOT"
               |            },
@@ -303,6 +312,8 @@ object DeploymentJsonTest extends TestSuite {
 
           val result = Deployment.generate(annotations, KubernetesVersion(1, 8), imageName,
             Deployment.ImagePullPolicy.Never, noOfReplicas = 1).get
+
+          println(result.payload.spaces2)
 
           assert(result == Deployment("friendimpl-v3.2.1-SNAPSHOT", expectedJson))
         }
@@ -523,6 +534,15 @@ object DeploymentJsonTest extends TestSuite {
               |            {
               |              "name": "RP_PLATFORM",
               |              "value": "kubernetes"
+              |            },
+              |            {
+              |              "name": "RP_SECRETS_ACME_CO_MY_SECRET",
+              |              "valueFrom": {
+              |                "secretKeyRef": {
+              |                  "name": "acme.co",
+              |                  "key": "my-secret"
+              |                }
+              |              }
               |            },
               |            {
               |              "name": "RP_VERSION",
@@ -777,6 +797,15 @@ object DeploymentJsonTest extends TestSuite {
               |            {
               |              "name": "RP_PLATFORM",
               |              "value": "kubernetes"
+              |            },
+              |            {
+              |              "name": "RP_SECRETS_ACME_CO_MY_SECRET",
+              |              "valueFrom": {
+              |                "secretKeyRef": {
+              |                  "name": "acme.co",
+              |                  "key": "my-secret"
+              |                }
+              |              }
               |            },
               |            {
               |              "name": "RP_VERSION",

@@ -33,9 +33,9 @@ object ServiceJsonTest extends TestSuite {
     nrOfCpus = Some(0.5D),
     endpoints = Map(
       "ep1" -> TcpEndpoint(0, "ep1", 1234, version = Some(1))),
+    secrets = Seq.empty,
     volumes = Map(
-      "/my/guest/path/1" -> HostPathVolume("/my/host/path"),
-      "/my/guest/path/2" -> SecretVolume("mysecret")),
+      "/my/guest/path/1" -> HostPathVolume("/my/host/path")),
     privileged = true,
     healthCheck = None,
     readinessCheck = None,

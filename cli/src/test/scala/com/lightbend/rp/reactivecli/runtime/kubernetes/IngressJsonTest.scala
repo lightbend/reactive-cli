@@ -39,9 +39,9 @@ object IngressJsonTest extends TestSuite {
           HttpIngress(Seq(80, 443), Seq.empty, Seq("/api/friend")),
           HttpIngress(Seq(80, 443), Seq("hello.com"), Seq.empty),
           HttpIngress(Seq(80, 443), Seq("hello.com", "world.io"), Seq("/api/friend", "/api/enemy"))))),
+    secrets = Seq.empty,
     volumes = Map(
-      "/my/guest/path/1" -> HostPathVolume("/my/host/path"),
-      "/my/guest/path/2" -> SecretVolume("mysecret")),
+      "/my/guest/path/1" -> HostPathVolume("/my/host/path")),
     privileged = true,
     healthCheck = None,
     readinessCheck = None,

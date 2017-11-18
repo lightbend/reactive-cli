@@ -28,6 +28,7 @@ case class Annotations(
   memory: Option[Long],
   nrOfCpus: Option[Double],
   endpoints: Map[String, Endpoint],
+  secrets: Seq[Secret],
   volumes: Map[String, Volume],
   privileged: Boolean,
   healthCheck: Option[Check],
@@ -65,6 +66,7 @@ object Annotations {
       memory = args.memory.orElse(memory(labels)),
       nrOfCpus = args.nrOfCpus.orElse(nrOfCpus(labels)),
       endpoints = endpoints(selectArrayWithIndex(labels, ns("endpoints")), appVersion),
+      secrets = secrets(selectArray(labels, ns("secrets"))),
       volumes = volumes(selectArray(labels, ns("volumes"))),
       privileged = privileged(labels),
       healthCheck = check(selectSubset(labels, ns("health-check"))),
@@ -148,6 +150,13 @@ object Annotations {
       }
     } yield value
   }
+
+  private[annotations] def secrets(secrets: Seq[Map[String, String]]): Seq[Secret] =
+    for {
+      entry <- secrets
+      ns <- entry.get("namespace")
+      name <- entry.get("name")
+    } yield Secret(ns, name)
 
   private[annotations] def endpoints(endpoints: Seq[(Int, Map[String, String])], version: Option[Version]): Map[String, Endpoint] =
     endpoints.flatMap(v => endpoint(v._2, v._1, version)).toMap
@@ -247,9 +256,6 @@ object Annotations {
           value <- typ match {
             case "host-path" =>
               entry.get("path").map(HostPathVolume.apply)
-
-            case "secret" =>
-              entry.get("secret").map(SecretVolume.apply)
 
             case _ =>
               None

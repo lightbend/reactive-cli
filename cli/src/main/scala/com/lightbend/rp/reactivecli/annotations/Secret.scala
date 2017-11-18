@@ -16,6 +16,4 @@
 
 package com.lightbend.rp.reactivecli.annotations
 
-sealed trait Volume
-
-case class HostPathVolume(path: String) extends Volume
+case class Secret(namespace: String, name: String)
