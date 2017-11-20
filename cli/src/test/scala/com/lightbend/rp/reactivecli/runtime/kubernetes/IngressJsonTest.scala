@@ -30,10 +30,18 @@ object IngressJsonTest extends TestSuite {
     memory = Some(8192L),
     nrOfCpus = Some(0.5D),
     endpoints = Map(
-      "ep1" -> HttpEndpoint(0, "ep1", 1234, version = Some(1), acls = Seq(HttpEndpoint.HttpAcl("/api/friend")))),
+      "ep1" -> HttpEndpoint(
+        index = 0,
+        name = "ep1",
+        port = 1234,
+        version = Some(1),
+        ingress = Seq(
+          HttpIngress(Seq(80, 443), Seq.empty, Seq("/api/friend")),
+          HttpIngress(Seq(80, 443), Seq("hello.com"), Seq.empty),
+          HttpIngress(Seq(80, 443), Seq("hello.com", "world.io"), Seq("/api/friend", "/api/enemy"))))),
+    secrets = Seq.empty,
     volumes = Map(
-      "/my/guest/path/1" -> HostPathVolume("/my/host/path"),
-      "/my/guest/path/2" -> SecretVolume("mysecret")),
+      "/my/guest/path/1" -> HostPathVolume("/my/host/path")),
     privileged = true,
     healthCheck = None,
     readinessCheck = None,
@@ -51,21 +59,76 @@ object IngressJsonTest extends TestSuite {
         val expectedJson =
           """
             |{
-            |  "apiVersion": "extensions/v1beta1",
-            |  "kind": "Ingress",
-            |  "metadata": {
-            |    "name": "friendimpl"
+            |  "apiVersion" : "extensions/v1beta1",
+            |  "kind" : "Ingress",
+            |  "metadata" : {
+            |    "name" : "friendimpl"
             |  },
-            |  "spec": {
-            |    "rules": [
+            |  "spec" : {
+            |    "rules" : [
             |      {
-            |        "http": {
-            |          "paths": [
+            |        "http" : {
+            |          "paths" : [
             |            {
-            |              "path": "/api/friend",
-            |              "backend": {
-            |                "serviceName": "ep1-v1",
-            |                "servicePort": 1234
+            |              "path" : "/api/friend",
+            |              "backend" : {
+            |                "serviceName" : "ep1-v1",
+            |                "servicePort" : 1234
+            |              }
+            |            }
+            |          ]
+            |        }
+            |      },
+            |      {
+            |        "host" : "hello.com",
+            |        "http" : {
+            |          "paths" : [
+            |            {
+            |              "backend" : {
+            |                "serviceName" : "ep1-v1",
+            |                "servicePort" : 1234
+            |              }
+            |            }
+            |          ]
+            |        }
+            |      },
+            |      {
+            |        "host" : "hello.com",
+            |        "http" : {
+            |          "paths" : [
+            |            {
+            |              "path" : "/api/friend",
+            |              "backend" : {
+            |                "serviceName" : "ep1-v1",
+            |                "servicePort" : 1234
+            |              }
+            |            },
+            |            {
+            |              "path" : "/api/enemy",
+            |              "backend" : {
+            |                "serviceName" : "ep1-v1",
+            |                "servicePort" : 1234
+            |              }
+            |            }
+            |          ]
+            |        }
+            |      },
+            |      {
+            |        "host" : "world.io",
+            |        "http" : {
+            |          "paths" : [
+            |            {
+            |              "path" : "/api/friend",
+            |              "backend" : {
+            |                "serviceName" : "ep1-v1",
+            |                "servicePort" : 1234
+            |              }
+            |            },
+            |            {
+            |              "path" : "/api/enemy",
+            |              "backend" : {
+            |                "serviceName" : "ep1-v1",
+            |                "servicePort" : 1234
             |              }
             |            }
             |          ]
@@ -75,6 +138,7 @@ object IngressJsonTest extends TestSuite {
             |  }
             |}
           """.stripMargin.parse.right.get
+
         assert(generatedJson == Ingress("friendimpl", expectedJson))
       }
 
@@ -87,24 +151,79 @@ object IngressJsonTest extends TestSuite {
         val expectedJson =
           """
             |{
-            |  "apiVersion": "extensions/v1beta1",
-            |  "kind": "Ingress",
-            |  "metadata": {
-            |    "name": "friendimpl",
-            |    "annotations": {
-            |      "kubernetes.io/ingress.class": "istio"
+            |  "apiVersion" : "extensions/v1beta1",
+            |  "kind" : "Ingress",
+            |  "metadata" : {
+            |    "name" : "friendimpl",
+            |    "annotations" : {
+            |      "kubernetes.io/ingress.class" : "istio"
             |    }
             |  },
-            |  "spec": {
-            |    "rules": [
+            |  "spec" : {
+            |    "rules" : [
             |      {
-            |        "http": {
-            |          "paths": [
+            |        "http" : {
+            |          "paths" : [
             |            {
-            |              "path": "/api/friend.*",
-            |              "backend": {
-            |                "serviceName": "ep1-v1",
-            |                "servicePort": 1234
+            |              "path" : "/api/friend.*",
+            |              "backend" : {
+            |                "serviceName" : "ep1-v1",
+            |                "servicePort" : 1234
+            |              }
+            |            }
+            |          ]
+            |        }
+            |      },
+            |      {
+            |        "host" : "hello.com",
+            |        "http" : {
+            |          "paths" : [
+            |            {
+            |              "backend" : {
+            |                "serviceName" : "ep1-v1",
+            |                "servicePort" : 1234
+            |              }
+            |            }
+            |          ]
+            |        }
+            |      },
+            |      {
+            |        "host" : "hello.com",
+            |        "http" : {
+            |          "paths" : [
+            |            {
+            |              "path" : "/api/friend.*",
+            |              "backend" : {
+            |                "serviceName" : "ep1-v1",
+            |                "servicePort" : 1234
+            |              }
+            |            },
+            |            {
+            |              "path" : "/api/enemy.*",
+            |              "backend" : {
+            |                "serviceName" : "ep1-v1",
+            |                "servicePort" : 1234
+            |              }
+            |            }
+            |          ]
+            |        }
+            |      },
+            |      {
+            |        "host" : "world.io",
+            |        "http" : {
+            |          "paths" : [
+            |            {
+            |              "path" : "/api/friend.*",
+            |              "backend" : {
+            |                "serviceName" : "ep1-v1",
+            |                "servicePort" : 1234
+            |              }
+            |            },
+            |            {
+            |              "path" : "/api/enemy.*",
+            |              "backend" : {
+            |                "serviceName" : "ep1-v1",
+            |                "servicePort" : 1234
             |              }
             |            }
             |          ]
@@ -114,6 +233,7 @@ object IngressJsonTest extends TestSuite {
             |  }
             |}
           """.stripMargin.parse.right.get
+
         assert(generatedJson == Ingress("friendimpl", expectedJson))
       }
 

@@ -18,8 +18,8 @@ package com.lightbend.rp.reactivecli.runtime.kubernetes
 
 import argonaut._
 import Argonaut._
-import com.lightbend.rp.reactivecli.annotations.kubernetes.{ ConfigMapEnvironmentVariable, FieldRefEnvironmentVariable }
-import com.lightbend.rp.reactivecli.annotations.{ Annotations, Check, CommandCheck, Endpoint, EnvironmentVariable, HttpCheck, LiteralEnvironmentVariable, TcpCheck, Version }
+import com.lightbend.rp.reactivecli.annotations.kubernetes.{ ConfigMapEnvironmentVariable, FieldRefEnvironmentVariable, SecretKeyRefEnvironmentVariable }
+import com.lightbend.rp.reactivecli.annotations._
 
 import scala.util.{ Failure, Success, Try }
 
@@ -42,7 +42,8 @@ object Deployment {
     def envs(annotations: Annotations): Map[String, EnvironmentVariable] =
       PodEnvs ++
         annotations.version.fold(Map.empty[String, LiteralEnvironmentVariable])(versionEnvs) ++
-        endpointEnvs(annotations.endpoints)
+        endpointEnvs(annotations.endpoints) ++
+        secretEnvs(annotations.secrets)
 
     private[kubernetes] def versionEnvs(version: Version): Map[String, LiteralEnvironmentVariable] = {
       Map(
@@ -65,7 +66,7 @@ object Deployment {
           "RP_ENDPOINTS" -> LiteralEnvironmentVariable(
             endpoints.values.toList
               .sortBy(_.index)
-              .map(v => endpointName(v))
+              .map(v => endpointEnvName(v))
               .mkString(","))) ++
           endpointPortEnvs(endpoints)
 
@@ -76,17 +77,31 @@ object Deployment {
           val hostEnv = FieldRefEnvironmentVariable("status.podIP")
 
           Seq(
-            s"RP_ENDPOINT_${endpointName(assigned.endpoint)}_HOST" -> hostEnv,
-            s"RP_ENDPOINT_${endpointName(assigned.endpoint)}_BIND_HOST" -> hostEnv,
-            s"RP_ENDPOINT_${endpointName(assigned.endpoint)}_PORT" -> assignedPortEnv,
-            s"RP_ENDPOINT_${endpointName(assigned.endpoint)}_BIND_PORT" -> assignedPortEnv,
+            s"RP_ENDPOINT_${endpointEnvName(assigned.endpoint)}_HOST" -> hostEnv,
+            s"RP_ENDPOINT_${endpointEnvName(assigned.endpoint)}_BIND_HOST" -> hostEnv,
+            s"RP_ENDPOINT_${endpointEnvName(assigned.endpoint)}_PORT" -> assignedPortEnv,
+            s"RP_ENDPOINT_${endpointEnvName(assigned.endpoint)}_BIND_PORT" -> assignedPortEnv,
             s"RP_ENDPOINT_${assigned.endpoint.index}_HOST" -> hostEnv,
             s"RP_ENDPOINT_${assigned.endpoint.index}_BIND_HOST" -> hostEnv,
             s"RP_ENDPOINT_${assigned.endpoint.index}_PORT" -> assignedPortEnv,
             s"RP_ENDPOINT_${assigned.endpoint.index}_BIND_PORT" -> assignedPortEnv)
-
         }
         .toMap
+
+    private[kubernetes] def secretEnvs(secrets: Seq[Secret]): Map[String, EnvironmentVariable] =
+      secrets
+        .map { secret =>
+          val envName = secretEnvName(secret.namespace, secret.name)
+          val envValue = SecretKeyRefEnvironmentVariable(secret.namespace, secret.name)
+
+          envName -> envValue
+        }
+        .toMap
+
+    private[kubernetes] def secretEnvName(namespace: String, name: String): String =
+      s"RP_SECRETS_${namespace}_$name"
+        .toUpperCase
+        .map(c => if (c.isLetterOrDigit) c else '_')
   }
 
   object EndpointAutoPort {
@@ -206,6 +221,14 @@ object Deployment {
           "fieldPath" -> env.fieldPath.asJson)))
   }
 
+  implicit def secretKeyRefEnvironmentVariableEncode = EncodeJson[SecretKeyRefEnvironmentVariable] { env =>
+    Json(
+      "valueFrom" -> Json(
+        "secretKeyRef" -> Json(
+          "name" -> env.name.asJson,
+          "key" -> env.key.asJson)))
+  }
+
   implicit def configMapEnvironmentVariableEncode = EncodeJson[ConfigMapEnvironmentVariable] { env =>
     Json(
       "valueFrom" -> Json(
@@ -218,6 +241,7 @@ object Deployment {
     case v: LiteralEnvironmentVariable => v.asJson
     case v: FieldRefEnvironmentVariable => v.asJson
     case v: ConfigMapEnvironmentVariable => v.asJson
+    case v: SecretKeyRefEnvironmentVariable => v.asJson
   }
 
   implicit def environmentVariablesEncode = EncodeJson[Map[String, EnvironmentVariable]] { envs =>
@@ -234,7 +258,7 @@ object Deployment {
   implicit def assignedEncode = EncodeJson[EndpointAutoPort.Assigned] { assigned =>
     Json(
       "containerPort" -> assigned.port.asJson,
-      "name" -> endpointName(assigned.endpoint).toLowerCase.asJson)
+      "name" -> endpointEnvName(assigned.endpoint).toLowerCase.asJson)
   }
 
   implicit def endpointsEncode = EncodeJson[Map[String, Endpoint]] { endpoints =>

@@ -16,6 +16,12 @@
 
 package com.lightbend.rp.reactivecli.annotations
 
-sealed trait Volume
+import scala.collection.immutable.Seq
 
-case class HostPathVolume(path: String) extends Volume
+sealed trait Ingress {
+  def ingressPorts: Seq[Int]
+}
+
+case class PortIngress(ingressPorts: Seq[Int]) extends Ingress
+
+case class HttpIngress(ingressPorts: Seq[Int], hosts: Seq[String], paths: Seq[String]) extends Ingress

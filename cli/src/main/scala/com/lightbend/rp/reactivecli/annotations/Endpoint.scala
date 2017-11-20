@@ -25,10 +25,8 @@ sealed trait Endpoint {
   def version: Option[Int]
 }
 
-object HttpEndpoint {
-  case class HttpAcl(expression: String)
-}
+case class HttpEndpoint(index: Int, name: String, port: Int, version: Option[Int], ingress: Seq[HttpIngress]) extends Endpoint
 
-case class HttpEndpoint(index: Int, name: String, port: Int, version: Option[Int], acls: Seq[HttpEndpoint.HttpAcl]) extends Endpoint
 case class TcpEndpoint(index: Int, name: String, port: Int, version: Option[Int]) extends Endpoint
+
 case class UdpEndpoint(index: Int, name: String, port: Int, version: Option[Int]) extends Endpoint

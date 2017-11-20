@@ -37,9 +37,10 @@ package object kubernetes extends LazyLogging {
    * swapped with '_'.
    */
   private val ValidEndpointChars =
-    ('0' to '9') ++
-      ('A' to 'Z') ++
-      Seq('_', '-')
+    (('0' to '9') ++ ('A' to 'Z') ++ ('a' to 'z') ++ Seq('_', '-')).toSet
+
+  private val ValidEndpointServiceChars =
+    ValidEndpointChars - '_'
 
   /**
    * This is the main method which generates the kubernetes resources.
@@ -120,17 +121,19 @@ package object kubernetes extends LazyLogging {
       out.println(formattedJson)
     }
 
-  private[kubernetes] def endpointName(endpoint: Endpoint): String = {
-    val endpointNameNormalized = normalizeEndpointName(endpoint.name)
-    endpoint.version.fold(endpointNameNormalized)(v => s"$endpointNameNormalized$VersionSeparator$v").toUpperCase
-  }
+  private[kubernetes] def endpointName(endpoint: Endpoint): String =
+    endpoint.version.fold(endpoint.name)(v => s"${endpoint.name}$VersionSeparator$v")
+
+  private[kubernetes] def endpointServiceName(endpoint: Endpoint): String =
+    endpointName(endpoint)
+      .map(c => if (ValidEndpointServiceChars.contains(c)) c else '-')
+      .toLowerCase
+
+  private[kubernetes] def endpointEnvName(endpoint: Endpoint): String =
+    endpointName(endpoint)
+      .map(c => if (ValidEndpointChars.contains(c)) c else '_')
+      .toUpperCase
 
   private[kubernetes] def serviceName(annotations: Annotations): Option[String] =
     annotations.appName
-
-  private def normalizeEndpointName(endpointName: String): String =
-    endpointName
-      .toUpperCase
-      .map(c => if (ValidEndpointChars.contains(c)) c else '_')
-      .mkString
 }

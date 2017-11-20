@@ -60,11 +60,11 @@ object KubernetesPackageTest extends TestSuite {
               "com.lightbend.rp.environment-variables.0.name" -> "testing1",
               "com.lightbend.rp.environment-variables.0.value" -> "testingvalue1",
               "com.lightbend.rp.environment-variables.0.some-key" -> "test",
-              "com.lightbend.rp.environment-variables.1.type" -> "configMap",
+              "com.lightbend.rp.environment-variables.1.type" -> "kubernetes.configMap",
               "com.lightbend.rp.environment-variables.1.name" -> "testing2",
               "com.lightbend.rp.environment-variables.1.map-name" -> "mymap",
               "com.lightbend.rp.environment-variables.1.key" -> "mykey",
-              "com.lightbend.rp.environment-variables.2.type" -> "fieldRef",
+              "com.lightbend.rp.environment-variables.2.type" -> "kubernetes.fieldRef",
               "com.lightbend.rp.environment-variables.2.name" -> "testing3",
               "com.lightbend.rp.environment-variables.2.field-path" -> "metadata.name",
               "com.lightbend.rp.volumes.0.type" -> "host-path",
@@ -77,8 +77,8 @@ object KubernetesPackageTest extends TestSuite {
               "com.lightbend.rp.endpoints.0.name" -> "ep1",
               "com.lightbend.rp.endpoints.0.protocol" -> "http",
               "com.lightbend.rp.endpoints.0.version" -> "9",
-              "com.lightbend.rp.endpoints.0.acls.0.type" -> "http",
-              "com.lightbend.rp.endpoints.0.acls.0.expression" -> "/pizza",
+              "com.lightbend.rp.endpoints.0.ingress.0.type" -> "http",
+              "com.lightbend.rp.endpoints.0.ingress.0.paths.0" -> "/pizza",
               "com.lightbend.rp.endpoints.0.some-key" -> "test",
               "com.lightbend.rp.endpoints.0.acls.0.some-key" -> "test",
               "com.lightbend.rp.endpoints.1.name" -> "ep2",
@@ -435,6 +435,7 @@ object KubernetesPackageTest extends TestSuite {
                 |	}
                 |}
               """.stripMargin.parse.right.get
+
             assert(ingress.payload == ingressJsonExpected)
           }
 
@@ -521,15 +522,41 @@ object KubernetesPackageTest extends TestSuite {
       }
     }
 
+    "endpointServiceName" - {
+      "normalize service names with version" - {
+        Seq(
+          "akka-remote" -> "akka-remote-v1",
+          "user-search" -> "user-search-v1",
+          "h!e**(l+l??O" -> "h-e---l-l--o-v1").foreach {
+            case (input, expectedResult) =>
+              val endpoint = TcpEndpoint(0, input, 0, Some(1))
+              val result = endpointServiceName(endpoint)
+              assert(result == expectedResult)
+          }
+      }
+
+      "normalize service names without version" - {
+        Seq(
+          "AKKA_remote" -> "akka-remote-v1",
+          "user_search" -> "user-search-v1",
+          "h!e**(l+l??O" -> "h-e---l-l--o-v1").foreach {
+            case (input, expectedResult) =>
+              val endpoint = TcpEndpoint(0, input, 0, Some(1))
+              val result = endpointServiceName(endpoint)
+              assert(result == expectedResult)
+          }
+      }
+    }
+
     "endpointName" - {
       "normalize endpoint names with version" - {
         Seq(
-          "akka_remote" -> "AKKA_REMOTE-V1",
+          "akka-remote" -> "AKKA-REMOTE-V1",
           "user-search" -> "USER-SEARCH-V1",
           "h!e**(l+l??O" -> "H_E___L_L__O-V1").foreach {
             case (input, expectedResult) =>
               val endpoint = TcpEndpoint(0, input, 0, Some(1))
-              val result = endpointName(endpoint)
+              val result = endpointEnvName(endpoint)
               assert(result == expectedResult)
           }
       }
@@ -541,7 +568,7 @@ object KubernetesPackageTest extends TestSuite {
           "h!e**(l+l??O" -> "H_E___L_L__O").foreach {
             case (input, expectedResult) =>
               val endpoint = TcpEndpoint(0, input, 0, Option.empty)
-              val result = endpointName(endpoint)
+              val result = endpointEnvName(endpoint)
               assert(result == expectedResult)
           }
       }

@@ -16,7 +16,6 @@
 
 package com.lightbend.rp.reactivecli.annotations
 
-import com.lightbend.rp.reactivecli.annotations.HttpEndpoint.HttpAcl
 import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
 
 import scala.collection.immutable.Seq
@@ -29,6 +28,7 @@ case class Annotations(
   memory: Option[Long],
   nrOfCpus: Option[Double],
   endpoints: Map[String, Endpoint],
+  secrets: Seq[Secret],
   volumes: Map[String, Volume],
   privileged: Boolean,
   healthCheck: Option[Check],
@@ -66,6 +66,7 @@ object Annotations {
       memory = args.memory.orElse(memory(labels)),
       nrOfCpus = args.nrOfCpus.orElse(nrOfCpus(labels)),
       endpoints = endpoints(selectArrayWithIndex(labels, ns("endpoints")), appVersion),
+      secrets = secrets(selectArray(labels, ns("secrets"))),
       volumes = volumes(selectArray(labels, ns("volumes"))),
       privileged = privileged(labels),
       healthCheck = check(selectSubset(labels, ns("health-check"))),
@@ -150,6 +151,13 @@ object Annotations {
     } yield value
   }
 
+  private[annotations] def secrets(secrets: Seq[Map[String, String]]): Seq[Secret] =
+    for {
+      entry <- secrets
+      ns <- entry.get("namespace")
+      name <- entry.get("name")
+    } yield Secret(ns, name)
+
   private[annotations] def endpoints(endpoints: Seq[(Int, Map[String, String])], version: Option[Version]): Map[String, Endpoint] =
     endpoints.flatMap(v => endpoint(v._2, v._1, version)).toMap
 
@@ -170,7 +178,7 @@ object Annotations {
         _,
         entry.get("port").flatMap(decodeInt).getOrElse(0),
         entry.get("version").flatMap(decodeInt).orElse(version.map(_.major)),
-        aclsHttp(selectArray(entry, "acls"))))
+        httpIngress(selectArray(entry, "ingress"))))
 
   private[annotations] def endpointTcp(version: Option[Version], entry: Map[String, String], index: Int): Option[TcpEndpoint] =
     entry.get("name").map(
@@ -188,16 +196,31 @@ object Annotations {
         entry.get("port").flatMap(decodeInt).getOrElse(0),
         entry.get("version").flatMap(decodeInt).orElse(version.map(_.major))))
 
-  private[annotations] def aclsHttp(acls: Seq[Map[String, String]]): Seq[HttpAcl] =
-    acls
-      .flatMap(entry =>
+  private[annotations] def httpIngress(ingress: Seq[Map[String, String]]): Seq[HttpIngress] =
+    ingress
+      .flatMap { entry =>
         for {
           typ <- entry.get("type")
-          value <- typ match {
-            case "http" => entry.get("expression").map(HttpAcl.apply)
-            case _ => None
-          }
-        } yield value)
+
+          if typ == "http"
+
+          ports = for {
+            ingressPortEntry <- selectArray(entry, "ingress-ports")
+            value <- ingressPortEntry.values
+            port <- decodeInt(value)
+          } yield port
+
+          hosts = for {
+            pathEntry <- selectArray(entry, "hosts")
+            path <- pathEntry.values
+          } yield path
+
+          paths = for {
+            pathEntry <- selectArray(entry, "paths")
+            path <- pathEntry.values
+          } yield path
+        } yield HttpIngress(ports, hosts, paths)
+      }
 
   private[annotations] def environmentVariables(variables: Seq[Map[String, String]]): Map[String, EnvironmentVariable] =
     variables
@@ -209,16 +232,20 @@ object Annotations {
             case "literal" =>
               entry.get("value").map(LiteralEnvironmentVariable.apply)
 
-            case "configMap" =>
+            case "kubernetes.configMap" =>
               for {
                 mapName <- entry.get("map-name")
                 key <- entry.get("key")
               } yield kubernetes.ConfigMapEnvironmentVariable(mapName, key)
 
-            case "fieldRef" =>
+            case "kubernetes.fieldRef" =>
               entry.get("field-path").map(kubernetes.FieldRefEnvironmentVariable.apply)
 
             case _ =>
+              // We don't expose kubernetes.SecretKeyRefEnvironmentVariable
+              // as we encourage using reactive-lib instead, it is only used
+              // internally
+
               None
           }
         } yield name -> value)
@@ -233,9 +260,6 @@ object Annotations {
           value <- typ match {
             case "host-path" =>
               entry.get("path").map(HostPathVolume.apply)
-
-            case "secret" =>
-              entry.get("secret").map(SecretVolume.apply)
 
             case _ =>
               None

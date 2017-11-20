@@ -18,51 +18,55 @@ package com.lightbend.rp.reactivecli.runtime.kubernetes
 
 import argonaut.Argonaut._
 import argonaut._
-import com.lightbend.rp.reactivecli.annotations.HttpEndpoint.HttpAcl
 import com.lightbend.rp.reactivecli.annotations._
-
+import scala.collection.immutable.Seq
 import scala.util.{ Failure, Success, Try }
 
 object Ingress {
-  def encodeHttpAcl(endpointName: String, port: Int, pathAppend: Option[String]) = EncodeJson[HttpAcl] { acl =>
-    Json(
-      "path" -> s"${acl.expression}${pathAppend.getOrElse("")}".asJson,
-      "backend" -> Json(
-        "serviceName" -> endpointName.asJson,
-        "servicePort" -> port.asJson))
-  }
+  def encodeEndpoints(endpoints: Map[String, Endpoint], pathAppend: Option[String]): List[Json] = {
+    val httpEndpoints =
+      endpoints
+        .collect {
+          case (_, httpEndpoint: HttpEndpoint) => httpEndpoint
+        }
+        .toList
 
-  def encodeHttpEndpointIngressRule(pathAppend: Option[String]) = EncodeJson[HttpEndpoint] { endpoint =>
-    val name = endpointName(endpoint).toLowerCase
-    implicit val httpAclJsonEncoder: EncodeJson[HttpAcl] = encodeHttpAcl(name, endpoint.port, pathAppend)
+    for {
+      endpoint <- httpEndpoints
+      backend = Json("serviceName" -> endpointServiceName(endpoint).asJson, "servicePort" -> endpoint.port.asJson)
+      ingress <- endpoint.ingress
+      host <- if (ingress.hosts.isEmpty) Seq("") else ingress.hosts
+      paths = if (ingress.paths.isEmpty) Seq("") else ingress.paths
+    } yield {
+      val base =
+        if (host.isEmpty)
+          Map.empty[String, Json]
+        else
+          Map("host" -> jString(host))
 
-    Json(
-      "http" -> Json(
-        "paths" -> endpoint.acls
-          .map(_.asJson)
-          .toList
-          .asJson))
-  }
+      val pathEntries =
+        for {
+          path <- paths
+        } yield {
+          val backendBase =
+            if (path.isEmpty)
+              Map.empty[String, Json]
+            else
+              Map("path" -> jString(path + pathAppend.getOrElse("")))
 
-  def encodeEndpointsIngressRule(pathAppend: Option[String]) = EncodeJson[Map[String, Endpoint]] { endpoints =>
-    implicit val httpEndpointIngressRuleJsonEncoder: EncodeJson[HttpEndpoint] = encodeHttpEndpointIngressRule(pathAppend)
+          jObjectAssocList(backendBase.updated("backend", backend).toList)
+        }
 
-    endpoints
-      .collect {
-        case (_, httpEndpoint: HttpEndpoint) => httpEndpoint.asJson
-      }
-      .toList
-      .asJson
+      jObjectAssocList(base.updated("http", jSingleObject("paths", pathEntries.toList.asJson)).toList)
+    }
   }
 
   /**
-   * Generates the [[Ingress]] resource.
+   * Generates the [[Ingress]] resources.
    */
   def generate(annotations: Annotations, ingressAnnotations: Map[String, String], pathAppend: Option[String]): Try[Ingress] =
     serviceName(annotations) match {
       case Some(appName) =>
-        implicit val endpointIngressRuleJsonEncoder: EncodeJson[Map[String, Endpoint]] = encodeEndpointsIngressRule(pathAppend)
-
         Success(
           Ingress(appName, Json(
             "apiVersion" -> "extensions/v1beta1".asJson,
@@ -70,9 +74,9 @@ object Ingress {
             "metadata" -> Json(
               "name" -> appName.asJson).deepmerge(generateIngressAnnotations(ingressAnnotations)),
             "spec" -> Json(
-              "rules" -> annotations.endpoints.asJson))))
+              "rules" -> encodeEndpoints(annotations.endpoints, pathAppend).asJson))))
       case _ =>
-        Failure(new IllegalArgumentException("Unable to generate Kubernetes ingress resource for Istio: application name is required"))
+        Failure(new IllegalArgumentException("Unable to generate Kubernetes ingress resource: application name is required"))
     }
 
   private def generateIngressAnnotations(ingressAnnotations: Map[String, String]): Json =
@@ -90,7 +94,7 @@ object Ingress {
 }
 
 /**
- * Represents the generated Istion ingress resource.
+ * Represents the generated ingress resource.
  */
 case class Ingress(name: String, payload: Json) extends GeneratedKubernetesResource {
   val resourceType = "ingress"
