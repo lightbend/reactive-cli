@@ -25,7 +25,6 @@ import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
 import com.lightbend.rp.reactivecli.Done
 import com.lightbend.rp.reactivecli.docker.Config
-import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment.VersionSeparator
 import slogging.LazyLogging
 
 import scala.util.{ Failure, Success, Try }
@@ -123,16 +122,15 @@ package object kubernetes extends LazyLogging {
       out.println(formattedJson)
     }
 
-  private[kubernetes] def endpointName(endpoint: Endpoint): String =
-    endpoint.version.fold(endpoint.name)(v => s"${endpoint.name}$VersionSeparator$v")
-
   private[kubernetes] def endpointServiceName(endpoint: Endpoint): String =
-    endpointName(endpoint)
+    endpoint
+      .name
       .map(c => if (ValidEndpointServiceChars.contains(c)) c else '-')
       .toLowerCase
 
   private[kubernetes] def endpointEnvName(endpoint: Endpoint): String =
-    endpointName(endpoint)
+    endpoint
+      .name
       .map(c => if (ValidEndpointChars.contains(c)) c else '_')
       .toUpperCase
 

@@ -22,11 +22,10 @@ sealed trait Endpoint {
   def index: Int
   def name: String
   def port: Int
-  def version: Option[Int]
 }
 
-case class HttpEndpoint(index: Int, name: String, port: Int, version: Option[Int], ingress: Seq[HttpIngress]) extends Endpoint
+case class HttpEndpoint(index: Int, name: String, port: Int, ingress: Seq[HttpIngress]) extends Endpoint
 
-case class TcpEndpoint(index: Int, name: String, port: Int, version: Option[Int]) extends Endpoint
+case class TcpEndpoint(index: Int, name: String, port: Int) extends Endpoint
 
-case class UdpEndpoint(index: Int, name: String, port: Int, version: Option[Int]) extends Endpoint
+case class UdpEndpoint(index: Int, name: String, port: Int) extends Endpoint

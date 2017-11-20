@@ -136,7 +136,7 @@ object KubernetesPackageTest extends TestSuite {
                 |  },
                 |  "spec": {
                 |    "replicas": 1,
-                |    "serviceName": "my-app-v3",
+                |    "serviceName": "my-app",
                 |    "template": {
                 |      "app": "my-app",
                 |      "appVersionMajor": "my-app-v3",
@@ -367,15 +367,15 @@ object KubernetesPackageTest extends TestSuite {
                 |          "ports": [
                 |            {
                 |              "containerPort": 10000,
-                |              "name": "ep1-v9"
+                |              "name": "ep1"
                 |            },
                 |            {
                 |              "containerPort": 1234,
-                |              "name": "ep2-v1"
+                |              "name": "ep2"
                 |            },
                 |            {
                 |              "containerPort": 1234,
-                |              "name": "ep3-v3"
+                |              "name": "ep3"
                 |            }
                 |          ]
                 |        }
@@ -406,19 +406,19 @@ object KubernetesPackageTest extends TestSuite {
                 |    "clusterIP": "None",
                 |    "ports": [
                 |      {
-                |        "name": "ep1-v9",
+                |        "name": "ep1",
                 |        "port": 10000,
                 |        "protocol": "TCP",
                 |        "targetPort": 10000
                 |      },
                 |      {
-                |        "name": "ep2-v1",
+                |        "name": "ep2",
                 |        "port": 1234,
                 |        "protocol": "TCP",
                 |        "targetPort": 1234
                 |      },
                 |      {
-                |        "name": "ep3-v3",
+                |        "name": "ep3",
                 |        "port": 1234,
                 |        "protocol": "UDP",
                 |        "targetPort": 1234
@@ -448,7 +448,7 @@ object KubernetesPackageTest extends TestSuite {
                 |				"paths": [{
                 |					"path": "/pizza",
                 |					"backend": {
-                |						"serviceName": "ep1-v9",
+                |						"serviceName": "ep1",
                 |						"servicePort": 10000
                 |					}
                 |				}]
@@ -551,11 +551,11 @@ object KubernetesPackageTest extends TestSuite {
     "endpointServiceName" - {
       "normalize service names with version" - {
         Seq(
-          "akka-remote" -> "akka-remote-v1",
-          "user-search" -> "user-search-v1",
-          "h!e**(l+l??O" -> "h-e---l-l--o-v1").foreach {
+          "akka-remote" -> "akka-remote",
+          "user-search" -> "user-search",
+          "h!e**(l+l??O" -> "h-e---l-l--o").foreach {
             case (input, expectedResult) =>
-              val endpoint = TcpEndpoint(0, input, 0, Some(1))
+              val endpoint = TcpEndpoint(0, input, 0)
               val result = endpointServiceName(endpoint)
               assert(result == expectedResult)
           }
@@ -563,11 +563,11 @@ object KubernetesPackageTest extends TestSuite {
 
       "normalize service names without version" - {
         Seq(
-          "AKKA_remote" -> "akka-remote-v1",
-          "user_search" -> "user-search-v1",
-          "h!e**(l+l??O" -> "h-e---l-l--o-v1").foreach {
+          "AKKA_remote" -> "akka-remote",
+          "user_search" -> "user-search",
+          "h!e**(l+l??O" -> "h-e---l-l--o").foreach {
             case (input, expectedResult) =>
-              val endpoint = TcpEndpoint(0, input, 0, Some(1))
+              val endpoint = TcpEndpoint(0, input, 0)
               val result = endpointServiceName(endpoint)
               assert(result == expectedResult)
           }
@@ -577,11 +577,11 @@ object KubernetesPackageTest extends TestSuite {
     "endpointName" - {
       "normalize endpoint names with version" - {
         Seq(
-          "akka-remote" -> "AKKA-REMOTE-V1",
-          "user-search" -> "USER-SEARCH-V1",
-          "h!e**(l+l??O" -> "H_E___L_L__O-V1").foreach {
+          "akka-remote" -> "AKKA-REMOTE",
+          "user-search" -> "USER-SEARCH",
+          "h!e**(l+l??O" -> "H_E___L_L__O").foreach {
             case (input, expectedResult) =>
-              val endpoint = TcpEndpoint(0, input, 0, Some(1))
+              val endpoint = TcpEndpoint(0, input, 0)
               val result = endpointEnvName(endpoint)
               assert(result == expectedResult)
           }
@@ -593,7 +593,7 @@ object KubernetesPackageTest extends TestSuite {
           "user-search" -> "USER-SEARCH",
           "h!e**(l+l??O" -> "H_E___L_L__O").foreach {
             case (input, expectedResult) =>
-              val endpoint = TcpEndpoint(0, input, 0, Option.empty)
+              val endpoint = TcpEndpoint(0, input, 0)
               val result = endpointEnvName(endpoint)
               assert(result == expectedResult)
           }

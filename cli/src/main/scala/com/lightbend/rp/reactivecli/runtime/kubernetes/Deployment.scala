@@ -115,7 +115,7 @@ object Deployment {
     val Never, IfNotPresent, Always = Value
   }
 
-  val VersionSeparator = "-v"
+  private[Deployment] val VersionSeparator = "-v"
 
   implicit def imagePullPolicyEncode = EncodeJson[ImagePullPolicy.Value] {
     case ImagePullPolicy.Never => "Never".asJson

@@ -35,7 +35,6 @@ object IngressJsonTest extends TestSuite {
         index = 0,
         name = "ep1",
         port = 1234,
-        version = Some(1),
         ingress = Seq(
           HttpIngress(Seq(80, 443), Seq.empty, Seq("/api/friend")),
           HttpIngress(Seq(80, 443), Seq("hello.com"), Seq.empty),
@@ -74,7 +73,7 @@ object IngressJsonTest extends TestSuite {
             |            {
             |              "path" : "/api/friend",
             |              "backend" : {
-            |                "serviceName" : "ep1-v1",
+            |                "serviceName" : "ep1",
             |                "servicePort" : 1234
             |              }
             |            }
@@ -87,7 +86,7 @@ object IngressJsonTest extends TestSuite {
             |          "paths" : [
             |            {
             |              "backend" : {
-            |                "serviceName" : "ep1-v1",
+            |                "serviceName" : "ep1",
             |                "servicePort" : 1234
             |              }
             |            }
@@ -101,14 +100,14 @@ object IngressJsonTest extends TestSuite {
             |            {
             |              "path" : "/api/friend",
             |              "backend" : {
-            |                "serviceName" : "ep1-v1",
+            |                "serviceName" : "ep1",
             |                "servicePort" : 1234
             |              }
             |            },
             |            {
             |              "path" : "/api/enemy",
             |              "backend" : {
-            |                "serviceName" : "ep1-v1",
+            |                "serviceName" : "ep1",
             |                "servicePort" : 1234
             |              }
             |            }
@@ -122,14 +121,14 @@ object IngressJsonTest extends TestSuite {
             |            {
             |              "path" : "/api/friend",
             |              "backend" : {
-            |                "serviceName" : "ep1-v1",
+            |                "serviceName" : "ep1",
             |                "servicePort" : 1234
             |              }
             |            },
             |            {
             |              "path" : "/api/enemy",
             |              "backend" : {
-            |                "serviceName" : "ep1-v1",
+            |                "serviceName" : "ep1",
             |                "servicePort" : 1234
             |              }
             |            }
@@ -170,7 +169,7 @@ object IngressJsonTest extends TestSuite {
             |            {
             |              "path" : "/api/friend.*",
             |              "backend" : {
-            |                "serviceName" : "ep1-v1",
+            |                "serviceName" : "ep1",
             |                "servicePort" : 1234
             |              }
             |            }
@@ -183,7 +182,7 @@ object IngressJsonTest extends TestSuite {
             |          "paths" : [
             |            {
             |              "backend" : {
-            |                "serviceName" : "ep1-v1",
+            |                "serviceName" : "ep1",
             |                "servicePort" : 1234
             |              }
             |            }
@@ -197,14 +196,14 @@ object IngressJsonTest extends TestSuite {
             |            {
             |              "path" : "/api/friend.*",
             |              "backend" : {
-            |                "serviceName" : "ep1-v1",
+            |                "serviceName" : "ep1",
             |                "servicePort" : 1234
             |              }
             |            },
             |            {
             |              "path" : "/api/enemy.*",
             |              "backend" : {
-            |                "serviceName" : "ep1-v1",
+            |                "serviceName" : "ep1",
             |                "servicePort" : 1234
             |              }
             |            }
@@ -218,14 +217,14 @@ object IngressJsonTest extends TestSuite {
             |            {
             |              "path" : "/api/friend.*",
             |              "backend" : {
-            |                "serviceName" : "ep1-v1",
+            |                "serviceName" : "ep1",
             |                "servicePort" : 1234
             |              }
             |            },
             |            {
             |              "path" : "/api/enemy.*",
             |              "backend" : {
-            |                "serviceName" : "ep1-v1",
+            |                "serviceName" : "ep1",
             |                "servicePort" : 1234
             |              }
             |            }

@@ -32,7 +32,7 @@ object ServiceJsonTest extends TestSuite {
     memory = Some(8192L),
     nrOfCpus = Some(0.5D),
     endpoints = Map(
-      "ep1" -> TcpEndpoint(0, "ep1", 1234, version = Some(1))),
+      "ep1" -> TcpEndpoint(0, "ep1", 1234)),
     secrets = Seq.empty,
     volumes = Map(
       "/my/guest/path/1" -> HostPathVolume("/my/host/path")),
@@ -64,7 +64,7 @@ object ServiceJsonTest extends TestSuite {
               |    "clusterIP": "None",
               |    "ports": [
               |      {
-              |        "name": "ep1-v1",
+              |        "name": "ep1",
               |        "port": 1234,
               |        "protocol": "TCP",
               |        "targetPort": 1234
@@ -97,7 +97,7 @@ object ServiceJsonTest extends TestSuite {
               |    "clusterIP": "10.0.0.5",
               |    "ports": [
               |      {
-              |        "name": "ep1-v1",
+              |        "name": "ep1",
               |        "port": 1234,
               |        "protocol": "TCP",
               |        "targetPort": 1234

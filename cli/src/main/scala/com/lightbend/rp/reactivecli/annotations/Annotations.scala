@@ -189,7 +189,6 @@ object Annotations {
         index,
         _,
         entry.get("port").flatMap(decodeInt).getOrElse(0),
-        entry.get("version").flatMap(decodeInt).orElse(version.map(_.major)),
         httpIngress(selectArray(entry, "ingress"))))
 
   private[annotations] def endpointTcp(version: Option[Version], entry: Map[String, String], index: Int): Option[TcpEndpoint] =
@@ -197,16 +196,14 @@ object Annotations {
       TcpEndpoint(
         index,
         _,
-        entry.get("port").flatMap(decodeInt).getOrElse(0),
-        entry.get("version").flatMap(decodeInt).orElse(version.map(_.major))))
+        entry.get("port").flatMap(decodeInt).getOrElse(0)))
 
   private[annotations] def endpointUdp(version: Option[Version], entry: Map[String, String], index: Int): Option[UdpEndpoint] =
     entry.get("name").map(
       UdpEndpoint(
         index,
         _,
-        entry.get("port").flatMap(decodeInt).getOrElse(0),
-        entry.get("version").flatMap(decodeInt).orElse(version.map(_.major))))
+        entry.get("port").flatMap(decodeInt).getOrElse(0)))
 
   private[annotations] def httpIngress(ingress: Seq[Map[String, String]]): Seq[HttpIngress] =
     ingress

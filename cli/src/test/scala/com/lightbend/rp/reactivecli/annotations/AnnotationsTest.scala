@@ -184,9 +184,9 @@ object AnnotationsTest extends TestSuite {
               memory = Some(8192L),
               nrOfCpus = Some(0.5D),
               endpoints = Map(
-                "ep1" -> HttpEndpoint(0, "ep1", 0, version = Some(9), Seq(HttpIngress(Seq(80, 443), Seq("hello.com"), Seq("^/.*")))),
-                "ep2" -> TcpEndpoint(1, "ep2", 1234, version = Some(1)),
-                "ep3" -> UdpEndpoint(2, "ep3", 1234, version = Some(3))),
+                "ep1" -> HttpEndpoint(0, "ep1", 0, Seq(HttpIngress(Seq(80, 443), Seq("hello.com"), Seq("^/.*")))),
+                "ep2" -> TcpEndpoint(1, "ep2", 1234),
+                "ep3" -> UdpEndpoint(2, "ep3", 1234)),
               secrets = Seq.empty,
               volumes = Map(
                 "/my/guest/path/1" -> HostPathVolume("/my/host/path")),
@@ -279,7 +279,7 @@ object AnnotationsTest extends TestSuite {
               memory = None,
               nrOfCpus = None,
               endpoints = Map(
-                "ep2" -> TcpEndpoint(1, "ep2", 1234, version = Some(3))),
+                "ep2" -> TcpEndpoint(1, "ep2", 1234)),
               secrets = Seq.empty,
               volumes = Map.empty,
               privileged = false,
@@ -303,7 +303,7 @@ object AnnotationsTest extends TestSuite {
               memory = None,
               nrOfCpus = None,
               endpoints = Map(
-                "ep2" -> TcpEndpoint(1, "ep2", 1234, version = None)),
+                "ep2" -> TcpEndpoint(1, "ep2", 1234)),
               secrets = Seq.empty,
               volumes = Map.empty,
               privileged = false,

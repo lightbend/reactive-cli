@@ -27,9 +27,9 @@ object DeploymentJsonTest extends TestSuite {
   import Deployment._
 
   val endpoints = Map(
-    "ep1" -> HttpEndpoint(0, "ep1", 0, version = Some(9), Seq(HttpIngress(Seq(80, 443), Seq.empty, Seq("^/.*")))),
-    "ep2" -> TcpEndpoint(1, "ep2", 1234, version = Some(1)),
-    "ep3" -> UdpEndpoint(2, "ep3", 0, version = None))
+    "ep1" -> HttpEndpoint(0, "ep1", 0, Seq(HttpIngress(Seq(80, 443), Seq.empty, Seq("^/.*")))),
+    "ep2" -> TcpEndpoint(1, "ep2", 1234),
+    "ep3" -> UdpEndpoint(2, "ep3", 0))
 
   val annotations = Annotations(
     namespace = Some("chirper"),
@@ -71,7 +71,7 @@ object DeploymentJsonTest extends TestSuite {
               |  },
               |  "spec": {
               |    "replicas": 1,
-              |    "serviceName": "friendimpl-v3",
+              |    "serviceName": "friendimpl",
               |    "template": {
               |      "app": "friendimpl",
               |      "appVersionMajor": "friendimpl-v3",
@@ -87,11 +87,11 @@ object DeploymentJsonTest extends TestSuite {
               |          "ports": [
               |            {
               |              "containerPort": 10000,
-              |              "name": "ep1-v9"
+              |              "name": "ep1"
               |            },
               |            {
               |              "containerPort": 1234,
-              |              "name": "ep2-v1"
+              |              "name": "ep2"
               |            },
               |            {
               |              "containerPort": 10001,
@@ -101,7 +101,7 @@ object DeploymentJsonTest extends TestSuite {
               |          "env": [
               |            {
               |              "name": "RP_ENDPOINTS",
-              |              "value": "EP1-V9,EP2-V1,EP3"
+              |              "value": "EP1,EP2,EP3"
               |            },
               |            {
               |              "name": "RP_ENDPOINTS_COUNT",
@@ -180,7 +180,7 @@ object DeploymentJsonTest extends TestSuite {
               |              "value": "10001"
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP1-V9_BIND_HOST",
+              |              "name": "RP_ENDPOINT_EP1_BIND_HOST",
               |              "valueFrom": {
               |                "fieldRef": {
               |                  "fieldPath": "status.podIP"
@@ -188,11 +188,11 @@ object DeploymentJsonTest extends TestSuite {
               |              }
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP1-V9_BIND_PORT",
+              |              "name": "RP_ENDPOINT_EP1_BIND_PORT",
               |              "value": "10000"
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP1-V9_HOST",
+              |              "name": "RP_ENDPOINT_EP1_HOST",
               |              "valueFrom": {
               |                "fieldRef": {
               |                  "fieldPath": "status.podIP"
@@ -200,11 +200,11 @@ object DeploymentJsonTest extends TestSuite {
               |              }
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP1-V9_PORT",
+              |              "name": "RP_ENDPOINT_EP1_PORT",
               |              "value": "10000"
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP2-V1_BIND_HOST",
+              |              "name": "RP_ENDPOINT_EP2_BIND_HOST",
               |              "valueFrom": {
               |                "fieldRef": {
               |                  "fieldPath": "status.podIP"
@@ -212,11 +212,11 @@ object DeploymentJsonTest extends TestSuite {
               |              }
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP2-V1_BIND_PORT",
+              |              "name": "RP_ENDPOINT_EP2_BIND_PORT",
               |              "value": "1234"
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP2-V1_HOST",
+              |              "name": "RP_ENDPOINT_EP2_HOST",
               |              "valueFrom": {
               |                "fieldRef": {
               |                  "fieldPath": "status.podIP"
@@ -224,7 +224,7 @@ object DeploymentJsonTest extends TestSuite {
               |              }
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP2-V1_PORT",
+              |              "name": "RP_ENDPOINT_EP2_PORT",
               |              "value": "1234"
               |            },
               |            {
@@ -338,7 +338,7 @@ object DeploymentJsonTest extends TestSuite {
               |  },
               |  "spec": {
               |    "replicas": 1,
-              |    "serviceName": "friendimpl-v3",
+              |    "serviceName": "friendimpl",
               |    "template": {
               |      "app": "friendimpl",
               |      "appVersionMajor": "friendimpl-v3",
@@ -354,11 +354,11 @@ object DeploymentJsonTest extends TestSuite {
               |          "ports": [
               |            {
               |              "containerPort": 10000,
-              |              "name": "ep1-v9"
+              |              "name": "ep1"
               |            },
               |            {
               |              "containerPort": 1234,
-              |              "name": "ep2-v1"
+              |              "name": "ep2"
               |            },
               |            {
               |              "containerPort": 10001,
@@ -368,7 +368,7 @@ object DeploymentJsonTest extends TestSuite {
               |          "env": [
               |            {
               |              "name": "RP_ENDPOINTS",
-              |              "value": "EP1-V9,EP2-V1,EP3"
+              |              "value": "EP1,EP2,EP3"
               |            },
               |            {
               |              "name": "RP_ENDPOINTS_COUNT",
@@ -447,7 +447,7 @@ object DeploymentJsonTest extends TestSuite {
               |              "value": "10001"
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP1-V9_BIND_HOST",
+              |              "name": "RP_ENDPOINT_EP1_BIND_HOST",
               |              "valueFrom": {
               |                "fieldRef": {
               |                  "fieldPath": "status.podIP"
@@ -455,11 +455,11 @@ object DeploymentJsonTest extends TestSuite {
               |              }
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP1-V9_BIND_PORT",
+              |              "name": "RP_ENDPOINT_EP1_BIND_PORT",
               |              "value": "10000"
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP1-V9_HOST",
+              |              "name": "RP_ENDPOINT_EP1_HOST",
               |              "valueFrom": {
               |                "fieldRef": {
               |                  "fieldPath": "status.podIP"
@@ -467,11 +467,11 @@ object DeploymentJsonTest extends TestSuite {
               |              }
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP1-V9_PORT",
+              |              "name": "RP_ENDPOINT_EP1_PORT",
               |              "value": "10000"
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP2-V1_BIND_HOST",
+              |              "name": "RP_ENDPOINT_EP2_BIND_HOST",
               |              "valueFrom": {
               |                "fieldRef": {
               |                  "fieldPath": "status.podIP"
@@ -479,11 +479,11 @@ object DeploymentJsonTest extends TestSuite {
               |              }
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP2-V1_BIND_PORT",
+              |              "name": "RP_ENDPOINT_EP2_BIND_PORT",
               |              "value": "1234"
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP2-V1_HOST",
+              |              "name": "RP_ENDPOINT_EP2_HOST",
               |              "valueFrom": {
               |                "fieldRef": {
               |                  "fieldPath": "status.podIP"
@@ -491,7 +491,7 @@ object DeploymentJsonTest extends TestSuite {
               |              }
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP2-V1_PORT",
+              |              "name": "RP_ENDPOINT_EP2_PORT",
               |              "value": "1234"
               |            },
               |            {
@@ -605,7 +605,7 @@ object DeploymentJsonTest extends TestSuite {
               |  },
               |  "spec": {
               |    "replicas": 1,
-              |    "serviceName": "friendimpl-v3",
+              |    "serviceName": "friendimpl",
               |    "template": {
               |      "app": "friendimpl",
               |      "appVersionMajor": "friendimpl-v3",
@@ -621,11 +621,11 @@ object DeploymentJsonTest extends TestSuite {
               |          "ports": [
               |            {
               |              "containerPort": 10000,
-              |              "name": "ep1-v9"
+              |              "name": "ep1"
               |            },
               |            {
               |              "containerPort": 1234,
-              |              "name": "ep2-v1"
+              |              "name": "ep2"
               |            },
               |            {
               |              "containerPort": 10001,
@@ -635,7 +635,7 @@ object DeploymentJsonTest extends TestSuite {
               |          "env": [
               |            {
               |              "name": "RP_ENDPOINTS",
-              |              "value": "EP1-V9,EP2-V1,EP3"
+              |              "value": "EP1,EP2,EP3"
               |            },
               |            {
               |              "name": "RP_ENDPOINTS_COUNT",
@@ -714,7 +714,7 @@ object DeploymentJsonTest extends TestSuite {
               |              "value": "10001"
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP1-V9_BIND_HOST",
+              |              "name": "RP_ENDPOINT_EP1_BIND_HOST",
               |              "valueFrom": {
               |                "fieldRef": {
               |                  "fieldPath": "status.podIP"
@@ -722,11 +722,11 @@ object DeploymentJsonTest extends TestSuite {
               |              }
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP1-V9_BIND_PORT",
+              |              "name": "RP_ENDPOINT_EP1_BIND_PORT",
               |              "value": "10000"
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP1-V9_HOST",
+              |              "name": "RP_ENDPOINT_EP1_HOST",
               |              "valueFrom": {
               |                "fieldRef": {
               |                  "fieldPath": "status.podIP"
@@ -734,11 +734,11 @@ object DeploymentJsonTest extends TestSuite {
               |              }
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP1-V9_PORT",
+              |              "name": "RP_ENDPOINT_EP1_PORT",
               |              "value": "10000"
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP2-V1_BIND_HOST",
+              |              "name": "RP_ENDPOINT_EP2_BIND_HOST",
               |              "valueFrom": {
               |                "fieldRef": {
               |                  "fieldPath": "status.podIP"
@@ -746,11 +746,11 @@ object DeploymentJsonTest extends TestSuite {
               |              }
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP2-V1_BIND_PORT",
+              |              "name": "RP_ENDPOINT_EP2_BIND_PORT",
               |              "value": "1234"
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP2-V1_HOST",
+              |              "name": "RP_ENDPOINT_EP2_HOST",
               |              "valueFrom": {
               |                "fieldRef": {
               |                  "fieldPath": "status.podIP"
@@ -758,7 +758,7 @@ object DeploymentJsonTest extends TestSuite {
               |              }
               |            },
               |            {
-              |              "name": "RP_ENDPOINT_EP2-V1_PORT",
+              |              "name": "RP_ENDPOINT_EP2_PORT",
               |              "value": "1234"
               |            },
               |            {
@@ -984,115 +984,54 @@ object DeploymentJsonTest extends TestSuite {
 
       "assigned endpoint" - {
         "http" - {
-          "with endpoint version" - {
-            val endpoint = HttpEndpoint(0, "ep1", 0, version = Some(1), ingress = Seq.empty)
-            val assigned = AssignedPort(
-              endpoint = endpoint,
-              port = 9999)
-            val expectedJson =
-              """
-                |{
-                |  "containerPort": 9999,
-                |  "name": "ep1-v1"
-                |}
-              """.stripMargin.parse.right.get
-            val generatedJson = assigned.asJson
+          val endpoint = HttpEndpoint(0, "ep1", 0, ingress = Seq.empty)
+          val assigned = AssignedPort(
+            endpoint = endpoint,
+            port = 9999)
+          val expectedJson =
+            """
+              |{
+              |  "containerPort": 9999,
+              |  "name": "ep1"
+              |}
+            """.stripMargin.parse.right.get
+          val generatedJson = assigned.asJson
 
-            assert(expectedJson == generatedJson)
-          }
-
-          "without endpoint version" - {
-            val endpoint = HttpEndpoint(0, "ep1", 0, version = None, ingress = Seq.empty)
-            val assigned = AssignedPort(
-              endpoint = endpoint,
-              port = 9999)
-
-            val expectedJson =
-              """
-                |{
-                |  "containerPort": 9999,
-                |  "name": "ep1"
-                |}
-              """.stripMargin.parse.right.get
-            val generatedJson = assigned.asJson
-
-            assert(expectedJson == generatedJson)
-
-          }
+          assert(expectedJson == generatedJson)
         }
 
         "tcp" - {
-          "with endpoint version" - {
-            val endpoint = TcpEndpoint(0, "ep1", 0, version = Some(1))
-            val assigned = AssignedPort(
-              endpoint = endpoint,
-              port = 9999)
-            val expectedJson =
-              """
-                |{
-                |  "containerPort": 9999,
-                |  "name": "ep1-v1"
-                |}
-              """.stripMargin.parse.right.get
-            val generatedJson = assigned.asJson
+          val endpoint = TcpEndpoint(0, "ep1", 0)
+          val assigned = AssignedPort(
+            endpoint = endpoint,
+            port = 9999)
+          val expectedJson =
+            """
+              |{
+              |  "containerPort": 9999,
+              |  "name": "ep1"
+              |}
+            """.stripMargin.parse.right.get
+          val generatedJson = assigned.asJson
 
-            assert(expectedJson == generatedJson)
-          }
-
-          "without endpoint version" - {
-            val endpoint = TcpEndpoint(0, "ep1", 0, version = None)
-            val assigned = AssignedPort(
-              endpoint = endpoint,
-              port = 9999)
-            val expectedJson =
-              """
-                |{
-                |  "containerPort": 9999,
-                |  "name": "ep1"
-                |}
-              """.stripMargin.parse.right.get
-            val generatedJson = assigned.asJson
-
-            assert(expectedJson == generatedJson)
-
-          }
+          assert(expectedJson == generatedJson)
         }
 
         "udp" - {
-          "with endpoint version" - {
-            val endpoint = UdpEndpoint(0, "ep1", 0, version = Some(1))
-            val assigned = AssignedPort(
-              endpoint = endpoint,
-              port = 9999)
-            val expectedJson =
-              """
-                |{
-                |  "containerPort": 9999,
-                |  "name": "ep1-v1"
-                |}
-              """.stripMargin.parse.right.get
-            val generatedJson = assigned.asJson
+          val endpoint = UdpEndpoint(0, "ep1", 0)
+          val assigned = AssignedPort(
+            endpoint = endpoint,
+            port = 9999)
+          val expectedJson =
+            """
+              |{
+              |  "containerPort": 9999,
+              |  "name": "ep1"
+              |}
+            """.stripMargin.parse.right.get
+          val generatedJson = assigned.asJson
 
-            assert(expectedJson == generatedJson)
-          }
-
-          "without endpoint version" - {
-            val endpoint = UdpEndpoint(0, "ep1", 0, version = None)
-            val assigned = AssignedPort(
-              endpoint = endpoint,
-              port = 9999)
-            val expectedJson =
-              """
-                |{
-                |  "containerPort": 9999,
-                |  "name": "ep1"
-                |}
-              """.stripMargin.parse.right.get
-            val generatedJson = assigned.asJson
-
-            assert(expectedJson == generatedJson)
-
-          }
+          assert(expectedJson == generatedJson)
         }
       }
     }
@@ -1124,38 +1063,38 @@ object DeploymentJsonTest extends TestSuite {
       "endpoints" - {
         "when present" - {
           val endpointsWithVersions = Map(
-            "ep1" -> HttpEndpoint(0, "ep1", 0, version = Some(1), Seq.empty),
-            "ep2" -> TcpEndpoint(1, "ep2", 1234, version = Some(3)),
-            "ep3" -> UdpEndpoint(2, "ep3", 1234, version = Some(2)))
+            "ep1" -> HttpEndpoint(0, "ep1", 0, Seq.empty),
+            "ep2" -> TcpEndpoint(1, "ep2", 1234),
+            "ep3" -> UdpEndpoint(2, "ep3", 1234))
 
           val endpointsNoVersions = Map(
-            "ep1" -> HttpEndpoint(0, "ep1", 0, version = None, Seq.empty),
-            "ep2" -> TcpEndpoint(1, "ep2", 1234, version = None),
-            "ep3" -> UdpEndpoint(2, "ep3", 1234, version = None))
+            "ep1" -> HttpEndpoint(0, "ep1", 0, Seq.empty),
+            "ep2" -> TcpEndpoint(1, "ep2", 1234),
+            "ep3" -> UdpEndpoint(2, "ep3", 1234))
 
           "with endpoint version" - {
             val result = RpEnvironmentVariables.endpointEnvs(endpointsWithVersions)
             val expectedResult = Map(
               "RP_ENDPOINTS_COUNT" -> LiteralEnvironmentVariable("3"),
-              "RP_ENDPOINTS" -> LiteralEnvironmentVariable("EP1-V1,EP2-V3,EP3-V2"),
+              "RP_ENDPOINTS" -> LiteralEnvironmentVariable("EP1,EP2,EP3"),
 
-              "RP_ENDPOINT_EP1-V1_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
-              "RP_ENDPOINT_EP1-V1_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
+              "RP_ENDPOINT_EP1_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
+              "RP_ENDPOINT_EP1_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
 
-              "RP_ENDPOINT_EP1-V1_BIND_PORT" -> LiteralEnvironmentVariable("10000"),
-              "RP_ENDPOINT_EP1-V1_PORT" -> LiteralEnvironmentVariable("10000"),
+              "RP_ENDPOINT_EP1_BIND_PORT" -> LiteralEnvironmentVariable("10000"),
+              "RP_ENDPOINT_EP1_PORT" -> LiteralEnvironmentVariable("10000"),
 
-              "RP_ENDPOINT_EP2-V3_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
-              "RP_ENDPOINT_EP2-V3_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
+              "RP_ENDPOINT_EP2_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
+              "RP_ENDPOINT_EP2_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
 
-              "RP_ENDPOINT_EP2-V3_BIND_PORT" -> LiteralEnvironmentVariable("1234"),
-              "RP_ENDPOINT_EP2-V3_PORT" -> LiteralEnvironmentVariable("1234"),
+              "RP_ENDPOINT_EP2_BIND_PORT" -> LiteralEnvironmentVariable("1234"),
+              "RP_ENDPOINT_EP2_PORT" -> LiteralEnvironmentVariable("1234"),
 
-              "RP_ENDPOINT_EP3-V2_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
-              "RP_ENDPOINT_EP3-V2_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
+              "RP_ENDPOINT_EP3_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
+              "RP_ENDPOINT_EP3_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
 
-              "RP_ENDPOINT_EP3-V2_BIND_PORT" -> LiteralEnvironmentVariable("1234"),
-              "RP_ENDPOINT_EP3-V2_PORT" -> LiteralEnvironmentVariable("1234"),
+              "RP_ENDPOINT_EP3_BIND_PORT" -> LiteralEnvironmentVariable("1234"),
+              "RP_ENDPOINT_EP3_PORT" -> LiteralEnvironmentVariable("1234"),
 
               "RP_ENDPOINT_0_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
               "RP_ENDPOINT_0_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
@@ -1217,51 +1156,51 @@ object DeploymentJsonTest extends TestSuite {
 
           "endpoints list should be ordered based on endpoint index" - {
             val endpoints = Map(
-              "ep1" -> HttpEndpoint(2, "ep1", 0, version = Some(1), Seq.empty),
-              "ep2" -> TcpEndpoint(0, "ep2", 1234, version = Some(3)),
-              "ep3" -> UdpEndpoint(1, "ep3", 1234, version = Some(2)))
+              "ep1" -> HttpEndpoint(2, "ep1", 0, Seq.empty),
+              "ep2" -> TcpEndpoint(0, "ep2", 1234),
+              "ep3" -> UdpEndpoint(1, "ep3", 1234))
 
             val result = RpEnvironmentVariables.endpointEnvs(endpoints)
 
-            assert(result("RP_ENDPOINTS") == LiteralEnvironmentVariable("EP2-V3,EP3-V2,EP1-V1"))
+            assert(result("RP_ENDPOINTS") == LiteralEnvironmentVariable("EP2,EP3,EP1"))
           }
 
           "auto port should be allocated for all undeclared ports" - {
             val endpoints = Map(
-              "ep1" -> HttpEndpoint(0, "ep1", 0, version = Some(1), Seq.empty),
-              "ep2" -> TcpEndpoint(1, "ep2", 1234, version = Some(3)),
-              "ep3" -> UdpEndpoint(2, "ep3", 0, version = Some(2)))
+              "ep1" -> HttpEndpoint(0, "ep1", 0, Seq.empty),
+              "ep2" -> TcpEndpoint(1, "ep2", 1234),
+              "ep3" -> UdpEndpoint(2, "ep3", 0))
 
             val result = RpEnvironmentVariables.endpointEnvs(endpoints)
 
             val expectedResult = Map(
               "RP_ENDPOINTS_COUNT" -> LiteralEnvironmentVariable("3"),
-              "RP_ENDPOINTS" -> LiteralEnvironmentVariable("EP1-V1,EP2-V3,EP3-V2"),
+              "RP_ENDPOINTS" -> LiteralEnvironmentVariable("EP1,EP2,EP3"),
 
-              "RP_ENDPOINT_EP1-V1_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
-              "RP_ENDPOINT_EP2-V3_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
-              "RP_ENDPOINT_EP3-V2_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
+              "RP_ENDPOINT_EP1_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
+              "RP_ENDPOINT_EP2_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
+              "RP_ENDPOINT_EP3_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
               "RP_ENDPOINT_0_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
               "RP_ENDPOINT_1_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
               "RP_ENDPOINT_2_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
 
-              "RP_ENDPOINT_EP1-V1_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
-              "RP_ENDPOINT_EP2-V3_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
-              "RP_ENDPOINT_EP3-V2_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
+              "RP_ENDPOINT_EP1_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
+              "RP_ENDPOINT_EP2_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
+              "RP_ENDPOINT_EP3_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
               "RP_ENDPOINT_0_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
               "RP_ENDPOINT_1_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
               "RP_ENDPOINT_2_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
 
-              "RP_ENDPOINT_EP1-V1_PORT" -> LiteralEnvironmentVariable("10000"),
-              "RP_ENDPOINT_EP2-V3_PORT" -> LiteralEnvironmentVariable("1234"),
-              "RP_ENDPOINT_EP3-V2_PORT" -> LiteralEnvironmentVariable("10001"),
+              "RP_ENDPOINT_EP1_PORT" -> LiteralEnvironmentVariable("10000"),
+              "RP_ENDPOINT_EP2_PORT" -> LiteralEnvironmentVariable("1234"),
+              "RP_ENDPOINT_EP3_PORT" -> LiteralEnvironmentVariable("10001"),
               "RP_ENDPOINT_0_PORT" -> LiteralEnvironmentVariable("10000"),
               "RP_ENDPOINT_1_PORT" -> LiteralEnvironmentVariable("1234"),
               "RP_ENDPOINT_2_PORT" -> LiteralEnvironmentVariable("10001"),
 
-              "RP_ENDPOINT_EP1-V1_BIND_PORT" -> LiteralEnvironmentVariable("10000"),
-              "RP_ENDPOINT_EP2-V3_BIND_PORT" -> LiteralEnvironmentVariable("1234"),
-              "RP_ENDPOINT_EP3-V2_BIND_PORT" -> LiteralEnvironmentVariable("10001"),
+              "RP_ENDPOINT_EP1_BIND_PORT" -> LiteralEnvironmentVariable("10000"),
+              "RP_ENDPOINT_EP2_BIND_PORT" -> LiteralEnvironmentVariable("1234"),
+              "RP_ENDPOINT_EP3_BIND_PORT" -> LiteralEnvironmentVariable("10001"),
               "RP_ENDPOINT_0_BIND_PORT" -> LiteralEnvironmentVariable("10000"),
               "RP_ENDPOINT_1_BIND_PORT" -> LiteralEnvironmentVariable("1234"),
               "RP_ENDPOINT_2_BIND_PORT" -> LiteralEnvironmentVariable("10001"))
