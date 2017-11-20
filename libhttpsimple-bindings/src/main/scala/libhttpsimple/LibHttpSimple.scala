@@ -51,6 +51,8 @@ object LibHttpSimple {
     followRedirect: Boolean = true,
     tlsValidationEnabled: Boolean = true,
     tlsCacertsPath: Option[Path] = None,
+    tlsCertPath: Option[Path] = None,
+    tlsKeyPath: Option[Path] = None,
     maxRedirects: Int = Settings.DefaultMaxRedirects)
 
   object Settings {
@@ -92,7 +94,20 @@ object LibHttpSimple {
       request.requestBody,
       request.requestFollowRedirects,
       request.tlsValidationEnabled,
-      Nil)
+      Nil,
+      "")
+
+  def apply(request: SocketRequest)(implicit settings: Settings): Try[HttpResponse] =
+    doHttp(
+      "GET",
+      request.url,
+      Map.empty,
+      None,
+      None,
+      None,
+      None,
+      Nil,
+      request.socket)
 
   private def doHttp(
     method: String,
@@ -102,7 +117,8 @@ object LibHttpSimple {
     requestBody: Option[String],
     followRedirects: Option[Boolean],
     tlsValidationEnabled: Option[Boolean],
-    visitedUrls: List[String])(implicit settings: Settings): Try[HttpResponse] =
+    visitedUrls: List[String],
+    unixSocket: String)(implicit settings: Settings): Try[HttpResponse] =
     native.Zone { implicit z =>
       val isFollowRedirect = followRedirects.getOrElse(settings.followRedirect)
       val isTlsValidationEnabled = tlsValidationEnabled.getOrElse(settings.tlsValidationEnabled)
@@ -119,11 +135,14 @@ object LibHttpSimple {
 
       val http_response_struct = nativebinding.httpsimple.do_http(
         validate_tls = if (isTlsValidationEnabled) 1 else 0,
-        native.toCString(settings.tlsCacertsPath.fold("")(_.toString)),
         native.toCString(method),
         native.toCString(url),
         native.toCString(httpHeadersToDelimitedString(headers)),
-        native.toCString(requestBody.getOrElse("")))
+        native.toCString(requestBody.getOrElse("")),
+        native.toCString(unixSocket),
+        native.toCString(settings.tlsCacertsPath.fold("")(_.toString)),
+        native.toCString(settings.tlsCertPath.fold("")(_.toString)),
+        native.toCString(settings.tlsKeyPath.fold("")(_.toString)))
 
       val errorCode = nativebinding.httpsimple.get_error_code(http_response_struct).cast[Long]
       val result =
@@ -139,7 +158,7 @@ object LibHttpSimple {
             if (visitedUrls.contains(location) || visitedUrls.length >= settings.maxRedirects)
               Failure(InfiniteRedirect(visitedUrls))
             else
-              doHttp("GET", location, Map.empty, auth, None, followRedirects, tlsValidationEnabled, location :: visitedUrls)
+              doHttp("GET", location, Map.empty, auth, None, followRedirects, tlsValidationEnabled, location :: visitedUrls, unixSocket)
           } else {
             Success(HttpResponse(httpStatus, hs, body))
           }

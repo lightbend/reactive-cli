@@ -18,7 +18,7 @@ package com.lightbend.rp.reactivecli
 
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
 import com.lightbend.rp.reactivecli.argparse.{ GenerateDeploymentArgs, InputArgs, VersionArgs }
-import com.lightbend.rp.reactivecli.docker.{ Config, DockerRegistry }
+import com.lightbend.rp.reactivecli.docker.{ Config, DockerRegistry, DockerSocket }
 import com.lightbend.rp.reactivecli.runtime.kubernetes
 import libhttpsimple.{ HttpRequest, LibHttpSimple }
 import libhttpsimple.LibHttpSimple.HttpExchange
@@ -58,18 +58,34 @@ object Main extends LazyLogging {
                   password <- generateDeploymentArgs.registryPassword
                 } yield HttpRequest.BasicAuth(username, password)
 
-              def getDockerConfig(imageName: String): Try[Config] =
+              def getDockerSocketConfig(imageName: String): Option[Config] =
+                DockerSocket
+                  .getConfigFromUnixSocket(imageName)
+                  .map(_.registryConfig)
+
+              def getDockerHostConfig(imageName: String): Option[Config] =
+                DockerSocket
+                  .getConfigFromDockerHost(imageName)
+                  .map(_.registryConfig)
+
+              def getDockerRegistryConfig(imageName: String): Try[Config] =
                 DockerRegistry.getConfig(
                   http,
                   dockerRegistryAuth,
                   generateDeploymentArgs.registryUseHttps,
                   generateDeploymentArgs.registryValidateTls)(imageName, token = None).map(_._1)
 
+              def getDockerConfig(imageName: String): Try[Config] = {
+                Try(getDockerHostConfig(imageName).get)
+                  .orElse(Try(getDockerSocketConfig(imageName).get))
+                  .orElse(getDockerRegistryConfig(imageName))
+              }
+
               val output = kubernetes.handleGeneratedResources(kubernetesArgs.output)
               kubernetes.generateResources(getDockerConfig, output)(generateDeploymentArgs, kubernetesArgs)
                 .recover {
                   case error =>
-                    logger.error(s"Failure generating kubernetes resources for docker image ${generateDeploymentArgs.dockerImage.get}", error)
+                    logger.error(s"Failure generating Kubernetes resources for docker image ${generateDeploymentArgs.dockerImage.get} ({})", error.getMessage)
                 }
           }
       }
