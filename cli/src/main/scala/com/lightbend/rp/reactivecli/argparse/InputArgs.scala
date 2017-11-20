@@ -66,7 +66,6 @@ object InputArgs {
         .text("Sets the log level. Available: error, warn, info, debug, trace")
         .action((v, c) => c.copy(logLevel = v))
 
-
       cmd("version")
         .text("Outputs the program's version")
         .action((_, inputArgs) => inputArgs.copy(commandArgs = Some(VersionArgs)))
