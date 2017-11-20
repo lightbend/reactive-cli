@@ -66,24 +66,30 @@ object Deployment {
           "RP_ENDPOINTS" -> LiteralEnvironmentVariable(
             endpoints.values.toList
               .sortBy(_.index)
-              .map(v => endpointEnvName(v))
+              .map(endpointEnvName)
               .mkString(","))) ++
           endpointPortEnvs(endpoints)
 
     private[kubernetes] def endpointPortEnvs(endpoints: Map[String, Endpoint]): Map[String, EnvironmentVariable] =
       AssignedPort.assignPorts(endpoints)
         .flatMap { assigned =>
+          val endpointName = endpointEnvName(assigned.endpoint)
+
           val assignedPortEnv = LiteralEnvironmentVariable(assigned.port.toString)
           val hostEnv = FieldRefEnvironmentVariable("status.podIP")
+          val endpointVersionEnv = LiteralEnvironmentVariable(assigned.endpoint.version.map(_.toString).getOrElse(""))
+
           Seq(
-            s"RP_ENDPOINT_${endpointEnvName(assigned.endpoint)}_HOST" -> hostEnv,
-            s"RP_ENDPOINT_${endpointEnvName(assigned.endpoint)}_BIND_HOST" -> hostEnv,
-            s"RP_ENDPOINT_${endpointEnvName(assigned.endpoint)}_PORT" -> assignedPortEnv,
-            s"RP_ENDPOINT_${endpointEnvName(assigned.endpoint)}_BIND_PORT" -> assignedPortEnv,
+            s"RP_ENDPOINT_${endpointName}_HOST" -> hostEnv,
+            s"RP_ENDPOINT_${endpointName}_BIND_HOST" -> hostEnv,
+            s"RP_ENDPOINT_${endpointName}_PORT" -> assignedPortEnv,
+            s"RP_ENDPOINT_${endpointName}_BIND_PORT" -> assignedPortEnv,
+            s"RP_ENDPOINT_${endpointName}_VERSION" -> endpointVersionEnv,
             s"RP_ENDPOINT_${assigned.endpoint.index}_HOST" -> hostEnv,
             s"RP_ENDPOINT_${assigned.endpoint.index}_BIND_HOST" -> hostEnv,
             s"RP_ENDPOINT_${assigned.endpoint.index}_PORT" -> assignedPortEnv,
-            s"RP_ENDPOINT_${assigned.endpoint.index}_BIND_PORT" -> assignedPortEnv)
+            s"RP_ENDPOINT_${assigned.endpoint.index}_BIND_PORT" -> assignedPortEnv,
+            s"RP_ENDPOINT_${assigned.endpoint.index}_VERSION" -> endpointVersionEnv)
         }
         .toMap
 
@@ -217,7 +223,7 @@ object Deployment {
   implicit def assignedEncode = EncodeJson[AssignedPort] { assigned =>
     Json(
       "containerPort" -> assigned.port.asJson,
-      "name" -> endpointEnvName(assigned.endpoint).toLowerCase.asJson)
+      "name" -> endpointServiceName(assigned.endpoint).toLowerCase.asJson)
   }
 
   implicit def endpointsEncode = EncodeJson[Map[String, Endpoint]] { endpoints =>

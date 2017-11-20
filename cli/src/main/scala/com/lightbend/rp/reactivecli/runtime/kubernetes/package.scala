@@ -121,16 +121,19 @@ package object kubernetes extends LazyLogging {
       out.println(formattedJson)
     }
 
-  private[kubernetes] def endpointName(endpoint: Endpoint): String =
-    endpoint.version.fold(endpoint.name)(v => s"${endpoint.name}$VersionSeparator$v")
+  private[kubernetes] def endpointName(endpoint: Endpoint, appendVersion: Boolean): String =
+    if (appendVersion)
+      endpoint.version.fold(endpoint.name)(v => s"${endpoint.name}$VersionSeparator$v")
+    else
+      endpoint.name
 
   private[kubernetes] def endpointServiceName(endpoint: Endpoint): String =
-    endpointName(endpoint)
+    endpointName(endpoint, appendVersion = true)
       .map(c => if (ValidEndpointServiceChars.contains(c)) c else '-')
       .toLowerCase
 
   private[kubernetes] def endpointEnvName(endpoint: Endpoint): String =
-    endpointName(endpoint)
+    endpointName(endpoint, appendVersion = false)
       .map(c => if (ValidEndpointChars.contains(c)) c else '_')
       .toUpperCase
 
