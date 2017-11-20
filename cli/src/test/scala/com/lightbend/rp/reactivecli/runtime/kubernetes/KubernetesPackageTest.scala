@@ -551,27 +551,19 @@ object KubernetesPackageTest extends TestSuite {
     }
 
     "endpointName" - {
-      "normalize endpoint names with version" - {
+      "normalize endpoint names" - {
         Seq(
-          "akka-remote" -> "AKKA-REMOTE-V1",
-          "user-search" -> "USER-SEARCH-V1",
-          "h!e**(l+l??O" -> "H_E___L_L__O-V1").foreach {
+          "akka-remote" -> "AKKA-REMOTE",
+          "user-search" -> "USER-SEARCH",
+          "h!e**(l+l??O" -> "H_E___L_L__O").foreach {
             case (input, expectedResult) =>
               val endpoint = TcpEndpoint(0, input, 0, Some(1))
               val result = endpointEnvName(endpoint)
               assert(result == expectedResult)
-          }
-      }
 
-      "normalize endpoint names without version" - {
-        Seq(
-          "akka_remote" -> "AKKA_REMOTE",
-          "user-search" -> "USER-SEARCH",
-          "h!e**(l+l??O" -> "H_E___L_L__O").foreach {
-            case (input, expectedResult) =>
-              val endpoint = TcpEndpoint(0, input, 0, Option.empty)
-              val result = endpointEnvName(endpoint)
-              assert(result == expectedResult)
+              val endpointNoVersion = endpoint.copy(version = None)
+              val result2 = endpointEnvName(endpointNoVersion)
+              assert(result2 == expectedResult)
           }
       }
     }
