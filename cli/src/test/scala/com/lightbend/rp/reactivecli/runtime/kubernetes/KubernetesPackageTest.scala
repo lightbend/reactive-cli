@@ -536,9 +536,13 @@ object KubernetesPackageTest extends TestSuite {
         val generatedText = new String(output.toByteArray)
         val expectedText =
           """---
-            |{"key1":"value1"}
+            |{
+            |  "key1" : "value1"
+            |}
             |---
-            |{"key2":"value2"}
+            |{
+            |  "key2" : "value2"
+            |}
             |""".stripMargin
         assert(generatedText == expectedText)
       }

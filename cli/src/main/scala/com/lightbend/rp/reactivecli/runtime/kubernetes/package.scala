@@ -118,7 +118,7 @@ package object kubernetes extends LazyLogging {
 
   private[kubernetes] def pipeToStream(out: PrintStream)(generatedResources: Seq[GeneratedKubernetesResource]): Unit =
     generatedResources.foreach { r =>
-      val formattedJson = r.payload.pretty(PrettyParams.nospace.copy(preserveOrder = true))
+      val formattedJson = r.payload.pretty(PrettyParams.spaces2.copy(preserveOrder = true))
       out.println("---")
       out.println(formattedJson)
     }
