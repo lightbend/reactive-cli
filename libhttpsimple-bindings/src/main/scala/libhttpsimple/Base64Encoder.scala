@@ -16,36 +16,42 @@
 
 package libhttpsimple
 
+import scala.annotation.tailrec
+
 object Base64Encoder {
-  private val charSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+  private val charSet: Seq[Char] =
+    ('A' to 'Z') ++ ('a' to 'z') ++ ('0' to '9') ++ Seq('+', '/')
+  private val blockLength: Int = 3
+  private val padding: String = "="
 
   /**
    * Inspired by https://en.wikibooks.org/wiki/Algorithm_Implementation/Miscellaneous/Base64#Java
    */
   def apply(in: String): String = {
     val charsToPad =
-      if (in.length % 3 == 0)
+      if (in.length % blockLength == 0)
         0
       else
-        3 - (in.length % 3)
+        blockLength - (in.length % blockLength)
 
     val data = in + ("\u0000" * charsToPad)
-    val rightPad = "=" * charsToPad
-    val builder = new StringBuilder
+    val rightPad = padding * charsToPad
 
-    var i = 0
+    @tailrec
+    def encodeBlock(blockPosition: Int, result: Seq[Char]): Seq[Char] =
+      if (blockPosition >= data.length)
+        result
+      else {
+        val n = (data.charAt(blockPosition) << 16) + (data.charAt(blockPosition + 1) << 8) + data.charAt(blockPosition + 2)
+        val encoded: Seq[Char] = Seq(
+          charSet((n >> 18) & 63),
+          charSet((n >> 12) & 63),
+          charSet((n >> 6) & 63),
+          charSet(n & 63))
+        encodeBlock(blockPosition = blockPosition + blockLength, result ++ encoded)
+      }
 
-    while (i < data.length) {
-      val n = (data.charAt(i) << 16) + (data.charAt(i + 1) << 8) + data.charAt(i + 2)
-
-      builder.append(charSet.charAt((n >> 18) & 63))
-      builder.append(charSet.charAt((n >> 12) & 63))
-      builder.append(charSet.charAt((n >> 6) & 63))
-      builder.append(charSet.charAt(n & 63))
-
-      i += 3
-    }
-
-    builder.substring(0, builder.length - rightPad.length) + rightPad
+    val chars = encodeBlock(blockPosition = 0, Seq.empty)
+    chars.mkString.substring(0, chars.length - rightPad.length) + rightPad
   }
 }
