@@ -22,31 +22,63 @@ import utest._
 object DockerRegistryTest extends TestSuite {
   val tests = this{
     "blobUrl" - {
-      assert(
-        DockerRegistry.blobUrl(
-          Image(
-            DockerDefaultRegistry,
-            DockerDefaultLibrary,
-            "alpine",
-            "3.5",
-            None,
-            None,
-            "alpine",
-            Some("3.5")), "abc123") == s"https://$DockerDefaultRegistry/v2/$DockerDefaultLibrary/alpine/blobs/abc123")
+      "with https" - {
+        assert(
+          DockerRegistry.blobUrl(
+            Image(
+              DockerDefaultRegistry,
+              DockerDefaultLibrary,
+              "alpine",
+              "3.5",
+              None,
+              None,
+              "alpine",
+              Some("3.5")), "abc123", useHttps = true) == s"https://$DockerDefaultRegistry/v2/$DockerDefaultLibrary/alpine/blobs/abc123")
+      }
+
+      "with http" - {
+        assert(
+          DockerRegistry.blobUrl(
+            Image(
+              DockerDefaultRegistry,
+              DockerDefaultLibrary,
+              "alpine",
+              "3.5",
+              None,
+              None,
+              "alpine",
+              Some("3.5")), "abc123", useHttps = false) == s"http://$DockerDefaultRegistry/v2/$DockerDefaultLibrary/alpine/blobs/abc123")
+      }
     }
 
     "manifestUrl" - {
-      assert(
-        DockerRegistry.manifestUrl(
-          Image(
-            DockerDefaultRegistry,
-            DockerDefaultLibrary,
-            "alpine",
-            "3.5",
-            None,
-            None,
-            "alpine",
-            Some("3.5"))) == s"https://$DockerDefaultRegistry/v2/$DockerDefaultLibrary/alpine/manifests/3.5")
+      "with https" - {
+        assert(
+          DockerRegistry.manifestUrl(
+            Image(
+              DockerDefaultRegistry,
+              DockerDefaultLibrary,
+              "alpine",
+              "3.5",
+              None,
+              None,
+              "alpine",
+              Some("3.5")), useHttps = true) == s"https://$DockerDefaultRegistry/v2/$DockerDefaultLibrary/alpine/manifests/3.5")
+      }
+
+      "with http" - {
+        assert(
+          DockerRegistry.manifestUrl(
+            Image(
+              DockerDefaultRegistry,
+              DockerDefaultLibrary,
+              "alpine",
+              "3.5",
+              None,
+              None,
+              "alpine",
+              Some("3.5")), useHttps = false) == s"http://$DockerDefaultRegistry/v2/$DockerDefaultLibrary/alpine/manifests/3.5")
+      }
     }
 
     "parseImageUri" - {

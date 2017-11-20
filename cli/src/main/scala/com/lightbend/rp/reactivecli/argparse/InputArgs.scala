@@ -17,6 +17,7 @@
 package com.lightbend.rp.reactivecli.argparse
 
 import java.io.File
+import java.nio.file.{ Path, Paths }
 
 import com.lightbend.rp.reactivecli.argparse.kubernetes.{ DeploymentArgs, IngressArgs, KubernetesArgs, ServiceArgs }
 import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment
@@ -68,6 +69,11 @@ object InputArgs {
       cmd("version")
         .text("Outputs the program's version")
         .action((_, inputArgs) => inputArgs.copy(commandArgs = Some(VersionArgs)))
+
+      opt[File]("cainfo")
+        .text("Path to the CA certs for TLS validation purposes")
+        .validate(f => if (f.exists()) success else failure(s"CA certs file ${f.getAbsolutePath} doesn't exist."))
+        .action((f, c) => c.copy(tlsCacertsPath = Some(f.toPath.toAbsolutePath)))
 
       cmd("generate-deployment")
         .text("Generate deployment resources")
@@ -156,8 +162,52 @@ object InputArgs {
           opt[Long]("disk-space")
             .text("Specify the disk space limit")
             .optional()
-            .action(GenerateDeploymentArgs.set((v, c) => c.copy(diskSpace = Some(v)))))
+            .action(GenerateDeploymentArgs.set((v, c) => c.copy(diskSpace = Some(v)))),
+
+          opt[String]("registry-username")
+            .text("Specify username to access docker registry. Password must be specified also.")
+            .optional()
+            .action(GenerateDeploymentArgs.set((v, c) => c.copy(registryUsername = Some(v)))),
+
+          opt[String]("registry-password")
+            .text("Specify password to access docker registry. Username must be specified also.")
+            .optional()
+            .action(GenerateDeploymentArgs.set((v, c) => c.copy(registryPassword = Some(v)))),
+
+          opt[Unit]("registry-https-disable")
+            .text("Disables HTTPS when accessing docker registry")
+            .optional()
+            .action(GenerateDeploymentArgs.set((_, c) => c.copy(registryUseHttps = false))),
+
+          opt[Unit]("registry-tls-validation-disable")
+            .text("Disables TLS cert validation when accessing docker registry through HTTPS")
+            .optional()
+            .action(GenerateDeploymentArgs.set((_, c) => c.copy(registryValidateTls = false))))
+
+      checkConfig { inputArgs =>
+        inputArgs.commandArgs match {
+          case Some(v: GenerateDeploymentArgs) =>
+            if (v.registryUsername.isDefined && v.registryPassword.isEmpty)
+              failure("Registry password can't be empty if registry username is specified")
+            else if (v.registryUsername.isEmpty && v.registryPassword.isDefined)
+              failure("Registry username can't be empty if registry password is specified")
+            else
+              success
+          case _ =>
+            success
+        }
+      }
     }
+
+  object Envs {
+    val RP_CAINFO = "RP_CAINFO"
+
+    def mergeWithEnvs(inputArgs: InputArgs, envs: Map[String, String]): InputArgs = {
+      val tlsCacertsPathEnv = envs.get(RP_CAINFO).map(Paths.get(_))
+      inputArgs.tlsCacertsPath.orElse(tlsCacertsPathEnv)
+        .fold(inputArgs)(v => inputArgs.copy(tlsCacertsPath = Some(v)))
+    }
+  }
 
 }
 
@@ -166,4 +216,5 @@ object InputArgs {
  */
 case class InputArgs(
   logLevel: LogLevel = LogLevel.INFO,
+  tlsCacertsPath: Option[Path] = None,
   commandArgs: Option[CommandArgs] = None)

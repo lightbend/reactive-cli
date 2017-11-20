@@ -16,16 +16,28 @@
 
 package libhttpsimple
 
+object HttpRequest {
+  sealed trait Auth
+  case class BasicAuth(username: String, password: String) extends Auth
+  case class BearerToken(value: String) extends Auth
+}
+
 case class HttpRequest(
   requestUrl: String,
   requestMethod: String = "GET",
   requestHeaders: HttpHeaders = HttpHeaders(Map.empty),
   requestBody: Option[String] = None,
-  requestFollowRedirects: Boolean = false) {
+  auth: Option[HttpRequest.Auth] = None,
+  requestFollowRedirects: Option[Boolean] = None,
+  tlsValidationEnabled: Option[Boolean] = None) {
 
-  def disableFollowRedirects: HttpRequest = copy(requestFollowRedirects = false)
+  def disableFollowRedirects: HttpRequest = copy(requestFollowRedirects = Some(false))
 
-  def enableFollowRedirects: HttpRequest = copy(requestFollowRedirects = true)
+  def enableFollowRedirects: HttpRequest = copy(requestFollowRedirects = Some(true))
+
+  def disableTlsValidation: HttpRequest = copy(tlsValidationEnabled = Some(false))
+
+  def enableTlsValidation: HttpRequest = copy(tlsValidationEnabled = Some(true))
 
   def get: HttpRequest = copy(requestMethod = "GET")
 
@@ -42,4 +54,8 @@ case class HttpRequest(
   def withHeader(name: String, value: String): HttpRequest = copy(requestHeaders = requestHeaders.updated(name, value))
 
   def withoutHeader(name: String): HttpRequest = copy(requestHeaders = requestHeaders.remove(name))
+
+  def withAuth(auth: HttpRequest.Auth): HttpRequest = copy(auth = Some(auth))
+
+  def withoutAuth: HttpRequest = copy(auth = None)
 }
