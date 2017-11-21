@@ -63,7 +63,9 @@ object Service {
               "metadata" -> Json(
                 "labels" -> Json(
                   "app" -> annotations.appName.asJson),
-                "name" -> annotations.appName.asJson),
+                "name" -> annotations.appName.asJson)
+                .deepmerge(
+                  annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> ns.asJson))),
               "spec" -> Json(
                 "clusterIP" -> clusterIp.getOrElse("None").asJson,
                 "ports" -> annotations.endpoints.asJson,

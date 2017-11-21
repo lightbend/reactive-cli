@@ -17,6 +17,7 @@
 package com.lightbend.rp.reactivecli.annotations
 
 import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
+import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
 import utest._
 
 import scala.collection.immutable.Seq
@@ -110,6 +111,7 @@ object AnnotationsTest extends TestSuite {
     "Annotations.apply" - {
       assert(
         Annotations(Map.empty, GenerateDeploymentArgs()) == Annotations(
+          namespace = None,
           appName = None,
           diskSpace = None,
           memory = None,
@@ -130,6 +132,7 @@ object AnnotationsTest extends TestSuite {
               "some.key" -> "test",
               "com.lightbend.rp.some-key" -> "test",
 
+              "com.lightbend.rp.namespace" -> "fonts",
               "com.lightbend.rp.app-name" -> "my-app",
               "com.lightbend.rp.version-major" -> "3",
               "com.lightbend.rp.version-minor" -> "2",
@@ -175,6 +178,7 @@ object AnnotationsTest extends TestSuite {
               "com.lightbend.rp.endpoints.2.protocol" -> "udp",
               "com.lightbend.rp.endpoints.2.port" -> "1234"),
             GenerateDeploymentArgs()) == Annotations(
+              namespace = Some("fonts"),
               appName = Some("my-app"),
               diskSpace = Some(65536L),
               memory = Some(8192L),
@@ -200,6 +204,7 @@ object AnnotationsTest extends TestSuite {
         assert(
           Annotations(
             Map(
+              "com.lightbend.rp.namespace" -> "tom",
               "com.lightbend.rp.disk-space" -> "65536",
               "com.lightbend.rp.memory" -> "8192",
               "com.lightbend.rp.nr-of-cpus" -> "0.5",
@@ -212,7 +217,10 @@ object AnnotationsTest extends TestSuite {
               diskSpace = Some(2048),
               environmentVariables = Map(
                 "foo" -> "foo",
-                "hey" -> "there"))) == Annotations(
+                "hey" -> "there"),
+              targetRuntimeArgs = Some(KubernetesArgs(
+                kubernetesNamespace = Some("chirper"))))) == Annotations(
+              namespace = Some("chirper"),
               appName = None,
               diskSpace = Some(2048),
               memory = Some(1024),
@@ -238,6 +246,7 @@ object AnnotationsTest extends TestSuite {
               "com.lightbend.rp.version-minor" -> "2",
               "com.lightbend.rp.version-patch" -> "1"),
             GenerateDeploymentArgs()) == Annotations(
+              namespace = None,
               appName = None,
               diskSpace = None,
               memory = None,
@@ -264,6 +273,7 @@ object AnnotationsTest extends TestSuite {
               "com.lightbend.rp.endpoints.1.protocol" -> "tcp",
               "com.lightbend.rp.endpoints.1.port" -> "1234"),
             GenerateDeploymentArgs()) == Annotations(
+              namespace = None,
               appName = None,
               diskSpace = None,
               memory = None,
@@ -287,6 +297,7 @@ object AnnotationsTest extends TestSuite {
               "com.lightbend.rp.endpoints.1.protocol" -> "tcp",
               "com.lightbend.rp.endpoints.1.port" -> "1234"),
             GenerateDeploymentArgs()) == Annotations(
+              namespace = None,
               appName = None,
               diskSpace = None,
               memory = None,
@@ -313,6 +324,7 @@ object AnnotationsTest extends TestSuite {
               "com.lightbend.rp.readiness-check.args.0" -> "/usr/bin/env",
               "com.lightbend.rp.readiness-check.args.1" -> "bash"),
             GenerateDeploymentArgs()) == Annotations(
+              namespace = None,
               appName = None,
               diskSpace = None,
               memory = None,
@@ -340,6 +352,7 @@ object AnnotationsTest extends TestSuite {
               "com.lightbend.rp.readiness-check.interval" -> "5",
               "com.lightbend.rp.readiness-check.path" -> "/hello"),
             GenerateDeploymentArgs()) == Annotations(
+              namespace = None,
               appName = None,
               diskSpace = None,
               memory = None,
@@ -365,6 +378,7 @@ object AnnotationsTest extends TestSuite {
               "com.lightbend.rp.readiness-check.port" -> "1234",
               "com.lightbend.rp.readiness-check.interval" -> "5"),
             GenerateDeploymentArgs()) == Annotations(
+              namespace = None,
               appName = None,
               diskSpace = None,
               memory = None,

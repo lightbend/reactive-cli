@@ -67,6 +67,7 @@ object KubernetesArgs {
  */
 case class KubernetesArgs(
   kubernetesVersion: Option[Deployment.KubernetesVersion] = None,
+  kubernetesNamespace: Option[String] = None,
   deploymentArgs: DeploymentArgs = DeploymentArgs(),
   serviceArgs: ServiceArgs = ServiceArgs(),
   ingressArgs: IngressArgs = IngressArgs(),

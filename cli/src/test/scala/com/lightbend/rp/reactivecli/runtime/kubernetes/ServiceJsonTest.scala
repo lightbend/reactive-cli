@@ -24,9 +24,9 @@ import com.lightbend.rp.reactivecli.annotations._
 import scala.collection.immutable.Seq
 
 object ServiceJsonTest extends TestSuite {
-  import Service._
 
   val annotations = Annotations(
+    namespace = Some("chirper"),
     appName = Some("friendimpl"),
     diskSpace = Some(65536L),
     memory = Some(8192L),
@@ -57,7 +57,8 @@ object ServiceJsonTest extends TestSuite {
               |    "labels": {
               |      "app": "friendimpl"
               |    },
-              |    "name": "friendimpl"
+              |    "name": "friendimpl",
+              |    "namespace": "chirper"
               |  },
               |  "spec": {
               |    "clusterIP": "None",
@@ -89,7 +90,8 @@ object ServiceJsonTest extends TestSuite {
               |    "labels": {
               |      "app": "friendimpl"
               |    },
-              |    "name": "friendimpl"
+              |    "name": "friendimpl",
+              |    "namespace": "chirper"
               |  },
               |  "spec": {
               |    "clusterIP": "10.0.0.5",

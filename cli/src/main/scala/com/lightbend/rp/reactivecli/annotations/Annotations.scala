@@ -17,12 +17,14 @@
 package com.lightbend.rp.reactivecli.annotations
 
 import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
+import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
 
 import scala.collection.immutable.Seq
 import scala.util.Try
 import scala.util.matching.Regex
 
 case class Annotations(
+  namespace: Option[String],
   appName: Option[String],
   diskSpace: Option[Long],
   memory: Option[Long],
@@ -61,6 +63,7 @@ object Annotations {
   def apply(labels: Map[String, String], args: GenerateDeploymentArgs): Annotations = {
     val appVersion = version(labels)
     Annotations(
+      namespace = namespace(args).orElse(namespace(labels)),
       appName = appName(labels),
       diskSpace = args.diskSpace.orElse(diskSpace(labels)),
       memory = args.memory.orElse(memory(labels)),
@@ -75,6 +78,15 @@ object Annotations {
         args.environmentVariables.mapValues(LiteralEnvironmentVariable.apply),
       version = appVersion)
   }
+
+  private[annotations] def namespace(labels: Map[String, String]): Option[String] =
+    labels
+      .get(ns("namespace"))
+
+  private[annotations] def namespace(args: GenerateDeploymentArgs): Option[String] =
+    args.targetRuntimeArgs.collect {
+      case KubernetesArgs(_, Some(namespace), _, _, _, _) => namespace
+    }
 
   private[annotations] def appName(labels: Map[String, String]): Option[String] =
     labels

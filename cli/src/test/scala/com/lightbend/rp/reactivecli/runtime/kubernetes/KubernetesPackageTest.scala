@@ -47,6 +47,7 @@ object KubernetesPackageTest extends TestSuite {
           Config.Cfg(
             Image = Some(imageName),
             Labels = Some(Map(
+              "com.lightbend.rp.namespace" -> "chirper",
               "com.lightbend.rp.app-name" -> "my-app",
               "com.lightbend.rp.version-major" -> "3",
               "com.lightbend.rp.version-minor" -> "2",
@@ -96,10 +97,27 @@ object KubernetesPackageTest extends TestSuite {
 
         "generates kubernetes deployment + service resource" - {
           def handleOutput(generatedResources: Seq[GeneratedKubernetesResource]): Unit = {
-            val (deployment, service, ingress) = generatedResources match {
-              case Seq(deployment: Deployment, service: Service, ingress: Ingress) =>
-                (deployment, service, ingress)
+            val (namespace, deployment, service, ingress) = generatedResources match {
+              case Seq(namespace: Namespace, deployment: Deployment, service: Service, ingress: Ingress) =>
+                (namespace, deployment, service, ingress)
             }
+
+            assert(namespace.name == "chirper")
+            val namespaceJsonExpected =
+              """
+                |{
+                |  "apiVersion": "v1",
+                |  "kind": "Namespace",
+                |  "metadata": {
+                |    "name": "chirper",
+                |    "labels": {
+                |      "name": "chirper"
+                |    }
+                |  }
+                |}
+              """.stripMargin.parse.right.get
+            // TODO: assert json later
+            //assert(namespace.payload == namespaceJsonExpected)
 
             assert(deployment.name == "my-app-v3-2-1-snapshot")
             val deploymentJsonExpected =
@@ -381,7 +399,8 @@ object KubernetesPackageTest extends TestSuite {
                 |    "labels": {
                 |      "app": "my-app"
                 |    },
-                |    "name": "my-app"
+                |    "name": "my-app",
+                |    "namespace": "chirper"
                 |  },
                 |  "spec": {
                 |    "clusterIP": "None",
@@ -420,7 +439,8 @@ object KubernetesPackageTest extends TestSuite {
                 |	"apiVersion": "extensions/v1beta1",
                 |	"kind": "Ingress",
                 |	"metadata": {
-                |		"name": "my-app"
+                |		"name": "my-app",
+                |   "namespace": "chirper"
                 |	},
                 |	"spec": {
                 |		"rules": [{
