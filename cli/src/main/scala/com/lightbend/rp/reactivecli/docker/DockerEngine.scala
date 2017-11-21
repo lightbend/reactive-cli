@@ -23,15 +23,7 @@ import Argonaut._
 
 import scala.util.{ Failure, Success, Try }
 
-object DockerSocket {
-  def getConfigFromUnixSocket(uri: String)(implicit settings: LibHttpSimple.Settings): Option[SocketConfig] = {
-    // @TODO escaping for uri?
-    for {
-      response <- LibHttpSimple(SocketRequest("/var/run/docker.sock", s"http:0/images/$uri/json")).toOption
-      config <- getDecoded[SocketConfig](response).toOption
-    } yield config
-  }
-
+object DockerEngine {
   def getConfigFromDockerHost(uri: String)(implicit settings: LibHttpSimple.Settings): Option[SocketConfig] = {
     for {
       host <- Option(System.getenv("DOCKER_HOST"))

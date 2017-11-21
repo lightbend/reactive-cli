@@ -18,7 +18,7 @@ package com.lightbend.rp.reactivecli
 
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
 import com.lightbend.rp.reactivecli.argparse.{ GenerateDeploymentArgs, InputArgs, VersionArgs }
-import com.lightbend.rp.reactivecli.docker.{ Config, DockerRegistry, DockerSocket }
+import com.lightbend.rp.reactivecli.docker.{ Config, DockerRegistry, DockerEngine }
 import com.lightbend.rp.reactivecli.runtime.kubernetes
 import libhttpsimple.{ HttpRequest, LibHttpSimple }
 import libhttpsimple.LibHttpSimple.HttpExchange
@@ -58,13 +58,8 @@ object Main extends LazyLogging {
                   password <- generateDeploymentArgs.registryPassword
                 } yield HttpRequest.BasicAuth(username, password)
 
-              def getDockerSocketConfig(imageName: String): Option[Config] =
-                DockerSocket
-                  .getConfigFromUnixSocket(imageName)
-                  .map(_.registryConfig)
-
               def getDockerHostConfig(imageName: String): Option[Config] =
-                DockerSocket
+                DockerEngine
                   .getConfigFromDockerHost(imageName)
                   .map(_.registryConfig)
 
@@ -77,7 +72,6 @@ object Main extends LazyLogging {
 
               def getDockerConfig(imageName: String): Try[Config] = {
                 Try(getDockerHostConfig(imageName).get)
-                  .orElse(Try(getDockerSocketConfig(imageName).get))
                   .orElse(getDockerRegistryConfig(imageName))
               }
 

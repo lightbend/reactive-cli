@@ -94,20 +94,7 @@ object LibHttpSimple {
       request.requestBody,
       request.requestFollowRedirects,
       request.tlsValidationEnabled,
-      Nil,
-      "")
-
-  def apply(request: SocketRequest)(implicit settings: Settings): Try[HttpResponse] =
-    doHttp(
-      "GET",
-      request.url,
-      Map.empty,
-      None,
-      None,
-      None,
-      None,
-      Nil,
-      request.socket)
+      Nil)
 
   private def doHttp(
     method: String,
@@ -117,8 +104,7 @@ object LibHttpSimple {
     requestBody: Option[String],
     followRedirects: Option[Boolean],
     tlsValidationEnabled: Option[Boolean],
-    visitedUrls: List[String],
-    unixSocket: String)(implicit settings: Settings): Try[HttpResponse] =
+    visitedUrls: List[String])(implicit settings: Settings): Try[HttpResponse] =
     native.Zone { implicit z =>
       val isFollowRedirect = followRedirects.getOrElse(settings.followRedirect)
       val isTlsValidationEnabled = tlsValidationEnabled.getOrElse(settings.tlsValidationEnabled)
@@ -139,7 +125,6 @@ object LibHttpSimple {
         native.toCString(url),
         native.toCString(httpHeadersToDelimitedString(headers)),
         native.toCString(requestBody.getOrElse("")),
-        native.toCString(unixSocket),
         native.toCString(settings.tlsCacertsPath.fold("")(_.toString)),
         native.toCString(settings.tlsCertPath.fold("")(_.toString)),
         native.toCString(settings.tlsKeyPath.fold("")(_.toString)))
@@ -158,7 +143,7 @@ object LibHttpSimple {
             if (visitedUrls.contains(location) || visitedUrls.length >= settings.maxRedirects)
               Failure(InfiniteRedirect(visitedUrls))
             else
-              doHttp("GET", location, Map.empty, auth, None, followRedirects, tlsValidationEnabled, location :: visitedUrls, unixSocket)
+              doHttp("GET", location, Map.empty, auth, None, followRedirects, tlsValidationEnabled, location :: visitedUrls)
           } else {
             Success(HttpResponse(httpStatus, hs, body))
           }

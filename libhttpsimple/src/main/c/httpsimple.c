@@ -51,7 +51,7 @@ size_t writefunc(void *ptr, size_t size, size_t nmemb, struct http_response *s)
   return size * nmemb;
 }
 
-struct http_response *do_http(long validate_tls, char *http_method, char *url, char *request_headers_raw, char *request_body, char *unix_socket_path, char *tls_cacerts_path, char *ssl_cert, char* ssl_key) {
+struct http_response *do_http(long validate_tls, char *http_method, char *url, char *request_headers_raw, char *request_body, char *tls_cacerts_path, char *ssl_cert, char* ssl_key) {
   CURL *curl;
   CURLcode res_curl_code;
   struct http_response *s = malloc(sizeof(struct http_response));
@@ -63,10 +63,6 @@ struct http_response *do_http(long validate_tls, char *http_method, char *url, c
     if(curl) {
       curl_easy_setopt(curl, CURLOPT_URL, url);
       curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, http_method);
-
-      if (unix_socket_path && strlen(unix_socket_path) > 0) {
-        curl_easy_setopt(curl, CURLOPT_UNIX_SOCKET_PATH, unix_socket_path);
-      }
 
       curl_easy_setopt(curl, CURLOPT_HEADER, 1L); // Return header as part of the response text
 
