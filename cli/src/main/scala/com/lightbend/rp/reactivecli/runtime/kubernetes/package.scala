@@ -82,7 +82,7 @@ package object kubernetes extends LazyLogging {
         kubernetesArgs.ingressArgs.ingressAnnotations,
         kubernetesArgs.ingressArgs.pathAppend)
     } yield {
-      outputHandler(namespace.toSeq ++ Seq(deployment, service, ingress))
+      outputHandler(namespace.toSeq ++ Seq(deployment, service) ++ ingress.toSeq)
       Done
     }
   }

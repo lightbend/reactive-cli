@@ -31,7 +31,7 @@ object Service {
     }
 
     Json(
-      "name" -> endpointEnvName(endpoint).toLowerCase.asJson,
+      "name" -> endpointServiceName(endpoint).asJson,
       "port" -> port.port.asJson,
       "protocol" -> protocol.asJson,
       "targetPort" -> port.port.asJson)

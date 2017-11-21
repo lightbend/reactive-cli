@@ -23,7 +23,7 @@ import scala.collection.immutable.Seq
 import scala.util.{ Failure, Success, Try }
 
 object Ingress {
-  def encodeEndpoints(endpoints: Map[String, Endpoint], pathAppend: Option[String]): List[Json] = {
+  def encodeEndpoints(appName: String, endpoints: Map[String, Endpoint], pathAppend: Option[String]): List[Json] = {
     val ports = AssignedPort.assignPorts(endpoints)
 
     val httpEndpoints =
@@ -36,7 +36,7 @@ object Ingress {
     for {
       endpoint <- httpEndpoints
       port <- ports.find(_.endpoint == endpoint).toVector
-      backend = Json("serviceName" -> endpointServiceName(endpoint).asJson, "servicePort" -> port.port.asJson)
+      backend = Json("serviceName" -> appName.asJson, "servicePort" -> port.port.asJson)
       ingress <- endpoint.ingress
       host <- if (ingress.hosts.isEmpty) Seq("") else ingress.hosts
       paths = if (ingress.paths.isEmpty) Seq("") else ingress.paths
@@ -67,19 +67,25 @@ object Ingress {
   /**
    * Generates the [[Ingress]] resources.
    */
-  def generate(annotations: Annotations, ingressAnnotations: Map[String, String], pathAppend: Option[String]): Try[Ingress] =
+  def generate(annotations: Annotations, ingressAnnotations: Map[String, String], pathAppend: Option[String]): Try[Option[Ingress]] =
     annotations.appName match {
       case Some(appName) =>
-        Success(
-          Ingress(appName, Json(
-            "apiVersion" -> "extensions/v1beta1".asJson,
-            "kind" -> "Ingress".asJson,
-            "metadata" -> Json(
-              "name" -> appName.asJson).deepmerge(generateIngressAnnotations(ingressAnnotations))
-              .deepmerge(
-                annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> ns.asJson))),
-            "spec" -> Json(
-              "rules" -> encodeEndpoints(annotations.endpoints, pathAppend).asJson))))
+        val encodedEndpoints = encodeEndpoints(appName, annotations.endpoints, pathAppend)
+
+        if (encodedEndpoints.isEmpty)
+          Success(None)
+        else
+          Success(
+            Some(
+              Ingress(appName, Json(
+                "apiVersion" -> "extensions/v1beta1".asJson,
+                "kind" -> "Ingress".asJson,
+                "metadata" -> Json(
+                  "name" -> appName.asJson)
+                  .deepmerge(generateIngressAnnotations(ingressAnnotations))
+                  .deepmerge(generateNamespaceAnnotation(annotations.namespace)),
+                "spec" -> Json(
+                  "rules" -> encodedEndpoints.asJson)))))
       case _ =>
         Failure(new IllegalArgumentException("Unable to generate Kubernetes ingress resource: application name is required"))
     }
@@ -96,6 +102,8 @@ object Ingress {
           }
           .reduce(_.deepmerge(_)))
 
+  private def generateNamespaceAnnotation(namespace: Option[String]): Json =
+    namespace.fold(jEmptyObject)(ns => Json("namespace" -> ns.asJson))
 }
 
 /**

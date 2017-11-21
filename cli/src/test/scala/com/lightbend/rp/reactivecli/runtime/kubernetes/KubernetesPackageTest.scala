@@ -448,7 +448,7 @@ object KubernetesPackageTest extends TestSuite {
                 |				"paths": [{
                 |					"path": "/pizza",
                 |					"backend": {
-                |						"serviceName": "ep1",
+                |						"serviceName": "my-app",
                 |						"servicePort": 10000
                 |					}
                 |				}]

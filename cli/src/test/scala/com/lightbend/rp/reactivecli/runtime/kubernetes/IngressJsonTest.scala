@@ -26,7 +26,7 @@ import scala.collection.immutable.Seq
 object IngressJsonTest extends TestSuite {
   val annotations = Annotations(
     namespace = Some("chirper"),
-    appName = Some("friendimpl"),
+    appName = Some("friendservice"),
     appType = None,
     diskSpace = Some(65536L),
     memory = Some(8192L),
@@ -64,7 +64,7 @@ object IngressJsonTest extends TestSuite {
             |  "apiVersion" : "extensions/v1beta1",
             |  "kind" : "Ingress",
             |  "metadata" : {
-            |    "name" : "friendimpl",
+            |    "name" : "friendservice",
             |    "namespace": "chirper"
             |  },
             |  "spec" : {
@@ -75,7 +75,7 @@ object IngressJsonTest extends TestSuite {
             |            {
             |              "path" : "/api/friend",
             |              "backend" : {
-            |                "serviceName" : "ep1",
+            |                "serviceName" : "friendservice",
             |                "servicePort" : 1234
             |              }
             |            }
@@ -88,7 +88,7 @@ object IngressJsonTest extends TestSuite {
             |          "paths" : [
             |            {
             |              "backend" : {
-            |                "serviceName" : "ep1",
+            |                "serviceName" : "friendservice",
             |                "servicePort" : 1234
             |              }
             |            }
@@ -102,14 +102,14 @@ object IngressJsonTest extends TestSuite {
             |            {
             |              "path" : "/api/friend",
             |              "backend" : {
-            |                "serviceName" : "ep1",
+            |                "serviceName" : "friendservice",
             |                "servicePort" : 1234
             |              }
             |            },
             |            {
             |              "path" : "/api/enemy",
             |              "backend" : {
-            |                "serviceName" : "ep1",
+            |                "serviceName" : "friendservice",
             |                "servicePort" : 1234
             |              }
             |            }
@@ -123,14 +123,14 @@ object IngressJsonTest extends TestSuite {
             |            {
             |              "path" : "/api/friend",
             |              "backend" : {
-            |                "serviceName" : "ep1",
+            |                "serviceName" : "friendservice",
             |                "servicePort" : 1234
             |              }
             |            },
             |            {
             |              "path" : "/api/enemy",
             |              "backend" : {
-            |                "serviceName" : "ep1",
+            |                "serviceName" : "friendservice",
             |                "servicePort" : 1234
             |              }
             |            }
@@ -142,7 +142,7 @@ object IngressJsonTest extends TestSuite {
             |}
           """.stripMargin.parse.right.get
 
-        assert(generatedJson == Ingress("friendimpl", expectedJson))
+        assert(generatedJson.contains(Ingress("friendservice", expectedJson)))
       }
 
       "with ingress specific input" - {
@@ -157,7 +157,7 @@ object IngressJsonTest extends TestSuite {
             |  "apiVersion" : "extensions/v1beta1",
             |  "kind" : "Ingress",
             |  "metadata" : {
-            |    "name" : "friendimpl",
+            |    "name" : "friendservice",
             |    "annotations" : {
             |      "kubernetes.io/ingress.class" : "istio"
             |    },
@@ -171,7 +171,7 @@ object IngressJsonTest extends TestSuite {
             |            {
             |              "path" : "/api/friend.*",
             |              "backend" : {
-            |                "serviceName" : "ep1",
+            |                "serviceName" : "friendservice",
             |                "servicePort" : 1234
             |              }
             |            }
@@ -184,7 +184,7 @@ object IngressJsonTest extends TestSuite {
             |          "paths" : [
             |            {
             |              "backend" : {
-            |                "serviceName" : "ep1",
+            |                "serviceName" : "friendservice",
             |                "servicePort" : 1234
             |              }
             |            }
@@ -198,14 +198,14 @@ object IngressJsonTest extends TestSuite {
             |            {
             |              "path" : "/api/friend.*",
             |              "backend" : {
-            |                "serviceName" : "ep1",
+            |                "serviceName" : "friendservice",
             |                "servicePort" : 1234
             |              }
             |            },
             |            {
             |              "path" : "/api/enemy.*",
             |              "backend" : {
-            |                "serviceName" : "ep1",
+            |                "serviceName" : "friendservice",
             |                "servicePort" : 1234
             |              }
             |            }
@@ -219,14 +219,14 @@ object IngressJsonTest extends TestSuite {
             |            {
             |              "path" : "/api/friend.*",
             |              "backend" : {
-            |                "serviceName" : "ep1",
+            |                "serviceName" : "friendservice",
             |                "servicePort" : 1234
             |              }
             |            },
             |            {
             |              "path" : "/api/enemy.*",
             |              "backend" : {
-            |                "serviceName" : "ep1",
+            |                "serviceName" : "friendservice",
             |                "servicePort" : 1234
             |              }
             |            }
@@ -238,7 +238,7 @@ object IngressJsonTest extends TestSuite {
             |}
           """.stripMargin.parse.right.get
 
-        assert(generatedJson == Ingress("friendimpl", expectedJson))
+        assert(generatedJson.contains(Ingress("friendservice", expectedJson)))
       }
 
       "should fail if application name is not defined" - {
