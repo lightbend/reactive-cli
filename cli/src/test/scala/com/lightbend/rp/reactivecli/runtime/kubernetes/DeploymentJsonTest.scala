@@ -315,7 +315,7 @@ object DeploymentJsonTest extends TestSuite {
             """.stripMargin.parse.right.get
 
           val result = Deployment.generate(annotations, KubernetesVersion(1, 8), imageName,
-            Deployment.ImagePullPolicy.Never, noOfReplicas = 1).get
+            Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty).get
 
           // @TODO uncomment this test when we actually have the right format generated
           // @TODO i am proposing keeping them updated for now is counter-productive
@@ -582,7 +582,7 @@ object DeploymentJsonTest extends TestSuite {
             """.stripMargin.parse.right.get
 
           val generatedJson = Deployment.generate(annotations, KubernetesVersion(1, 7), imageName,
-            Deployment.ImagePullPolicy.Never, noOfReplicas = 1).get
+            Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty).get
 
           // @TODO uncomment this test when we actually have the right format generated
           // @TODO i am proposing keeping them updated for now is counter-productive
@@ -863,7 +863,7 @@ object DeploymentJsonTest extends TestSuite {
             readinessCheck = Some(CommandCheck("ls", "-al")),
             healthCheck = Some(TcpCheck(Check.PortNumber(1234), intervalSeconds = 3)))
           val generatedJson = Deployment.generate(input, KubernetesVersion(1, 8), imageName,
-            Deployment.ImagePullPolicy.Never, noOfReplicas = 1).get
+            Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty).get
 
           // @TODO uncomment this test when we actually have the right format generated
           // @TODO i am proposing keeping them updated for now is counter-productive
@@ -873,7 +873,7 @@ object DeploymentJsonTest extends TestSuite {
         "should fail if application name is not defined" - {
           val invalid = annotations.copy(appName = None)
           assert(Deployment.generate(invalid, KubernetesVersion(1, 7), imageName,
-            Deployment.ImagePullPolicy.Never, 1).isFailure)
+            Deployment.ImagePullPolicy.Never, 1, Map.empty).isFailure)
         }
       }
 

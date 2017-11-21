@@ -22,6 +22,7 @@ import java.nio.file.{ Path, Paths }
 import com.lightbend.rp.reactivecli.argparse.kubernetes.{ DeploymentArgs, IngressArgs, KubernetesArgs, ServiceArgs }
 import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment
 import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment.{ ImagePullPolicy, KubernetesVersion }
+import scala.collection.immutable.Seq
 import scopt.OptionParser
 import slogging.LogLevel
 
@@ -42,8 +43,8 @@ object InputArgs {
 
   implicit val kubernetesVersionRead: scopt.Read[KubernetesVersion] =
     scopt.Read.reads { v =>
-      v.split("\\.").toSeq match {
-        case Seq(major, minor) =>
+      v.split("\\.").toVector match {
+        case Vector(major, minor) =>
           KubernetesVersion(major.toInt, minor.toInt)
         case _ =>
           throw new IllegalArgumentException(s"Invalid Kubernetes version number $v. Example: 1.6")
@@ -187,6 +188,24 @@ object InputArgs {
             .text("Disables TLS cert validation when accessing docker registry through HTTPS")
             .optional()
             .action(GenerateDeploymentArgs.set((_, c) => c.copy(registryValidateTls = false))))
+
+      opt[String]("external-service")
+        .text("Declare an external service address. Format: NAME=value")
+        .optional()
+        .minOccurs(0)
+        .unbounded()
+        .action(GenerateDeploymentArgs.set {
+          (v, c) =>
+            val parts = v.split("=", 2)
+
+            if (parts.length == 2) {
+              val current = c.externalServices.getOrElse(parts(0), Seq.empty)
+
+              c.copy(externalServices = c.externalServices.updated(parts(0), current :+ parts(1)))
+            } else {
+              c
+            }
+        })
 
       checkConfig { inputArgs =>
         inputArgs.commandArgs match {

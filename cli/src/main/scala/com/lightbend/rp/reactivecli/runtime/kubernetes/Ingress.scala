@@ -68,7 +68,7 @@ object Ingress {
    * Generates the [[Ingress]] resources.
    */
   def generate(annotations: Annotations, ingressAnnotations: Map[String, String], pathAppend: Option[String]): Try[Ingress] =
-    serviceName(annotations) match {
+    annotations.appName match {
       case Some(appName) =>
         Success(
           Ingress(appName, Json(

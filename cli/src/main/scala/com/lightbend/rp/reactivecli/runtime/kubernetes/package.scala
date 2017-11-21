@@ -72,7 +72,8 @@ package object kubernetes extends LazyLogging {
         kubernetesArgs.kubernetesVersion.get,
         generateDeploymentArgs.dockerImage.get,
         kubernetesArgs.deploymentArgs.imagePullPolicy,
-        kubernetesArgs.deploymentArgs.numberOfReplicas)
+        kubernetesArgs.deploymentArgs.numberOfReplicas,
+        generateDeploymentArgs.externalServices)
 
       service <- Service.generate(annotations, kubernetesArgs.serviceArgs.clusterIp)
 
@@ -134,6 +135,8 @@ package object kubernetes extends LazyLogging {
       .map(c => if (ValidEndpointChars.contains(c)) c else '_')
       .toUpperCase
 
-  private[kubernetes] def serviceName(annotations: Annotations): Option[String] =
-    annotations.appName
+  private[kubernetes] def serviceName(name: String): String =
+    name
+      .map(c => if (ValidEndpointServiceChars.contains(c)) c else '-')
+      .toLowerCase
 }
