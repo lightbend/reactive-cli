@@ -113,6 +113,7 @@ object AnnotationsTest extends TestSuite {
         Annotations(Map.empty, GenerateDeploymentArgs()) == Annotations(
           namespace = None,
           appName = None,
+          appType = None,
           diskSpace = None,
           memory = None,
           nrOfCpus = None,
@@ -123,7 +124,8 @@ object AnnotationsTest extends TestSuite {
           healthCheck = None,
           readinessCheck = None,
           environmentVariables = Map.empty,
-          version = None))
+          version = None,
+          modules = Set.empty))
 
       "all options (except checks)" - {
         assert(
@@ -134,6 +136,7 @@ object AnnotationsTest extends TestSuite {
 
               "com.lightbend.rp.namespace" -> "fonts",
               "com.lightbend.rp.app-name" -> "my-app",
+              "com.lightbend.rp.app-type" -> "basic",
               "com.lightbend.rp.version-major" -> "3",
               "com.lightbend.rp.version-minor" -> "2",
               "com.lightbend.rp.version-patch" -> "1",
@@ -176,10 +179,13 @@ object AnnotationsTest extends TestSuite {
               "com.lightbend.rp.endpoints.1.port" -> "1234",
               "com.lightbend.rp.endpoints.2.name" -> "ep3",
               "com.lightbend.rp.endpoints.2.protocol" -> "udp",
-              "com.lightbend.rp.endpoints.2.port" -> "1234"),
+              "com.lightbend.rp.endpoints.2.port" -> "1234",
+              "com.lightbend.rp.modules.common.enabled" -> "true",
+              "com.lightbend.rp.modules.another-one.enabled" -> "false"),
             GenerateDeploymentArgs()) == Annotations(
               namespace = Some("fonts"),
               appName = Some("my-app"),
+              appType = Some("basic"),
               diskSpace = Some(65536L),
               memory = Some(8192L),
               nrOfCpus = Some(0.5D),
@@ -197,7 +203,8 @@ object AnnotationsTest extends TestSuite {
                 "testing1" -> LiteralEnvironmentVariable("testingvalue1"),
                 "testing2" -> kubernetes.ConfigMapEnvironmentVariable("mymap", "mykey"),
                 "testing3" -> kubernetes.FieldRefEnvironmentVariable("metadata.name")),
-              version = Some(Version(3, 2, 1, Some("SNAPSHOT")))))
+              version = Some(Version(3, 2, 1, Some("SNAPSHOT"))),
+              modules = Set("common")))
       }
 
       "argument overrides" - {
@@ -222,6 +229,7 @@ object AnnotationsTest extends TestSuite {
                 kubernetesNamespace = Some("chirper"))))) == Annotations(
               namespace = Some("chirper"),
               appName = None,
+              appType = None,
               diskSpace = Some(2048),
               memory = Some(1024),
               nrOfCpus = Some(0.5),
@@ -234,7 +242,8 @@ object AnnotationsTest extends TestSuite {
               environmentVariables = Map(
                 "foo" -> LiteralEnvironmentVariable("foo"),
                 "hey" -> LiteralEnvironmentVariable("there")),
-              version = None))
+              version = None,
+              modules = Set.empty))
 
       }
 
@@ -248,6 +257,7 @@ object AnnotationsTest extends TestSuite {
             GenerateDeploymentArgs()) == Annotations(
               namespace = None,
               appName = None,
+              appType = None,
               diskSpace = None,
               memory = None,
               nrOfCpus = None,
@@ -258,7 +268,8 @@ object AnnotationsTest extends TestSuite {
               healthCheck = None,
               readinessCheck = None,
               environmentVariables = Map.empty,
-              version = Some(Version(3, 2, 1, None))))
+              version = Some(Version(3, 2, 1, None)),
+              modules = Set.empty))
       }
 
       "endpoint (no version)" - {
@@ -275,6 +286,7 @@ object AnnotationsTest extends TestSuite {
             GenerateDeploymentArgs()) == Annotations(
               namespace = None,
               appName = None,
+              appType = None,
               diskSpace = None,
               memory = None,
               nrOfCpus = None,
@@ -286,7 +298,8 @@ object AnnotationsTest extends TestSuite {
               healthCheck = None,
               readinessCheck = None,
               environmentVariables = Map.empty,
-              version = Some(Version(3, 2, 1, None))))
+              version = Some(Version(3, 2, 1, None)),
+              modules = Set.empty))
       }
 
       "endpoint (no version and no app version)" - {
@@ -299,6 +312,7 @@ object AnnotationsTest extends TestSuite {
             GenerateDeploymentArgs()) == Annotations(
               namespace = None,
               appName = None,
+              appType = None,
               diskSpace = None,
               memory = None,
               nrOfCpus = None,
@@ -310,7 +324,8 @@ object AnnotationsTest extends TestSuite {
               healthCheck = None,
               readinessCheck = None,
               environmentVariables = Map.empty,
-              version = None))
+              version = None,
+              modules = Set.empty))
       }
 
       "CommandCheck" - {
@@ -326,6 +341,7 @@ object AnnotationsTest extends TestSuite {
             GenerateDeploymentArgs()) == Annotations(
               namespace = None,
               appName = None,
+              appType = None,
               diskSpace = None,
               memory = None,
               nrOfCpus = None,
@@ -336,7 +352,8 @@ object AnnotationsTest extends TestSuite {
               healthCheck = Some(CommandCheck("/usr/bin/env", "bash")),
               readinessCheck = Some(CommandCheck("/usr/bin/env", "bash")),
               environmentVariables = Map.empty,
-              version = None))
+              version = None,
+              modules = Set.empty))
       }
 
       "HttpCheck" - {
@@ -354,6 +371,7 @@ object AnnotationsTest extends TestSuite {
             GenerateDeploymentArgs()) == Annotations(
               namespace = None,
               appName = None,
+              appType = None,
               diskSpace = None,
               memory = None,
               nrOfCpus = None,
@@ -364,7 +382,8 @@ object AnnotationsTest extends TestSuite {
               healthCheck = Some(HttpCheck(Check.ServiceName("my-service"), 5, "/hello")),
               readinessCheck = Some(HttpCheck(Check.PortNumber(1234), 5, "/hello")),
               environmentVariables = Map.empty,
-              version = None))
+              version = None,
+              modules = Set.empty))
       }
 
       "TcpCheck" - {
@@ -380,6 +399,7 @@ object AnnotationsTest extends TestSuite {
             GenerateDeploymentArgs()) == Annotations(
               namespace = None,
               appName = None,
+              appType = None,
               diskSpace = None,
               memory = None,
               nrOfCpus = None,
@@ -390,7 +410,8 @@ object AnnotationsTest extends TestSuite {
               healthCheck = Some(TcpCheck(Check.ServiceName("my-service"), 5)),
               readinessCheck = Some(TcpCheck(Check.PortNumber(1234), 5)),
               environmentVariables = Map.empty,
-              version = None))
+              version = None,
+              modules = Set.empty))
       }
     }
   }

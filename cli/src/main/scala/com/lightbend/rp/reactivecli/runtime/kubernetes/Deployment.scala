@@ -20,7 +20,7 @@ import argonaut._
 import Argonaut._
 import com.lightbend.rp.reactivecli.annotations.kubernetes.{ ConfigMapEnvironmentVariable, FieldRefEnvironmentVariable, SecretKeyRefEnvironmentVariable }
 import com.lightbend.rp.reactivecli.annotations._
-
+import scala.collection.immutable.Seq
 import scala.util.{ Failure, Success, Try }
 
 object Deployment {
@@ -42,8 +42,16 @@ object Deployment {
     def envs(annotations: Annotations): Map[String, EnvironmentVariable] =
       PodEnvs ++
         annotations.version.fold(Map.empty[String, EnvironmentVariable])(versionEnvs) ++
+        buildEnvs(annotations.appType, annotations.modules) ++
         endpointEnvs(annotations.endpoints) ++
         secretEnvs(annotations.secrets)
+
+    private[kubernetes] def buildEnvs(appType: Option[String], modules: Set[String]): Map[String, EnvironmentVariable] = {
+      appType
+        .toVector
+        .map("RP_APP_TYPE" -> LiteralEnvironmentVariable(_)) ++ (
+          if (modules.isEmpty) Seq.empty else Seq("RP_MODULES" -> LiteralEnvironmentVariable(modules.toVector.sorted.mkString(","))))
+    }.toMap
 
     private[kubernetes] def versionEnvs(version: Version): Map[String, EnvironmentVariable] = {
       Map(

@@ -34,6 +34,7 @@ object DeploymentJsonTest extends TestSuite {
   val annotations = Annotations(
     namespace = Some("chirper"),
     appName = Some("friendimpl"),
+    appType = Some("basic"),
     diskSpace = Some(65536L),
     memory = Some(8192L),
     nrOfCpus = Some(0.5D),
@@ -46,7 +47,8 @@ object DeploymentJsonTest extends TestSuite {
     readinessCheck = None,
     environmentVariables = Map(
       "testing1" -> LiteralEnvironmentVariable("testingvalue1")),
-    version = Some(Version(3, 2, 1, Some("SNAPSHOT"))))
+    version = Some(Version(3, 2, 1, Some("SNAPSHOT"))),
+    modules = Set.empty)
 
   val imageName = "my-repo/my-image"
 
