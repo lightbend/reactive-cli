@@ -102,6 +102,10 @@ object DeploymentJsonTest extends TestSuite {
               |          ],
               |          "env": [
               |            {
+              |              "name": "RP_APP_NAME",
+              |              "value": "friendimpl"
+              |            },
+              |            {
               |              "name": "RP_ENDPOINTS",
               |              "value": "EP1,EP2,EP3"
               |            },
@@ -268,6 +272,10 @@ object DeploymentJsonTest extends TestSuite {
               |                  "fieldPath": "metadata.name"
               |                }
               |              }
+              |            },
+              |            {
+              |              "name": "RP_NAMESPACE",
+              |              "value": "chirper"
               |            },
               |            {
               |              "name": "RP_PLATFORM",
@@ -369,6 +377,10 @@ object DeploymentJsonTest extends TestSuite {
               |          ],
               |          "env": [
               |            {
+              |              "name": "RP_APP_NAME",
+              |              "value": "friendimpl"
+              |            },
+              |            {
               |              "name": "RP_ENDPOINTS",
               |              "value": "EP1,EP2,EP3"
               |            },
@@ -535,6 +547,10 @@ object DeploymentJsonTest extends TestSuite {
               |                  "fieldPath": "metadata.name"
               |                }
               |              }
+              |            },
+              |            {
+              |              "name": "RP_NAMESPACE",
+              |              "value": "chirper"
               |            },
               |            {
               |              "name": "RP_PLATFORM",
@@ -636,6 +652,10 @@ object DeploymentJsonTest extends TestSuite {
               |          ],
               |          "env": [
               |            {
+              |              "name": "RP_APP_NAME",
+              |              "value": "friendimpl"
+              |            },
+              |            {
               |              "name": "RP_ENDPOINTS",
               |              "value": "EP1,EP2,EP3"
               |            },
@@ -802,6 +822,10 @@ object DeploymentJsonTest extends TestSuite {
               |                  "fieldPath": "metadata.name"
               |                }
               |              }
+              |            },
+              |            {
+              |              "name": "RP_NAMESPACE",
+              |              "value": "chirper"
               |            },
               |            {
               |              "name": "RP_PLATFORM",
@@ -1039,6 +1063,35 @@ object DeploymentJsonTest extends TestSuite {
     }
 
     "RP environment variables" - {
+      "namespace" - {
+        "when present" - {
+          val result = RpEnvironmentVariables.namespaceEnv(Some("ns"))
+          val expectedResult = Map(
+            "RP_NAMESPACE" -> LiteralEnvironmentVariable("ns"))
+          assert(result == expectedResult)
+        }
+
+        "when not present" - {
+          val result = RpEnvironmentVariables.namespaceEnv(None)
+          assert(result.isEmpty)
+
+        }
+      }
+
+      "app name" - {
+        "when present" - {
+          val result = RpEnvironmentVariables.appNameEnvs(Some("app"))
+          val expectedResult = Map(
+            "RP_APP_NAME" -> LiteralEnvironmentVariable("app"))
+          assert(result == expectedResult)
+        }
+
+        "when not present" - {
+          val result = RpEnvironmentVariables.appNameEnvs(None)
+          assert(result.isEmpty)
+        }
+      }
+
       "versions" - {
         "all fields" - {
           val result = RpEnvironmentVariables.versionEnvs(Version(3, 2, 1, Some("SNAPSHOT")))
@@ -1064,18 +1117,13 @@ object DeploymentJsonTest extends TestSuite {
 
       "endpoints" - {
         "when present" - {
-          val endpointsWithVersions = Map(
+          val endpoints = Map(
             "ep1" -> HttpEndpoint(0, "ep1", 0, Seq.empty),
             "ep2" -> TcpEndpoint(1, "ep2", 1234),
             "ep3" -> UdpEndpoint(2, "ep3", 1234))
 
-          val endpointsNoVersions = Map(
-            "ep1" -> HttpEndpoint(0, "ep1", 0, Seq.empty),
-            "ep2" -> TcpEndpoint(1, "ep2", 1234),
-            "ep3" -> UdpEndpoint(2, "ep3", 1234))
-
-          "with endpoint version" - {
-            val result = RpEnvironmentVariables.endpointEnvs(endpointsWithVersions)
+          "envs" - {
+            val result = RpEnvironmentVariables.endpointEnvs(endpoints)
             val expectedResult = Map(
               "RP_ENDPOINTS_COUNT" -> LiteralEnvironmentVariable("3"),
               "RP_ENDPOINTS" -> LiteralEnvironmentVariable("EP1,EP2,EP3"),
@@ -1115,43 +1163,6 @@ object DeploymentJsonTest extends TestSuite {
 
               "RP_ENDPOINT_2_BIND_PORT" -> LiteralEnvironmentVariable("1234"),
               "RP_ENDPOINT_2_PORT" -> LiteralEnvironmentVariable("1234"))
-
-            assert(result == expectedResult)
-          }
-
-          "with no version" - {
-            val result = RpEnvironmentVariables.endpointEnvs(endpointsNoVersions)
-            val expectedResult = Map(
-              "RP_ENDPOINTS_COUNT" -> LiteralEnvironmentVariable("3"),
-              "RP_ENDPOINTS" -> LiteralEnvironmentVariable("EP1,EP2,EP3"),
-
-              "RP_ENDPOINT_EP1_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
-              "RP_ENDPOINT_EP2_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
-              "RP_ENDPOINT_EP3_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
-              "RP_ENDPOINT_0_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
-              "RP_ENDPOINT_1_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
-              "RP_ENDPOINT_2_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
-
-              "RP_ENDPOINT_EP1_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
-              "RP_ENDPOINT_EP2_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
-              "RP_ENDPOINT_EP3_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
-              "RP_ENDPOINT_0_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
-              "RP_ENDPOINT_1_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
-              "RP_ENDPOINT_2_BIND_HOST" -> FieldRefEnvironmentVariable("status.podIP"),
-
-              "RP_ENDPOINT_EP1_PORT" -> LiteralEnvironmentVariable("10000"),
-              "RP_ENDPOINT_EP2_PORT" -> LiteralEnvironmentVariable("1234"),
-              "RP_ENDPOINT_EP3_PORT" -> LiteralEnvironmentVariable("1234"),
-              "RP_ENDPOINT_0_PORT" -> LiteralEnvironmentVariable("10000"),
-              "RP_ENDPOINT_1_PORT" -> LiteralEnvironmentVariable("1234"),
-              "RP_ENDPOINT_2_PORT" -> LiteralEnvironmentVariable("1234"),
-
-              "RP_ENDPOINT_EP1_BIND_PORT" -> LiteralEnvironmentVariable("10000"),
-              "RP_ENDPOINT_EP2_BIND_PORT" -> LiteralEnvironmentVariable("1234"),
-              "RP_ENDPOINT_EP3_BIND_PORT" -> LiteralEnvironmentVariable("1234"),
-              "RP_ENDPOINT_0_BIND_PORT" -> LiteralEnvironmentVariable("10000"),
-              "RP_ENDPOINT_1_BIND_PORT" -> LiteralEnvironmentVariable("1234"),
-              "RP_ENDPOINT_2_BIND_PORT" -> LiteralEnvironmentVariable("1234"))
 
             assert(result == expectedResult)
           }

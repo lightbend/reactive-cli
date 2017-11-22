@@ -36,36 +36,26 @@ object Deployment {
       "RP_KUBERNETES_POD_NAME" -> FieldRefEnvironmentVariable("metadata.name"),
       "RP_KUBERNETES_POD_IP" -> FieldRefEnvironmentVariable("status.podIP"))
 
-    def concat(envs: Map[String, EnvironmentVariable]*): Map[String, EnvironmentVariable] = {
-      val concatLiteral = Set("RP_JAVA_OPTS")
-
-      envs.foldLeft(Map.empty[String, EnvironmentVariable]) {
-        case (a1, n) =>
-          n.foldLeft(a1) {
-            case (a2, (key, LiteralEnvironmentVariable(v))) if concatLiteral.contains(key) =>
-              a2.updated(key, a2.get(key) match {
-                case Some(LiteralEnvironmentVariable(ov)) => LiteralEnvironmentVariable(s"$ov $v")
-                case _ => LiteralEnvironmentVariable(v)
-              })
-
-            case (a2, (key, value)) =>
-              a2.updated(key, value)
-          }
-      }
-    }
-
     /**
      * Generates pod environment variables specific for RP applications.
      */
     def envs(annotations: Annotations, externalServices: Map[String, Seq[String]]): Map[String, EnvironmentVariable] =
       PodEnvs ++
+        namespaceEnv(annotations.namespace) ++
+        appNameEnvs(annotations.appName) ++
         annotations.version.fold(Map.empty[String, EnvironmentVariable])(versionEnvs) ++
-        buildEnvs(annotations.appType, annotations.modules) ++
+        appTypeEnvs(annotations.appType, annotations.modules) ++
         endpointEnvs(annotations.endpoints) ++
         secretEnvs(annotations.secrets) ++
         externalServicesEnvs(annotations.modules, externalServices)
 
-    private[kubernetes] def buildEnvs(appType: Option[String], modules: Set[String]): Map[String, EnvironmentVariable] = {
+    private[kubernetes] def namespaceEnv(namespace: Option[String]): Map[String, EnvironmentVariable] =
+      namespace.fold(Map.empty[String, EnvironmentVariable])(v => Map("RP_NAMESPACE" -> LiteralEnvironmentVariable(v)))
+
+    private[kubernetes] def appNameEnvs(appName: Option[String]): Map[String, EnvironmentVariable] =
+      appName.fold(Map.empty[String, EnvironmentVariable])(v => Map("RP_APP_NAME" -> LiteralEnvironmentVariable(v)))
+
+    private[kubernetes] def appTypeEnvs(appType: Option[String], modules: Set[String]): Map[String, EnvironmentVariable] = {
       appType
         .toVector
         .map("RP_APP_TYPE" -> LiteralEnvironmentVariable(_)) ++ (
