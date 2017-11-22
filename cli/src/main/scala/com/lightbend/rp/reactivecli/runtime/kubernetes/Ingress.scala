@@ -75,7 +75,9 @@ object Ingress {
             "apiVersion" -> "extensions/v1beta1".asJson,
             "kind" -> "Ingress".asJson,
             "metadata" -> Json(
-              "name" -> appName.asJson).deepmerge(generateIngressAnnotations(ingressAnnotations)),
+              "name" -> appName.asJson).deepmerge(generateIngressAnnotations(ingressAnnotations))
+              .deepmerge(
+                annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> ns.asJson))),
             "spec" -> Json(
               "rules" -> encodeEndpoints(annotations.endpoints, pathAppend).asJson))))
       case _ =>

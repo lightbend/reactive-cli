@@ -252,7 +252,9 @@ object Deployment {
                   "app" -> appName.asJson,
                   "appVersionMajor" -> appVersionMajor.asJson,
                   "appVersionMajorMinor" -> appVersionMajorMinor.asJson,
-                  "appVersion" -> appVersion.asJson)),
+                  "appVersion" -> appVersion.asJson))
+                .deepmerge(
+                  annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> ns.asJson))),
               "spec" -> Json(
                 "replicas" -> noOfReplicas.asJson,
                 "selector" -> Json(

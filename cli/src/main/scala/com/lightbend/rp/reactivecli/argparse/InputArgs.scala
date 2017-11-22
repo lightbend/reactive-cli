@@ -106,6 +106,10 @@ object InputArgs {
                 .required()
                 .action(KubernetesArgs.set((v, args) => args.copy(kubernetesVersion = Some(v)))),
 
+              opt[String]("kubernetes-namespace")
+                .text("Kubernetes namespace of the artefact to be generated")
+                .action(KubernetesArgs.set((v, args) => args.copy(kubernetesNamespace = Some(v)))),
+
               opt[Int]("kubernetes-deployment-nr-of-replicas")
                 .text("Sets the number of replicas set for Kubernetes deployment resource")
                 .validate(v => if (v >= 0) success else failure("Number of replicas must be zero or more"))

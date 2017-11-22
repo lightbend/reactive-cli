@@ -66,21 +66,23 @@ package object kubernetes extends LazyLogging {
 
       annotations = Annotations(label, generateDeploymentArgs)
 
-      deploymentJson <- Deployment.generate(
+      namespace <- Namespace.generate(annotations)
+
+      deployment <- Deployment.generate(
         annotations,
         kubernetesArgs.kubernetesVersion.get,
         generateDeploymentArgs.dockerImage.get,
         kubernetesArgs.deploymentArgs.imagePullPolicy,
         kubernetesArgs.deploymentArgs.numberOfReplicas)
 
-      serviceJson <- Service.generate(annotations, kubernetesArgs.serviceArgs.clusterIp)
+      service <- Service.generate(annotations, kubernetesArgs.serviceArgs.clusterIp)
 
-      ingressJson <- Ingress.generate(
+      ingress <- Ingress.generate(
         annotations,
         kubernetesArgs.ingressArgs.ingressAnnotations,
         kubernetesArgs.ingressArgs.pathAppend)
     } yield {
-      outputHandler(Seq(deploymentJson, serviceJson, ingressJson))
+      outputHandler(namespace.toSeq ++ Seq(deployment, service, ingress))
       Done
     }
   }

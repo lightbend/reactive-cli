@@ -63,6 +63,7 @@ object InputArgsTest extends TestSuite {
                   "dockercloud/hello-world:1.0.0-SNAPSHOT",
                   "--target", "kubernetes",
                   "--kubernetes-version", "1.7",
+                  "--kubernetes-namespace", "chirper",
                   "--kubernetes-deployment-nr-of-replicas", "10",
                   "--kubernetes-deployment-image-pull-policy", "Always",
                   "--kubernetes-service-cluster-ip", "10.0.0.1",
@@ -87,6 +88,7 @@ object InputArgsTest extends TestSuite {
                       dockerImage = Some("dockercloud/hello-world:1.0.0-SNAPSHOT"),
                       targetRuntimeArgs = Some(KubernetesArgs(
                         kubernetesVersion = Some(KubernetesVersion(1, 7)),
+                        kubernetesNamespace = Some("chirper"),
                         output = KubernetesArgs.Output.SaveToFile(Paths.get("/tmp/foo")),
                         deploymentArgs = DeploymentArgs(
                           numberOfReplicas = 10,

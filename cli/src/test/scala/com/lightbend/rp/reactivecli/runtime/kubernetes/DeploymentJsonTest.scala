@@ -32,6 +32,7 @@ object DeploymentJsonTest extends TestSuite {
     "ep3" -> UdpEndpoint(2, "ep3", 0, version = None))
 
   val annotations = Annotations(
+    namespace = Some("chirper"),
     appName = Some("friendimpl"),
     diskSpace = Some(65536L),
     memory = Some(8192L),
@@ -65,7 +66,8 @@ object DeploymentJsonTest extends TestSuite {
               |      "appVersionMajorMinor": "friendimpl-v3.2",
               |      "appVersion": "friendimpl-v3.2.1-SNAPSHOT"
               |    },
-              |    "name": "friendimpl-v3.2.1-SNAPSHOT"
+              |    "name": "friendimpl-v3.2.1-SNAPSHOT",
+              |    "namespace": "chirper"
               |  },
               |  "spec": {
               |    "replicas": 1,
@@ -331,7 +333,8 @@ object DeploymentJsonTest extends TestSuite {
               |      "appVersionMajorMinor": "friendimpl-v3.2",
               |      "appVersion": "friendimpl-v3.2.1-SNAPSHOT"
               |    },
-              |    "name": "friendimpl-v3.2.1-SNAPSHOT"
+              |    "name": "friendimpl-v3.2.1-SNAPSHOT",
+              |    "namespace": "chirper"
               |  },
               |  "spec": {
               |    "replicas": 1,
@@ -597,7 +600,8 @@ object DeploymentJsonTest extends TestSuite {
               |      "appVersionMajorMinor": "friendimpl-v3.2",
               |      "appVersion": "friendimpl-v3.2.1-SNAPSHOT"
               |    },
-              |    "name": "friendimpl-v3.2.1-SNAPSHOT"
+              |    "name": "friendimpl-v3.2.1-SNAPSHOT",
+              |    "namespace": "chirper"
               |  },
               |  "spec": {
               |    "replicas": 1,

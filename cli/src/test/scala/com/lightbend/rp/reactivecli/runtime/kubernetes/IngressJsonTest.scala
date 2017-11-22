@@ -25,6 +25,7 @@ import scala.collection.immutable.Seq
 
 object IngressJsonTest extends TestSuite {
   val annotations = Annotations(
+    namespace = Some("chirper"),
     appName = Some("friendimpl"),
     diskSpace = Some(65536L),
     memory = Some(8192L),
@@ -62,7 +63,8 @@ object IngressJsonTest extends TestSuite {
             |  "apiVersion" : "extensions/v1beta1",
             |  "kind" : "Ingress",
             |  "metadata" : {
-            |    "name" : "friendimpl"
+            |    "name" : "friendimpl",
+            |    "namespace": "chirper"
             |  },
             |  "spec" : {
             |    "rules" : [
@@ -157,7 +159,8 @@ object IngressJsonTest extends TestSuite {
             |    "name" : "friendimpl",
             |    "annotations" : {
             |      "kubernetes.io/ingress.class" : "istio"
-            |    }
+            |    },
+            |    "namespace": "chirper"
             |  },
             |  "spec" : {
             |    "rules" : [
