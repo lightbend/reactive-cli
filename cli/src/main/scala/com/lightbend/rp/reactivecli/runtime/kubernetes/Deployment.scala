@@ -20,7 +20,7 @@ import argonaut._
 import Argonaut._
 import com.lightbend.rp.reactivecli.annotations.kubernetes.{ ConfigMapEnvironmentVariable, FieldRefEnvironmentVariable, SecretKeyRefEnvironmentVariable }
 import com.lightbend.rp.reactivecli.annotations._
-
+import scala.collection.immutable.Seq
 import scala.util.{ Failure, Success, Try }
 
 object Deployment {
@@ -36,14 +36,59 @@ object Deployment {
       "RP_KUBERNETES_POD_NAME" -> FieldRefEnvironmentVariable("metadata.name"),
       "RP_KUBERNETES_POD_IP" -> FieldRefEnvironmentVariable("status.podIP"))
 
+    def concat(envs: Map[String, EnvironmentVariable]*): Map[String, EnvironmentVariable] = {
+      val concatLiteral = Set("RP_JAVA_OPTS")
+
+      envs.foldLeft(Map.empty[String, EnvironmentVariable]) {
+        case (a1, n) =>
+          n.foldLeft(a1) {
+            case (a2, (key, LiteralEnvironmentVariable(v))) if concatLiteral.contains(key) =>
+              a2.updated(key, a2.get(key) match {
+                case Some(LiteralEnvironmentVariable(ov)) => LiteralEnvironmentVariable(s"$ov $v")
+                case _ => LiteralEnvironmentVariable(v)
+              })
+
+            case (a2, (key, value)) =>
+              a2.updated(key, value)
+          }
+      }
+    }
+
     /**
      * Generates pod environment variables specific for RP applications.
      */
-    def envs(annotations: Annotations): Map[String, EnvironmentVariable] =
+    def envs(annotations: Annotations, externalServices: Map[String, Seq[String]]): Map[String, EnvironmentVariable] =
       PodEnvs ++
         annotations.version.fold(Map.empty[String, EnvironmentVariable])(versionEnvs) ++
+        buildEnvs(annotations.appType, annotations.modules) ++
         endpointEnvs(annotations.endpoints) ++
-        secretEnvs(annotations.secrets)
+        secretEnvs(annotations.secrets) ++
+        externalServicesEnvs(annotations.modules, externalServices)
+
+    private[kubernetes] def buildEnvs(appType: Option[String], modules: Set[String]): Map[String, EnvironmentVariable] = {
+      appType
+        .toVector
+        .map("RP_APP_TYPE" -> LiteralEnvironmentVariable(_)) ++ (
+          if (modules.isEmpty) Seq.empty else Seq("RP_MODULES" -> LiteralEnvironmentVariable(modules.toVector.sorted.mkString(","))))
+    }.toMap
+
+    private[kubernetes] def externalServicesEnvs(modules: Set[String], externalServices: Map[String, Seq[String]]): Map[String, EnvironmentVariable] =
+      if (!modules.contains(Module.ServiceDiscovery))
+        Map.empty
+      else
+        Map(
+          "RP_JAVA_OPTS" -> LiteralEnvironmentVariable(
+            externalServices
+              .flatMap {
+                case (name, addresses) =>
+                  val arguments =
+                    for {
+                      (address, i) <- addresses.zipWithIndex
+                    } yield s"-Drp.service-discovery.external-service-addresses.${serviceName(name)}.$i=$address"
+
+                  arguments
+              }
+              .mkString(" ")))
 
     private[kubernetes] def versionEnvs(version: Version): Map[String, EnvironmentVariable] = {
       Map(
@@ -115,7 +160,7 @@ object Deployment {
     val Never, IfNotPresent, Always = Value
   }
 
-  val VersionSeparator = "-v"
+  private[Deployment] val VersionSeparator = "-v"
 
   implicit def imagePullPolicyEncode = EncodeJson[ImagePullPolicy.Value] {
     case ImagePullPolicy.Never => "Never".asJson
@@ -231,8 +276,13 @@ object Deployment {
   /**
    * Builds [[Deployment]] resource.
    */
-  def generate(annotations: Annotations, kubernetesVersion: KubernetesVersion, imageName: String,
-    imagePullPolicy: ImagePullPolicy.Value, noOfReplicas: Int): Try[Deployment] =
+  def generate(
+    annotations: Annotations,
+    kubernetesVersion: KubernetesVersion,
+    imageName: String,
+    imagePullPolicy: ImagePullPolicy.Value,
+    noOfReplicas: Int,
+    externalServices: Map[String, Seq[String]]): Try[Deployment] =
     (annotations.appName, annotations.version) match {
       case (Some(appName), Some(version)) =>
         val appVersionMajor = s"$appName$VersionSeparator${version.major}"
@@ -273,7 +323,7 @@ object Deployment {
                         "name" -> appName.asJson,
                         "image" -> imageName.asJson,
                         "imagePullPolicy" -> imagePullPolicy.asJson,
-                        "env" -> (annotations.environmentVariables ++ RpEnvironmentVariables.envs(annotations)).asJson,
+                        "env" -> (annotations.environmentVariables ++ RpEnvironmentVariables.envs(annotations, externalServices)).asJson,
                         "ports" -> annotations.endpoints.asJson)
                         .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
                         .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson))))))

@@ -77,7 +77,10 @@ object InputArgsTest extends TestSuite {
                   "--registry-username", "john",
                   "--registry-password", "wick",
                   "--registry-https-disable",
-                  "--registry-tls-validation-disable"),
+                  "--registry-tls-validation-disable",
+                  "--external-service", "cas1=1.2.3.4",
+                  "--external-service", "cas1=5.6.7.8",
+                  "--external-service", "cas2=hello"),
                 InputArgs.default)
               assert(
                 result.contains(
@@ -104,7 +107,8 @@ object InputArgsTest extends TestSuite {
                       registryUsername = Some("john"),
                       registryPassword = Some("wick"),
                       registryUseHttps = false,
-                      registryValidateTls = false)))))
+                      registryValidateTls = false,
+                      externalServices = Map("cas1" -> Vector("1.2.3.4", "5.6.7.8"), "cas2" -> Vector("hello")))))))
             } finally {
               Files.deleteIfExists(mockCacerts)
             }

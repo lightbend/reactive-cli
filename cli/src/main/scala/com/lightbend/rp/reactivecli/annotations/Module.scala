@@ -16,16 +16,10 @@
 
 package com.lightbend.rp.reactivecli.annotations
 
-import scala.collection.immutable.Seq
-
-sealed trait Endpoint {
-  def index: Int
-  def name: String
-  def port: Int
+object Module {
+  val AkkaClusterBootstrapping = "akka-cluster-bootstrapping"
+  val Common = "common"
+  val PlayHttpBinding = "play-http-binding"
+  val Secrets = "secrets"
+  val ServiceDiscovery = "service-discovery"
 }
-
-case class HttpEndpoint(index: Int, name: String, port: Int, ingress: Seq[HttpIngress]) extends Endpoint
-
-case class TcpEndpoint(index: Int, name: String, port: Int) extends Endpoint
-
-case class UdpEndpoint(index: Int, name: String, port: Int) extends Endpoint

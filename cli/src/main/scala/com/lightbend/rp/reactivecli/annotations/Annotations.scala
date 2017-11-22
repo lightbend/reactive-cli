@@ -26,6 +26,7 @@ import scala.util.matching.Regex
 case class Annotations(
   namespace: Option[String],
   appName: Option[String],
+  appType: Option[String],
   diskSpace: Option[Long],
   memory: Option[Long],
   nrOfCpus: Option[Double],
@@ -36,7 +37,8 @@ case class Annotations(
   healthCheck: Option[Check],
   readinessCheck: Option[Check],
   environmentVariables: Map[String, EnvironmentVariable],
-  version: Option[Version])
+  version: Option[Version],
+  modules: Set[String])
 
 /**
  * Parses annotations in the RP format (typically stored in Docker labels)
@@ -65,6 +67,7 @@ object Annotations {
     Annotations(
       namespace = namespace(args).orElse(namespace(labels)),
       appName = appName(labels),
+      appType = appType(labels),
       diskSpace = args.diskSpace.orElse(diskSpace(labels)),
       memory = args.memory.orElse(memory(labels)),
       nrOfCpus = args.nrOfCpus.orElse(nrOfCpus(labels)),
@@ -76,7 +79,8 @@ object Annotations {
       readinessCheck = check(selectSubset(labels, ns("readiness-check"))),
       environmentVariables = environmentVariables(selectArray(labels, ns("environment-variables"))) ++
         args.environmentVariables.mapValues(LiteralEnvironmentVariable.apply),
-      version = appVersion)
+      version = appVersion,
+      modules = appModules(selectSubset(labels, ns("modules"))))
   }
 
   private[annotations] def namespace(labels: Map[String, String]): Option[String] =
@@ -91,6 +95,25 @@ object Annotations {
   private[annotations] def appName(labels: Map[String, String]): Option[String] =
     labels
       .get(ns("app-name"))
+
+  private[annotations] def appType(labels: Map[String, String]): Option[String] =
+    labels
+      .get(ns("app-type"))
+
+  private[annotations] def appModules(modules: Map[String, String]): Set[String] = {
+    val suffix = ".enabled"
+
+    val parsed =
+      for {
+        (key, value) <- modules
+
+        if key.endsWith(suffix)
+
+        if value == "true"
+      } yield key.dropRight(suffix.length)
+
+    parsed.toSet
+  }
 
   private[annotations] def diskSpace(labels: Map[String, String]): Option[Long] =
     labels
@@ -189,7 +212,6 @@ object Annotations {
         index,
         _,
         entry.get("port").flatMap(decodeInt).getOrElse(0),
-        entry.get("version").flatMap(decodeInt).orElse(version.map(_.major)),
         httpIngress(selectArray(entry, "ingress"))))
 
   private[annotations] def endpointTcp(version: Option[Version], entry: Map[String, String], index: Int): Option[TcpEndpoint] =
@@ -197,16 +219,14 @@ object Annotations {
       TcpEndpoint(
         index,
         _,
-        entry.get("port").flatMap(decodeInt).getOrElse(0),
-        entry.get("version").flatMap(decodeInt).orElse(version.map(_.major))))
+        entry.get("port").flatMap(decodeInt).getOrElse(0)))
 
   private[annotations] def endpointUdp(version: Option[Version], entry: Map[String, String], index: Int): Option[UdpEndpoint] =
     entry.get("name").map(
       UdpEndpoint(
         index,
         _,
-        entry.get("port").flatMap(decodeInt).getOrElse(0),
-        entry.get("version").flatMap(decodeInt).orElse(version.map(_.major))))
+        entry.get("port").flatMap(decodeInt).getOrElse(0)))
 
   private[annotations] def httpIngress(ingress: Seq[Map[String, String]]): Seq[HttpIngress] =
     ingress

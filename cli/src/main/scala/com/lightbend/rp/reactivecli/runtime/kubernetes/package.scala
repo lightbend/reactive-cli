@@ -25,7 +25,6 @@ import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
 import com.lightbend.rp.reactivecli.Done
 import com.lightbend.rp.reactivecli.docker.Config
-import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment.VersionSeparator
 import slogging.LazyLogging
 
 import scala.util.{ Failure, Success, Try }
@@ -73,7 +72,8 @@ package object kubernetes extends LazyLogging {
         kubernetesArgs.kubernetesVersion.get,
         generateDeploymentArgs.dockerImage.get,
         kubernetesArgs.deploymentArgs.imagePullPolicy,
-        kubernetesArgs.deploymentArgs.numberOfReplicas)
+        kubernetesArgs.deploymentArgs.numberOfReplicas,
+        generateDeploymentArgs.externalServices)
 
       service <- Service.generate(annotations, kubernetesArgs.serviceArgs.clusterIp)
 
@@ -82,7 +82,7 @@ package object kubernetes extends LazyLogging {
         kubernetesArgs.ingressArgs.ingressAnnotations,
         kubernetesArgs.ingressArgs.pathAppend)
     } yield {
-      outputHandler(namespace.toSeq ++ Seq(deployment, service, ingress))
+      outputHandler(namespace.toSeq ++ Seq(deployment, service) ++ ingress.toSeq)
       Done
     }
   }
@@ -118,24 +118,25 @@ package object kubernetes extends LazyLogging {
 
   private[kubernetes] def pipeToStream(out: PrintStream)(generatedResources: Seq[GeneratedKubernetesResource]): Unit =
     generatedResources.foreach { r =>
-      val formattedJson = r.payload.pretty(PrettyParams.nospace.copy(preserveOrder = true))
+      val formattedJson = r.payload.pretty(PrettyParams.spaces2.copy(preserveOrder = true))
       out.println("---")
       out.println(formattedJson)
     }
 
-  private[kubernetes] def endpointName(endpoint: Endpoint): String =
-    endpoint.version.fold(endpoint.name)(v => s"${endpoint.name}$VersionSeparator$v")
-
   private[kubernetes] def endpointServiceName(endpoint: Endpoint): String =
-    endpointName(endpoint)
+    endpoint
+      .name
       .map(c => if (ValidEndpointServiceChars.contains(c)) c else '-')
       .toLowerCase
 
   private[kubernetes] def endpointEnvName(endpoint: Endpoint): String =
-    endpointName(endpoint)
+    endpoint
+      .name
       .map(c => if (ValidEndpointChars.contains(c)) c else '_')
       .toUpperCase
 
-  private[kubernetes] def serviceName(annotations: Annotations): Option[String] =
-    annotations.appName
+  private[kubernetes] def serviceName(name: String): String =
+    name
+      .map(c => if (ValidEndpointServiceChars.contains(c)) c else '-')
+      .toLowerCase
 }

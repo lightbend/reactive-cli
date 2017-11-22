@@ -14,18 +14,19 @@
  * limitations under the License.
  */
 
-package com.lightbend.rp.reactivecli.annotations
+package com.lightbend.rp.reactivecli.docker
 
-import scala.collection.immutable.Seq
+import argonaut._
+import com.lightbend.rp.reactivecli.docker.{ Config => RegistryConfig }
+import Argonaut._
 
-sealed trait Endpoint {
-  def index: Int
-  def name: String
-  def port: Int
+case class SocketConfig(Config: SocketConfig.Cfg) {
+  def registryConfig: RegistryConfig = RegistryConfig(RegistryConfig.Cfg(Labels = Config.Labels))
 }
 
-case class HttpEndpoint(index: Int, name: String, port: Int, ingress: Seq[HttpIngress]) extends Endpoint
+object SocketConfig {
+  case class Cfg(Labels: Option[Map[String, String]] = None)
 
-case class TcpEndpoint(index: Int, name: String, port: Int) extends Endpoint
-
-case class UdpEndpoint(index: Int, name: String, port: Int) extends Endpoint
+  implicit val cfgCodec: CodecJson[Cfg] = CodecJson.derive[Cfg]
+  implicit val configCodec: CodecJson[SocketConfig] = CodecJson.derive[SocketConfig]
+}

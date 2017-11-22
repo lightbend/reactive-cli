@@ -51,7 +51,7 @@ size_t writefunc(void *ptr, size_t size, size_t nmemb, struct http_response *s)
   return size * nmemb;
 }
 
-struct http_response *do_http(long validate_tls, char *tls_cacerts_path, char *http_method, char *url, char *request_headers_raw, char *request_body) {
+struct http_response *do_http(long validate_tls, char *http_method, char *url, char *request_headers_raw, char *request_body, char *tls_cacerts_path, char *ssl_cert, char* ssl_key) {
   CURL *curl;
   CURLcode res_curl_code;
   struct http_response *s = malloc(sizeof(struct http_response));
@@ -63,6 +63,7 @@ struct http_response *do_http(long validate_tls, char *tls_cacerts_path, char *h
     if(curl) {
       curl_easy_setopt(curl, CURLOPT_URL, url);
       curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, http_method);
+
       curl_easy_setopt(curl, CURLOPT_HEADER, 1L); // Return header as part of the response text
 
       if (validate_tls == 0L) {
@@ -71,6 +72,14 @@ struct http_response *do_http(long validate_tls, char *tls_cacerts_path, char *h
 
       if (tls_cacerts_path && strlen(tls_cacerts_path) > 0) {
         curl_easy_setopt(curl, CURLOPT_CAINFO, tls_cacerts_path);
+      }
+
+      if (ssl_cert && strlen(ssl_cert) > 0) {
+        curl_easy_setopt(curl, CURLOPT_SSLCERT, ssl_cert);
+      }
+
+      if (ssl_key && strlen(ssl_key) > 0) {
+        curl_easy_setopt(curl, CURLOPT_SSLKEY, ssl_key);
       }
 
       // Append request headers if defined

@@ -14,18 +14,8 @@
  * limitations under the License.
  */
 
-package com.lightbend.rp.reactivecli.annotations
+package libhttpsimple
 
-import scala.collection.immutable.Seq
-
-sealed trait Endpoint {
-  def index: Int
-  def name: String
-  def port: Int
+case class SocketRequest(socket: String, path: String) {
+  val url: String = s"http://localhost$path"
 }
-
-case class HttpEndpoint(index: Int, name: String, port: Int, ingress: Seq[HttpIngress]) extends Endpoint
-
-case class TcpEndpoint(index: Int, name: String, port: Int) extends Endpoint
-
-case class UdpEndpoint(index: Int, name: String, port: Int) extends Endpoint

@@ -28,11 +28,12 @@ object ServiceJsonTest extends TestSuite {
   val annotations = Annotations(
     namespace = Some("chirper"),
     appName = Some("friendimpl"),
+    appType = None,
     diskSpace = Some(65536L),
     memory = Some(8192L),
     nrOfCpus = Some(0.5D),
     endpoints = Map(
-      "ep1" -> TcpEndpoint(0, "ep1", 1234, version = Some(1))),
+      "ep1" -> TcpEndpoint(0, "ep1", 1234)),
     secrets = Seq.empty,
     volumes = Map(
       "/my/guest/path/1" -> HostPathVolume("/my/host/path")),
@@ -41,7 +42,8 @@ object ServiceJsonTest extends TestSuite {
     readinessCheck = None,
     environmentVariables = Map(
       "testing1" -> LiteralEnvironmentVariable("testingvalue1")),
-    version = Some(Version(3, 2, 1, Some("SNAPSHOT"))))
+    version = Some(Version(3, 2, 1, Some("SNAPSHOT"))),
+    modules = Set.empty)
 
   val tests = this{
     "json serialization" - {
@@ -64,7 +66,7 @@ object ServiceJsonTest extends TestSuite {
               |    "clusterIP": "None",
               |    "ports": [
               |      {
-              |        "name": "ep1-v1",
+              |        "name": "ep1",
               |        "port": 1234,
               |        "protocol": "TCP",
               |        "targetPort": 1234
@@ -97,7 +99,7 @@ object ServiceJsonTest extends TestSuite {
               |    "clusterIP": "10.0.0.5",
               |    "ports": [
               |      {
-              |        "name": "ep1-v1",
+              |        "name": "ep1",
               |        "port": 1234,
               |        "protocol": "TCP",
               |        "targetPort": 1234
