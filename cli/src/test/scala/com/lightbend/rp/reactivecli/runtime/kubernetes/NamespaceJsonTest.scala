@@ -29,6 +29,7 @@ object NamespaceJsonTest extends TestSuite {
       val annotations = new Annotations(
         namespace = None,
         appName = None,
+        appType = None,
         diskSpace = None,
         memory = None,
         nrOfCpus = None,
@@ -39,7 +40,8 @@ object NamespaceJsonTest extends TestSuite {
         healthCheck = None,
         readinessCheck = None,
         environmentVariables = Map.empty,
-        version = None)
+        version = None,
+        modules = Set.empty)
 
       "namespace present" - {
         val result = Namespace.generate(annotations.copy(namespace = Some("chirper")))
