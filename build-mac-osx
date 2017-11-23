@@ -2,10 +2,9 @@
 
 # this script should probably be implemented in sbt, but as a first step:
 
-sbt cli/nativeLink
-
-# version is the last token from "sbt version"
-version=$( sbt -no-colors version | awk '{v=$NF} END{print v}' )
+version=${1:?usage: build-mac-osx version}
+git checkout tags/$version
+sbt clean test cli/nativeLink
 
 pkgbase=target/mac
 rm -rf $pkgbase
