@@ -1,0 +1,20 @@
+#!/bin/bash -xe
+
+# this script should probably be implemented in sbt, but as a first step:
+
+version=${1:?usage: build-mac-osx version}
+git checkout tags/$version
+sbt clean test cli/nativeLink
+
+pkgbase=target/mac
+rm -rf $pkgbase
+mkdir -p $pkgbase/bin $pkgbase/lib
+
+cp -p libhttpsimple/target/libhttpsimple.so $pkgbase/lib
+cp -p cli/target/scala-*/reactive-cli-out $pkgbase/bin/reactive-cli
+
+# fix the non-portable link to libhttpsimple
+jenk=$( pwd )/libhttpsimple/target/libhttpsimple.so
+install_name_tool -change "$jenk" /usr/local/opt/reactive-cli/lib/libhttpsimple.so $pkgbase/bin/reactive-cli
+
+( cd $pkgbase && zip "reactive-cli-${version}-Mac_OS_X-x86_64.zip" bin/* lib/* )
