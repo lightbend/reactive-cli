@@ -58,10 +58,13 @@ object Main extends LazyLogging {
                   password <- generateDeploymentArgs.registryPassword
                 } yield HttpRequest.BasicAuth(username, password)
 
-              def getDockerHostConfig(imageName: String): Option[Config] =
+              def getDockerHostConfig(imageName: String): Option[Config] = {
+                implicit val httpSettingsWithDockerCredentials: LibHttpSimple.Settings = DockerEngine.applyDockerHostSettings(httpSettings, sys.env)
+                val http = LibHttpSimple.http(httpSettingsWithDockerCredentials)
                 DockerEngine
-                  .getConfigFromDockerHost(imageName)
+                  .getConfigFromDockerHost(http, sys.env)(imageName)(httpSettingsWithDockerCredentials)
                   .map(_.registryConfig)
+              }
 
               def getDockerRegistryConfig(imageName: String): Try[Config] =
                 DockerRegistry.getConfig(
