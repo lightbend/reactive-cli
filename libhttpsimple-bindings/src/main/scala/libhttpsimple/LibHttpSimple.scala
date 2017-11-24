@@ -109,11 +109,11 @@ object LibHttpSimple {
       val isFollowRedirect = followRedirects.getOrElse(settings.followRedirect)
       val isTlsValidationEnabled = tlsValidationEnabled.getOrElse(settings.tlsValidationEnabled)
 
-      val allHeaders = auth.foldLeft(headers) {
+      val headersWithAuth = auth.foldLeft(headers) {
         case (hs, HttpRequest.BasicAuth(username, password)) =>
           hs.updated(
             "Authorization",
-            s"Basic ${Base64Encoder(s"${username}:${password}")}")
+            s"Basic ${Base64Encoder(s"$username:$password")}")
 
         case (hs, HttpRequest.BearerToken(bearer)) =>
           hs.updated("Authorization", s"Bearer $bearer")
@@ -123,7 +123,7 @@ object LibHttpSimple {
         validate_tls = if (isTlsValidationEnabled) 1 else 0,
         native.toCString(method),
         native.toCString(url),
-        native.toCString(httpHeadersToDelimitedString(headers)),
+        native.toCString(httpHeadersToDelimitedString(headersWithAuth)),
         native.toCString(requestBody.getOrElse("")),
         native.toCString(settings.tlsCacertsPath.fold("")(_.toString)),
         native.toCString(settings.tlsCertPath.fold("")(_.toString)),
