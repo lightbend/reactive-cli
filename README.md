@@ -16,7 +16,7 @@ The setup script will install the prerequisites listed below.
 
 * LVM 3.7+
 * gcc
-* libcurl with `curl.h` header file
+* libcurl with `curl.h` header file and OpenSSL support
 * libgc
 * libunwind
 * libre2

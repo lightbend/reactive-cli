@@ -6,6 +6,9 @@ set -eux
 echo "Install Boehm GC, RE2"
 brew install bdw-gc re2
 
+echo "Install curl (with OpenSSL support)"
+brew install curl --with-openssl
+
 echo "Install argonaut from source"
 rm -rf argonaut
 git clone https://github.com/argonaut-io/argonaut.git
