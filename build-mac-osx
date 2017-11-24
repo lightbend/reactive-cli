@@ -2,19 +2,53 @@
 
 # this script should probably be implemented in sbt, but as a first step:
 
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
+curl="$(cd "$(brew --cellar curl)" && cd "$(ls | tail -n 1)/lib" && pwd)"
+
+if [ "$curl" = "" ]; then
+  echo "* missing curl"
+  exit 1
+fi
+
 version=${1:?usage: build-mac-osx version}
-git checkout tags/$version
+git checkout "tags/v$version"
 sbt clean test cli/nativeLink
 
 pkgbase=target/mac
-rm -rf $pkgbase
-mkdir -p $pkgbase/bin $pkgbase/lib
+rm -rf "$pkgbase"
+mkdir -p "$pkgbase/bin" "$pkgbase/lib"
 
-cp -p libhttpsimple/target/libhttpsimple.so $pkgbase/lib
-cp -p cli/target/scala-*/reactive-cli-out $pkgbase/bin/reactive-cli
+# We bundle curl because the one that ships with macOS doesn't support OpenSSL PEM files
+# but that's what Docker uses.
+
+cp -p "$curl/libcurl.4.dylib" "$pkgbase/lib"
+cp -p libhttpsimple/target/libhttpsimple.so "$pkgbase/lib"
+cp -p cli/target/scala-*/reactive-cli-out "$pkgbase/lib/rp"
+
+cat << "EOT" > "$pkgbase/bin/rp"
+#!/usr/bin/env bash
+
+set -e
+
+script="${BASH_SOURCE[0]}"
+
+if [ -h "$SCRIPT_NAME" ]; then
+  script="$(readlink "$SCRIPT_NAME")"
+fi
+
+base="$(cd "$(dirname "$script")/../" && pwd)"
+
+export LD_LIBRARY_PATH="$base/lib"
+export DYLD_LIBRARY_PATH="$base/lib"
+
+exec "$base/lib/rp" "$@"
+EOT
+
+chmod +x "$pkgbase/bin/rp"
 
 # fix the non-portable link to libhttpsimple
 jenk=$( pwd )/libhttpsimple/target/libhttpsimple.so
-install_name_tool -change "$jenk" /usr/local/opt/reactive-cli/lib/libhttpsimple.so $pkgbase/bin/reactive-cli
+install_name_tool -change "$jenk" /usr/local/opt/reactive-cli/lib/libhttpsimple.so "$pkgbase/lib/rp"
 
-( cd $pkgbase && zip "reactive-cli-${version}-Mac_OS_X-x86_64.zip" bin/* lib/* )
+( cd "$pkgbase" && zip "reactive-cli-${version}-Mac_OS_X-x86_64.zip" bin/* lib/* )
