@@ -18,6 +18,8 @@ package com.lightbend.rp.reactivecli.argparse
 
 import java.nio.file.{ Files, Paths }
 
+import com.lightbend.rp.reactivecli.annotations.LiteralEnvironmentVariable
+import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs.RpJavaOptsMergeStrategy
 import com.lightbend.rp.reactivecli.argparse.kubernetes.{ DeploymentArgs, IngressArgs, KubernetesArgs, ServiceArgs }
 import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment
 import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment.KubernetesVersion
@@ -74,6 +76,8 @@ object InputArgsTest extends TestSuite {
                   "--memory", "1024",
                   "--disk-space", "2048",
                   "--output", "/tmp/foo",
+                  "--rp-java-opts", "-Dfoo=bar",
+                  "--rp-java-opts-merge", "Replace",
                   "--registry-username", "john",
                   "--registry-password", "wick",
                   "--registry-https-disable",
@@ -108,7 +112,9 @@ object InputArgsTest extends TestSuite {
                       registryPassword = Some("wick"),
                       registryUseHttps = false,
                       registryValidateTls = false,
-                      externalServices = Map("cas1" -> Vector("1.2.3.4", "5.6.7.8"), "cas2" -> Vector("hello")))))))
+                      externalServices = Map("cas1" -> Vector("1.2.3.4", "5.6.7.8"), "cas2" -> Vector("hello")),
+                      rpJavaOpts = List(LiteralEnvironmentVariable("-Dfoo=bar")),
+                      rpJavaOptsMergeStrategy = RpJavaOptsMergeStrategy.Replace)))))
             } finally {
               Files.deleteIfExists(mockCacerts)
             }
@@ -137,6 +143,28 @@ object InputArgsTest extends TestSuite {
 
                 assert(result.isEmpty)
               }
+            }
+          }
+
+          "RP_JAVA_OPTS" - {
+            val minimumArgs = Seq(
+              "generate-deployment",
+              "dockercloud/hello-world:1.0.0-SNAPSHOT",
+              "--target", "kubernetes",
+              "--kubernetes-version", "1.7")
+
+            "rejects malformed RP_JAVA_OPTS specified from the option argument" - {
+              val result = parser.parse(
+                minimumArgs ++ Seq("--rp-java-opts", "hello-there"),
+                InputArgs.default)
+              assert(result.isEmpty)
+            }
+
+            "rejects RP_JAVA_OPTS specified from the environment variable" - {
+              val result = parser.parse(
+                minimumArgs ++ Seq("--env", "RP_JAVA_OPTS=-Dfoo=bar"),
+                InputArgs.default)
+              assert(result.isEmpty)
             }
           }
         }

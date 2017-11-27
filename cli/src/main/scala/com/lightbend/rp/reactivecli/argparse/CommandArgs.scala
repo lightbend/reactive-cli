@@ -17,7 +17,8 @@
 package com.lightbend.rp.reactivecli.argparse
 
 import scala.collection.immutable.Seq
-import GenerateDeploymentArgs.{ DockerRegistryUseHttpsDefault, DockerRegistryValidateTlsDefault }
+import GenerateDeploymentArgs.{ DockerRegistryUseHttpsDefault, DockerRegistryValidateTlsDefault, RpJavaOptsMergeStrategy }
+import com.lightbend.rp.reactivecli.annotations.LiteralEnvironmentVariable
 
 /**
  * Base type which represents input argument for a specific command invoked by the user.
@@ -29,6 +30,15 @@ object VersionArgs extends CommandArgs
 object GenerateDeploymentArgs {
   val DockerRegistryUseHttpsDefault = true
   val DockerRegistryValidateTlsDefault = true
+
+  /**
+   * Represents the merge strategy when RP Java Opts is specified by the end user.
+   */
+  object RpJavaOptsMergeStrategy extends Enumeration {
+    val Prepend, Append, Replace = Value
+
+    val DefaultMergeStrategy: Value = Prepend
+  }
 
   /**
    * Convenience method to set the [[GenerateDeploymentArgs]] values when parsing the complete user input.
@@ -60,4 +70,6 @@ case class GenerateDeploymentArgs(
   registryPassword: Option[String] = None,
   registryUseHttps: Boolean = DockerRegistryUseHttpsDefault,
   registryValidateTls: Boolean = DockerRegistryValidateTlsDefault,
-  externalServices: Map[String, Seq[String]] = Map.empty) extends CommandArgs
+  externalServices: Map[String, Seq[String]] = Map.empty,
+  rpJavaOpts: Seq[LiteralEnvironmentVariable] = Seq.empty,
+  rpJavaOptsMergeStrategy: RpJavaOptsMergeStrategy.Value = RpJavaOptsMergeStrategy.DefaultMergeStrategy) extends CommandArgs

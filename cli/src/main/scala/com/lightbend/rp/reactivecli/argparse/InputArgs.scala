@@ -19,9 +19,12 @@ package com.lightbend.rp.reactivecli.argparse
 import java.io.File
 import java.nio.file.{ Path, Paths }
 
+import com.lightbend.rp.reactivecli.annotations.LiteralEnvironmentVariable
+import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs.RpJavaOptsMergeStrategy
 import com.lightbend.rp.reactivecli.argparse.kubernetes.{ DeploymentArgs, IngressArgs, KubernetesArgs, ServiceArgs }
 import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment
 import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment.{ ImagePullPolicy, KubernetesVersion }
+
 import scala.collection.immutable.Seq
 import scopt.OptionParser
 import slogging.LogLevel
@@ -50,6 +53,9 @@ object InputArgs {
           throw new IllegalArgumentException(s"Invalid Kubernetes version number $v. Example: 1.6")
       }
     }
+
+  implicit val rpJavaOptsMergeStrategyRead: scopt.Read[RpJavaOptsMergeStrategy.Value] =
+    scopt.Read.reads(RpJavaOptsMergeStrategy.withName)
 
   val default = InputArgs()
 
@@ -145,6 +151,17 @@ object InputArgs {
             .text("Sets an environment variable. Format: NAME=value")
             .minOccurs(0)
             .unbounded()
+            .validate { v =>
+              val parts = v.split("=", 2).lift
+              (parts(0), parts(1)) match {
+                case (Some(Envs.RP_JAVA_OPTS), Some(_)) =>
+                  failure(s"Please specify ${Envs.RP_JAVA_OPTS} using the --rp-java-opts option")
+                case (Some(k), Some(_)) =>
+                  success
+                case _ =>
+                  failure("Invalid environment variable format. Format: NAME=value")
+              }
+            }
             .action(GenerateDeploymentArgs.set {
               (v, c) =>
                 val parts = v.split("=", 2).lift
@@ -168,6 +185,25 @@ object InputArgs {
             .text("Specify the disk space limit")
             .optional()
             .action(GenerateDeploymentArgs.set((v, c) => c.copy(diskSpace = Some(v)))),
+
+          opt[String]("rp-java-opts")
+            .text(s"Specify the java options to be passed into the application as ${Envs.RP_JAVA_OPTS} environment variable. Format: -Dmy.option=my.value")
+            .minOccurs(0)
+            .unbounded()
+            .validate { v =>
+              val parts = v.split("=", 2).lift
+              (parts(0), parts(1)) match {
+                case (Some(k), Some(_)) if k.startsWith("-D") =>
+                  success
+                case _ =>
+                  failure("Invalid RP_JAVA_OPTS format. Format: -Dmy.option=my.value")
+              }
+            }
+            .action(GenerateDeploymentArgs.set((v, c) => c.copy(rpJavaOpts = c.rpJavaOpts :+ LiteralEnvironmentVariable(v)))),
+
+          opt[RpJavaOptsMergeStrategy.Value]("rp-java-opts-merge")
+            .text(s"Specifies how the RP_JAVA_OPTS specified from the input argument is merged with the labels: ${RpJavaOptsMergeStrategy.values.mkString(", ")}. Default: ${RpJavaOptsMergeStrategy.DefaultMergeStrategy}")
+            .action(GenerateDeploymentArgs.set((v, c) => c.copy(rpJavaOptsMergeStrategy = v))),
 
           opt[String]("registry-username")
             .text("Specify username to access docker registry. Password must be specified also.")
@@ -224,6 +260,7 @@ object InputArgs {
 
   object Envs {
     val RP_CAINFO = "RP_CAINFO"
+    val RP_JAVA_OPTS = "RP_JAVA_OPTS"
 
     def mergeWithEnvs(inputArgs: InputArgs, envs: Map[String, String]): InputArgs = {
       val tlsCacertsPathEnv = envs.get(RP_CAINFO).map(Paths.get(_))

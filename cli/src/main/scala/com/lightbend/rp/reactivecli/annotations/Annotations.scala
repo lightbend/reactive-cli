@@ -16,7 +16,9 @@
 
 package com.lightbend.rp.reactivecli.annotations
 
+import com.lightbend.rp.reactivecli.argparse.InputArgs.Envs.RP_JAVA_OPTS
 import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
+import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs.RpJavaOptsMergeStrategy
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
 
 import scala.collection.immutable.Seq
@@ -77,8 +79,7 @@ object Annotations {
       privileged = privileged(labels),
       healthCheck = check(selectSubset(labels, ns("health-check"))),
       readinessCheck = check(selectSubset(labels, ns("readiness-check"))),
-      environmentVariables = environmentVariables(selectArray(labels, ns("environment-variables"))) ++
-        args.environmentVariables.mapValues(LiteralEnvironmentVariable.apply),
+      environmentVariables = mergeEnvs(environmentVariables(selectArray(labels, ns("environment-variables"))), args),
       version = appVersion,
       modules = appModules(selectSubset(labels, ns("modules"))))
   }
@@ -363,6 +364,32 @@ object Annotations {
           None
     }
   }
+
+  private def mergeEnvs(fromLabel: Map[String, EnvironmentVariable], args: GenerateDeploymentArgs): Map[String, EnvironmentVariable] = {
+    def excludeRpJavaOpts(input: Map[String, EnvironmentVariable]): Map[String, EnvironmentVariable] =
+      input.filterNot(_._1 == RP_JAVA_OPTS)
+
+    val fromUser = args.environmentVariables.mapValues(LiteralEnvironmentVariable.apply)
+
+    excludeRpJavaOpts(fromLabel) ++
+      excludeRpJavaOpts(fromUser) ++
+      mergeRpJavaOpts(fromLabel.get(RP_JAVA_OPTS), args.rpJavaOpts, args.rpJavaOptsMergeStrategy)
+  }
+
+  private def mergeRpJavaOpts(fromLabel: Option[EnvironmentVariable], fromUser: Seq[LiteralEnvironmentVariable], mergeStrategy: RpJavaOptsMergeStrategy.Value): Map[String, EnvironmentVariable] =
+    (fromLabel, fromUser) match {
+      case (Some(labelValue: LiteralEnvironmentVariable), userValues) if userValues.nonEmpty =>
+        val mergedLabels: Seq[LiteralEnvironmentVariable] = mergeStrategy match {
+          case RpJavaOptsMergeStrategy.Prepend => userValues :+ labelValue
+          case RpJavaOptsMergeStrategy.Append => Seq(labelValue) ++ userValues
+          case RpJavaOptsMergeStrategy.Replace => userValues
+        }
+
+        Map(RP_JAVA_OPTS -> LiteralEnvironmentVariable(mergedLabels.map(_.value).mkString(" ")))
+      case (Some(labelValue), _) => Map(RP_JAVA_OPTS -> labelValue)
+      case (None, userValues) if userValues.nonEmpty => Map(RP_JAVA_OPTS -> LiteralEnvironmentVariable(userValues.map(_.value).mkString(" ")))
+      case (None, _) => Map.empty
+    }
 
   private def ns(key: String*): String =
     (Seq("com", "lightbend", "rp") ++ key.map(_.toString.filter(_ != "."))).mkString(".")
