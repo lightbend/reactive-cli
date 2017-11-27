@@ -46,7 +46,7 @@ object Main extends LazyLogging {
             case VersionArgs =>
               System.out.println(s"rp (Reactive CLI) ${ProgramVersion.current}")
 
-            case generateDeploymentArgs @ GenerateDeploymentArgs(_, _, _, _, _, Some(kubernetesArgs: KubernetesArgs), _, _, _, _, _) =>
+            case generateDeploymentArgs @ GenerateDeploymentArgs(_, _, _, _, _, Some(kubernetesArgs: KubernetesArgs), _, _, _, _, _, _, _) =>
               implicit val httpSettings: LibHttpSimple.Settings =
                 inputArgs.tlsCacertsPath.fold(LibHttpSimple.defaultSettings)(v => LibHttpSimple.defaultSettings.copy(tlsCacertsPath = Some(v)))
 

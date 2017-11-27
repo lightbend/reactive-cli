@@ -17,6 +17,7 @@
 package com.lightbend.rp.reactivecli.annotations
 
 import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
+import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs.RpJavaOptsMergeStrategy
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
 import utest._
 
@@ -272,7 +273,7 @@ object AnnotationsTest extends TestSuite {
               modules = Set.empty))
       }
 
-      "endpoint (no version)" - {
+      "endpoint" - {
         assert(
           Annotations(
             Map(
@@ -302,7 +303,7 @@ object AnnotationsTest extends TestSuite {
               modules = Set.empty))
       }
 
-      "endpoint (no version and no app version)" - {
+      "endpoint (no app version)" - {
         assert(
           Annotations(
             Map(
@@ -326,6 +327,50 @@ object AnnotationsTest extends TestSuite {
               environmentVariables = Map.empty,
               version = None,
               modules = Set.empty))
+      }
+
+      "RP_JAVA_OPTS" - {
+        "prepend with user args" - {
+          val result = Annotations(
+            Map(
+              "com.lightbend.rp.environment-variables.0.type" -> "literal",
+              "com.lightbend.rp.environment-variables.0.name" -> "RP_JAVA_OPTS",
+              "com.lightbend.rp.environment-variables.0.value" -> "-Dkey1=value1 -Dkey2=value2"),
+            GenerateDeploymentArgs(
+              rpJavaOpts = List(LiteralEnvironmentVariable("-Dfoo1=baz1 -Dfoo2=baz2")),
+              rpJavaOptsMergeStrategy = RpJavaOptsMergeStrategy.Prepend))
+
+          assert(result.environmentVariables == Map(
+            "RP_JAVA_OPTS" -> LiteralEnvironmentVariable("-Dfoo1=baz1 -Dfoo2=baz2 -Dkey1=value1 -Dkey2=value2")))
+        }
+
+        "append with user args" - {
+          val result = Annotations(
+            Map(
+              "com.lightbend.rp.environment-variables.0.type" -> "literal",
+              "com.lightbend.rp.environment-variables.0.name" -> "RP_JAVA_OPTS",
+              "com.lightbend.rp.environment-variables.0.value" -> "-Dkey1=value1 -Dkey2=value2"),
+            GenerateDeploymentArgs(
+              rpJavaOpts = List(LiteralEnvironmentVariable("-Dfoo1=baz1 -Dfoo2=baz2")),
+              rpJavaOptsMergeStrategy = RpJavaOptsMergeStrategy.Append))
+
+          assert(result.environmentVariables == Map(
+            "RP_JAVA_OPTS" -> LiteralEnvironmentVariable("-Dkey1=value1 -Dkey2=value2 -Dfoo1=baz1 -Dfoo2=baz2")))
+        }
+
+        "replace user args" - {
+          val result = Annotations(
+            Map(
+              "com.lightbend.rp.environment-variables.0.type" -> "literal",
+              "com.lightbend.rp.environment-variables.0.name" -> "RP_JAVA_OPTS",
+              "com.lightbend.rp.environment-variables.0.value" -> "-Dkey1=value1 -Dkey2=value2"),
+            GenerateDeploymentArgs(
+              rpJavaOpts = List(LiteralEnvironmentVariable("-Dfoo1=baz1 -Dfoo2=baz2")),
+              rpJavaOptsMergeStrategy = RpJavaOptsMergeStrategy.Replace))
+
+          assert(result.environmentVariables == Map(
+            "RP_JAVA_OPTS" -> LiteralEnvironmentVariable("-Dfoo1=baz1 -Dfoo2=baz2")))
+        }
       }
 
       "CommandCheck" - {
