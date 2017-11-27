@@ -85,6 +85,7 @@ trait BuildTarget {
           |
           |mv target/output/bin/* ../package/usr/share/reactive-cli/bin/
           |mv target/output/lib/* ../package/usr/share/reactive-cli/lib/
+          |chmod 755 -R ../package/usr/share/reactive-cli/bin
           |ln -s /usr/share/reactive-cli/bin/rp-launcher ../package/usr/bin/rp
           |popd
           |""".stripMargin)
