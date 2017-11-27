@@ -24,31 +24,13 @@ mkdir -p "$pkgbase/bin" "$pkgbase/lib"
 
 cp -p "$curl/libcurl.4.dylib" "$pkgbase/lib"
 cp -p libhttpsimple/target/libhttpsimple.so "$pkgbase/lib"
-cp -p cli/target/scala-*/reactive-cli-out "$pkgbase/lib/rp"
+cp -p cli/target/scala-*/reactive-cli-out "$pkgbase/bin/rp"
 
-cat << "EOT" > "$pkgbase/bin/rp"
-#!/usr/bin/env bash
-
-set -e
-
-script="${BASH_SOURCE[0]}"
-
-if [ -h "$SCRIPT_NAME" ]; then
-  script="$(readlink "$SCRIPT_NAME")"
-fi
-
-base="$(cd "$(dirname "$script")/../" && pwd)"
-
-export LD_LIBRARY_PATH="$base/lib"
-export DYLD_LIBRARY_PATH="$base/lib"
-
-exec "$base/lib/rp" "$@"
-EOT
-
-chmod +x "$pkgbase/bin/rp"
+# link to the bundled curl
+install_name_tool -change /usr/lib/libcurl.4.dylib /usr/local/opt/reactive-cli/lib/libcurl.4.dylib "$pkgbase/bin/rp"
 
 # fix the non-portable link to libhttpsimple
 jenk=$( pwd )/libhttpsimple/target/libhttpsimple.so
-install_name_tool -change "$jenk" /usr/local/opt/reactive-cli/lib/libhttpsimple.so "$pkgbase/lib/rp"
+install_name_tool -change "$jenk" /usr/local/opt/reactive-cli/lib/libhttpsimple.so "$pkgbase/bin/rp"
 
 ( cd "$pkgbase" && zip "reactive-cli-${version}-Mac_OS_X-x86_64.zip" bin/* lib/* )
