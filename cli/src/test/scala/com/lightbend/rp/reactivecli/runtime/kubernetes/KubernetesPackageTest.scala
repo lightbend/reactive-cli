@@ -548,53 +548,39 @@ object KubernetesPackageTest extends TestSuite {
       }
     }
 
-    "endpointServiceName" - {
-      "normalize service names with version" - {
+    "serviceName" - {
+      "normalize service names" - {
         Seq(
-          "akka-remote" -> "akka-remote",
+          "--akka-remote--" -> "akka-remote",
+          "__akka_remote__" -> "akka-remote",
           "user-search" -> "user-search",
+          "USER_SEARCH" -> "user-search",
           "h!e**(l+l??O" -> "h-e---l-l--o").foreach {
             case (input, expectedResult) =>
-              val endpoint = TcpEndpoint(0, input, 0)
-              val result = endpointServiceName(endpoint)
+              val result = serviceName(input)
               assert(result == expectedResult)
           }
-      }
 
-      "normalize service names without version" - {
         Seq(
-          "AKKA_remote" -> "akka-remote",
-          "user_search" -> "user-search",
-          "h!e**(l+l??O" -> "h-e---l-l--o").foreach {
+          "akka!remote" -> "akka-remote",
+          "my/test" -> "my/test").foreach {
             case (input, expectedResult) =>
-              val endpoint = TcpEndpoint(0, input, 0)
-              val result = endpointServiceName(endpoint)
+              val result = serviceName(input, Set('/'))
               assert(result == expectedResult)
           }
       }
     }
 
-    "endpointName" - {
-      "normalize endpoint names with version" - {
+    "envVarName" - {
+      "normalize endpoint names" - {
         Seq(
-          "akka-remote" -> "AKKA-REMOTE",
-          "user-search" -> "USER-SEARCH",
+          "akka-remote" -> "AKKA_REMOTE",
+          "--akka-remote--" -> "AKKA_REMOTE",
+          "__akka-remote__" -> "AKKA_REMOTE",
+          "user-search" -> "USER_SEARCH",
           "h!e**(l+l??O" -> "H_E___L_L__O").foreach {
             case (input, expectedResult) =>
-              val endpoint = TcpEndpoint(0, input, 0)
-              val result = endpointEnvName(endpoint)
-              assert(result == expectedResult)
-          }
-      }
-
-      "normalize endpoint names without version" - {
-        Seq(
-          "akka_remote" -> "AKKA_REMOTE",
-          "user-search" -> "USER-SEARCH",
-          "h!e**(l+l??O" -> "H_E___L_L__O").foreach {
-            case (input, expectedResult) =>
-              val endpoint = TcpEndpoint(0, input, 0)
-              val result = endpointEnvName(endpoint)
+              val result = envVarName(input)
               assert(result == expectedResult)
           }
       }
