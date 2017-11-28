@@ -17,15 +17,15 @@
 package com.lightbend.rp.reactivecli
 
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
-import com.lightbend.rp.reactivecli.argparse.{ GenerateDeploymentArgs, InputArgs, VersionArgs }
-import com.lightbend.rp.reactivecli.docker.{ Config, DockerRegistry, DockerEngine }
+import com.lightbend.rp.reactivecli.argparse.{GenerateDeploymentArgs, InputArgs, VersionArgs}
+import com.lightbend.rp.reactivecli.docker.{Config, DockerCredentials, DockerEngine, DockerRegistry}
 import com.lightbend.rp.reactivecli.runtime.kubernetes
-import libhttpsimple.{ HttpRequest, LibHttpSimple }
+import libhttpsimple.{HttpRequest, LibHttpSimple}
 import libhttpsimple.LibHttpSimple.HttpExchange
-import slogging._
-
+import java.nio.file.{ Path, Paths }
 import scala.annotation.tailrec
 import scala.util.Try
+import slogging._
 
 /**
  * This is the main entry of the Reactive CLI.
@@ -35,11 +35,20 @@ object Main extends LazyLogging {
 
   val parser = InputArgs.parser(CliName, ProgramVersion.current)
 
+  private def credentialsFile: Option[Path] =
+    for {
+      // @FIXME when scala native has release with property user.home
+      // https://github.com/scala-native/scala-native/issues/1025
+      home <- sys.env.get("HOME")
+    } yield Paths.get(home, ".lightbend", "docker.credentials")
+
   @tailrec
   private def run(args: Array[String]): Unit = {
     if (args.nonEmpty) {
       parser.parse(args, InputArgs.default).foreach { inputArgs =>
         val inputArgsMerged = InputArgs.Envs.mergeWithEnvs(inputArgs, sys.env)
+
+        LoggerConfig.level = inputArgsMerged.logLevel
 
         inputArgsMerged.commandArgs
           .collect {
@@ -52,11 +61,29 @@ object Main extends LazyLogging {
 
               val http: HttpExchange = LibHttpSimple.http
 
-              val dockerRegistryAuth =
+              val dockerRegistryArgsAuth =
                 for {
                   username <- generateDeploymentArgs.registryUsername
                   password <- generateDeploymentArgs.registryPassword
                 } yield HttpRequest.BasicAuth(username, password)
+
+              val dockerRegistryFileAuth =
+                for {
+                  imageName   <- generateDeploymentArgs.dockerImage
+                  registry    <- DockerRegistry.getRegistry(imageName)
+                  credsFile   <- credentialsFile
+                  auth         = DockerCredentials.parse(credsFile)
+                  entry       <- auth.find(_.registry == registry)
+                } yield HttpRequest.BasicAuth(entry.username, entry.password)
+
+              val dockerRegistryAuth = dockerRegistryArgsAuth.orElse(dockerRegistryFileAuth)
+
+              dockerRegistryAuth match {
+                case None =>
+                  logger.debug("Attempting to pull manifest while unauthenticated")
+                case Some(HttpRequest.BasicAuth(username, _)) =>
+                  logger.debug(s"Attempting to pull manifest as $username")
+              }
 
               def getDockerHostConfig(imageName: String): Option[Config] = {
                 implicit val httpSettingsWithDockerCredentials: LibHttpSimple.Settings = DockerEngine.applyDockerHostSettings(httpSettings, sys.env)
