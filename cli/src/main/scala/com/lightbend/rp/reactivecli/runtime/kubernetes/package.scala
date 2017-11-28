@@ -31,15 +31,24 @@ import scala.util.{ Failure, Success, Try }
 
 package object kubernetes extends LazyLogging {
   /**
-   * Valid characters for endpoint name.
+   * Valid characters for endpoint environment variable name.
    * The declared endpoint name will be made uppercase, and all characters outside the valid chars range will be
    * swapped with '_'.
    */
   private val ValidEndpointChars =
-    (('0' to '9') ++ ('A' to 'Z') ++ ('a' to 'z') ++ Seq('_', '-')).toSet
+    (('0' to '9') ++ ('A' to 'Z') ++ ('a' to 'z') ++ Seq('_')).toSet
 
+  /**
+   * Valid characters for endpoint service name. The name will be made lowercase, and all characters outside the
+   * valid chars range with be swapped with '-'.
+   */
   private val ValidEndpointServiceChars =
-    ValidEndpointChars - '_'
+    ValidEndpointChars - '_' + '-'
+
+  /**
+   * These characters will be trimmed from both sides of the string.
+   */
+  private val EndpointTrimChars = Set('_', '-')
 
   /**
    * This is the main method which generates the kubernetes resources.
@@ -123,20 +132,21 @@ package object kubernetes extends LazyLogging {
       out.println(formattedJson)
     }
 
-  private[kubernetes] def endpointServiceName(endpoint: Endpoint): String =
-    endpoint
-      .name
-      .map(c => if (ValidEndpointServiceChars.contains(c)) c else '-')
-      .toLowerCase
-
-  private[kubernetes] def endpointEnvName(endpoint: Endpoint): String =
-    endpoint
-      .name
+  private[kubernetes] def envVarName(name: String): String =
+    name
       .map(c => if (ValidEndpointChars.contains(c)) c else '_')
+      .dropWhile(EndpointTrimChars.contains)
+      .reverse
+      .dropWhile(EndpointTrimChars.contains)
+      .reverse
       .toUpperCase
 
-  private[kubernetes] def serviceName(name: String): String =
+  private[kubernetes] def serviceName(name: String, additionalChars: Set[Char] = Set.empty): String =
     name
-      .map(c => if (ValidEndpointServiceChars.contains(c)) c else '-')
+      .map(c => if (ValidEndpointServiceChars.contains(c) || additionalChars.contains(c)) c else '-')
+      .dropWhile(EndpointTrimChars.contains)
+      .reverse
+      .dropWhile(EndpointTrimChars.contains)
+      .reverse
       .toLowerCase
 }

@@ -71,10 +71,13 @@ object Deployment {
             externalServices
               .flatMap {
                 case (name, addresses) =>
+                  // We allow '/' as that's the convention used: $serviceName/$endpoint
+                  // We allow '_' as its currently used for Lagom defaults, i.e. "cas_native"
+
                   val arguments =
                     for {
                       (address, i) <- addresses.zipWithIndex
-                    } yield s"-Drp.service-discovery.external-service-addresses.${serviceName(name)}.$i=$address"
+                    } yield s"-Drp.service-discovery.external-service-addresses.${serviceName(name, Set('/', '_'))}.$i=$address"
 
                   arguments
               }
@@ -101,7 +104,7 @@ object Deployment {
           "RP_ENDPOINTS" -> LiteralEnvironmentVariable(
             endpoints.values.toList
               .sortBy(_.index)
-              .map(v => endpointEnvName(v))
+              .map(v => envVarName(v.name))
               .mkString(","))) ++
           endpointPortEnvs(endpoints)
 
@@ -111,10 +114,10 @@ object Deployment {
           val assignedPortEnv = LiteralEnvironmentVariable(assigned.port.toString)
           val hostEnv = FieldRefEnvironmentVariable("status.podIP")
           Seq(
-            s"RP_ENDPOINT_${endpointEnvName(assigned.endpoint)}_HOST" -> hostEnv,
-            s"RP_ENDPOINT_${endpointEnvName(assigned.endpoint)}_BIND_HOST" -> hostEnv,
-            s"RP_ENDPOINT_${endpointEnvName(assigned.endpoint)}_PORT" -> assignedPortEnv,
-            s"RP_ENDPOINT_${endpointEnvName(assigned.endpoint)}_BIND_PORT" -> assignedPortEnv,
+            s"RP_ENDPOINT_${envVarName(assigned.endpoint.name)}_HOST" -> hostEnv,
+            s"RP_ENDPOINT_${envVarName(assigned.endpoint.name)}_BIND_HOST" -> hostEnv,
+            s"RP_ENDPOINT_${envVarName(assigned.endpoint.name)}_PORT" -> assignedPortEnv,
+            s"RP_ENDPOINT_${envVarName(assigned.endpoint.name)}_BIND_PORT" -> assignedPortEnv,
             s"RP_ENDPOINT_${assigned.endpoint.index}_HOST" -> hostEnv,
             s"RP_ENDPOINT_${assigned.endpoint.index}_BIND_HOST" -> hostEnv,
             s"RP_ENDPOINT_${assigned.endpoint.index}_PORT" -> assignedPortEnv,
@@ -252,7 +255,7 @@ object Deployment {
   implicit def assignedEncode = EncodeJson[AssignedPort] { assigned =>
     Json(
       "containerPort" -> assigned.port.asJson,
-      "name" -> endpointEnvName(assigned.endpoint).toLowerCase.asJson)
+      "name" -> serviceName(assigned.endpoint.name).asJson)
   }
 
   implicit def endpointsEncode = EncodeJson[Map[String, Endpoint]] { endpoints =>
