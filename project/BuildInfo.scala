@@ -230,22 +230,14 @@ case class BuildInfo(name: String, baseImage: String, install: String, target: B
     }
 
     def build(): Vector[File] = {
-      val userId = Seq("id", "-u").!!.trim.toInt
-
       val dockerFile =
         s"""|FROM $baseImage
             |LABEL REBUILD=20171108-01
             |MAINTAINER info@lightbend.com
             |
             |$install
-            |
-            |RUN \\
-            |  (which useradd && useradd -m reactive-cli -d /home/reactive-cli -u $userId) || (which adduser && adduser -D -u $userId -h /home/reactive-cli reactive-cli) && \\
-            |  mkdir -p /home/reactive-cli/stage && \\
-            |  chown -R reactive-cli:reactive-cli /home/reactive-cli
-            |
-            |WORKDIR /home/reactive-cli/stage
-            |USER reactive-cli
+            |RUN mkdir -p /root
+            |WORKDIR /root/stage
             |CMD ["./command"]
             |""".stripMargin
 
@@ -266,8 +258,8 @@ case class BuildInfo(name: String, baseImage: String, install: String, target: B
         "--env", "BINTRAY_USER=none", // Quiet the Bintray warnings from sbt-bintray
         "--env", "BINTRAY_PASS=none",
 
-        "-v", s"$stage:/home/reactive-cli/stage",
-        "-v", s"${stage / ".ivy2"}:/home/reactive-cli/.ivy2",
+        "-v", s"$stage:/root/stage",
+        "-v", s"${stage / ".ivy2"}:/root/.ivy2",
         s"$dockerBuildImage:latest")
 
       IO.listFiles(stage / "output").toVector
