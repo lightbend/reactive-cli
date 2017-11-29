@@ -17,12 +17,13 @@
 package com.lightbend.rp.reactivecli
 
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
-import com.lightbend.rp.reactivecli.argparse.{GenerateDeploymentArgs, InputArgs, VersionArgs}
-import com.lightbend.rp.reactivecli.docker.{Config, DockerCredentials, DockerEngine, DockerRegistry}
+import com.lightbend.rp.reactivecli.argparse.{ GenerateDeploymentArgs, InputArgs, VersionArgs }
+import com.lightbend.rp.reactivecli.docker.{ Config, DockerCredentials, DockerEngine, DockerRegistry }
 import com.lightbend.rp.reactivecli.runtime.kubernetes
-import libhttpsimple.{HttpRequest, LibHttpSimple}
+import libhttpsimple.{ HttpRequest, LibHttpSimple }
 import libhttpsimple.LibHttpSimple.HttpExchange
-import java.nio.file.{ Path, Paths }
+import java.nio.file.{ Files, Path, Paths }
+
 import scala.annotation.tailrec
 import scala.util.Try
 import slogging._
@@ -40,7 +41,9 @@ object Main extends LazyLogging {
       // @FIXME when scala native has release with property user.home
       // https://github.com/scala-native/scala-native/issues/1025
       home <- sys.env.get("HOME")
-    } yield Paths.get(home, ".lightbend", "docker.credentials")
+      path = Paths.get(home, ".lightbend", "docker.credentials")
+      if Files.exists(path)
+    } yield path
 
   @tailrec
   private def run(args: Array[String]): Unit = {
@@ -69,11 +72,11 @@ object Main extends LazyLogging {
 
               val dockerRegistryFileAuth =
                 for {
-                  imageName   <- generateDeploymentArgs.dockerImage
-                  registry    <- DockerRegistry.getRegistry(imageName)
-                  credsFile   <- credentialsFile
-                  auth         = DockerCredentials.parse(credsFile)
-                  entry       <- auth.find(_.registry == registry)
+                  imageName <- generateDeploymentArgs.dockerImage
+                  registry <- DockerRegistry.getRegistry(imageName)
+                  credsFile <- credentialsFile
+                  auth = DockerCredentials.parse(credsFile)
+                  entry <- auth.find(_.registry == registry)
                 } yield HttpRequest.BasicAuth(entry.username, entry.password)
 
               val dockerRegistryAuth = dockerRegistryArgsAuth.orElse(dockerRegistryFileAuth)
