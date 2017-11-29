@@ -69,7 +69,7 @@ the ones already created.
 
 #### Building a single distribution package locally
 
-```sbt build ubuntu-16-04```
+```sbt "build ubuntu-16-04"```
 
 #### Building every distribution in parallel
 
@@ -79,7 +79,7 @@ Once built, you can find the packages in `target/stage/<name>/output`.
 
 ## Releasing
 
-Consult the _Platform Tooling Release Process_ document in Google Drive. 
+Consult the _Platform Tooling Release Process_ document in Google Drive.
 
 ## Maintenance
 
