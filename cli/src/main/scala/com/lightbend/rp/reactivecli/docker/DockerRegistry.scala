@@ -83,6 +83,11 @@ object DockerRegistry extends LazyLogging {
       config <- getDecoded[Config](blob._1)
     } yield config -> blob._2
 
+  def getRegistry(image: String): Option[String] =
+    parseImageUri(image)
+      .toOption
+      .map(_.url)
+
   private def getManifest(http: HttpExchange, credentials: Option[HttpRequest.BasicAuth], useHttps: Boolean, validateTls: Boolean)(uri: String, token: Option[HttpRequest.BearerToken]): Try[(Manifest, Option[HttpRequest.BearerToken])] =
     for {
       i <- parseImageUri(uri)
