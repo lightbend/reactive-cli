@@ -37,6 +37,6 @@ object IngressArgs {
  * Represents user input arguments required to build Kubernetes Ingress resource.
  */
 case class IngressArgs(
+  apiVersion: String = KubernetesArgs.DefaultIngressApiVersion,
   ingressAnnotations: Map[String, String] = Map.empty,
   pathAppend: Option[String] = None)
-

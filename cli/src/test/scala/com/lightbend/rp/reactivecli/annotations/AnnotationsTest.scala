@@ -226,7 +226,7 @@ object AnnotationsTest extends TestSuite {
                 "foo" -> "foo",
                 "hey" -> "there"),
               targetRuntimeArgs = Some(KubernetesArgs(
-                kubernetesNamespace = Some("chirper"))))) == Annotations(
+                namespace = Some("chirper"))))) == Annotations(
               namespace = Some("chirper"),
               appName = None,
               appType = None,

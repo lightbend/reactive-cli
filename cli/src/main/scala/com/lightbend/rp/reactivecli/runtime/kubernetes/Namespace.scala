@@ -19,18 +19,17 @@ package com.lightbend.rp.reactivecli.runtime.kubernetes
 import argonaut._
 import Argonaut._
 import com.lightbend.rp.reactivecli.annotations.Annotations
-
 import scala.util.{ Success, Try }
 
 object Namespace {
   /**
    * Builds [[Namespace]] resource.
    */
-  def generate(annotations: Annotations): Try[Option[Namespace]] =
+  def generate(annotations: Annotations, apiVersion: String): Try[Option[Namespace]] =
     Success(
       annotations.namespace.map { ns =>
         Namespace(ns, Json(
-          "apiVersion" -> "v1".asJson,
+          "apiVersion" -> apiVersion.asJson,
           "kind" -> "Namespace".asJson,
           "metadata" -> Json(
             "name" -> ns.asJson,

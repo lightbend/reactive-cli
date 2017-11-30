@@ -49,7 +49,7 @@ object ServiceJsonTest extends TestSuite {
     "json serialization" - {
       "clusterIp" - {
         "not defined" - {
-          val generatedJson = Service.generate(annotations, clusterIp = None).get
+          val generatedJson = Service.generate(annotations, "v1", clusterIp = None).get
           val expectedJson =
             """
               |{
@@ -82,7 +82,7 @@ object ServiceJsonTest extends TestSuite {
         }
 
         "defined" - {
-          val generatedJson = Service.generate(annotations, clusterIp = Some("10.0.0.5")).get
+          val generatedJson = Service.generate(annotations, "v1", clusterIp = Some("10.0.0.5")).get
           val expectedJson =
             """
               |{

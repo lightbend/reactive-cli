@@ -19,9 +19,9 @@ package com.lightbend.rp.reactivecli.argparse
 import java.io.File
 import java.nio.file.{ Path, Paths }
 
-import com.lightbend.rp.reactivecli.argparse.kubernetes.{ DeploymentArgs, IngressArgs, KubernetesArgs, ServiceArgs }
+import com.lightbend.rp.reactivecli.argparse.kubernetes.{ PodControllerArgs, IngressArgs, KubernetesArgs, ServiceArgs }
 import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment
-import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment.{ ImagePullPolicy, KubernetesVersion }
+import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment.{ ImagePullPolicy }
 import scala.collection.immutable.Seq
 import scopt.OptionParser
 import slogging.LogLevel
@@ -41,16 +41,6 @@ object InputArgs {
   implicit val imagePullPolicyRead: scopt.Read[ImagePullPolicy.Value] =
     scopt.Read.reads(ImagePullPolicy.withName)
 
-  implicit val kubernetesVersionRead: scopt.Read[KubernetesVersion] =
-    scopt.Read.reads { v =>
-      v.split("\\.").toVector match {
-        case Vector(major, minor) =>
-          KubernetesVersion(major.toInt, minor.toInt)
-        case _ =>
-          throw new IllegalArgumentException(s"Invalid Kubernetes version number $v. Example: 1.6")
-      }
-    }
-
   val default = InputArgs()
 
   /**
@@ -60,88 +50,32 @@ object InputArgs {
     new OptionParser[InputArgs](cliName) {
       head(cliName, cliVersion)
 
-      help("help")
-        .text("Print this help text")
-
-      opt[LogLevel]('l', "loglevel")
-        .text("Sets the log level. Available: error, warn, info, debug, trace")
-        .action((v, c) => c.copy(logLevel = v))
-
-      cmd("version")
-        .text("Outputs the program's version")
-        .action((_, inputArgs) => inputArgs.copy(commandArgs = Some(VersionArgs)))
-
       opt[File]("cainfo")
         .text("Path to the CA certs for TLS validation purposes")
         .validate(f => if (f.exists()) success else failure(s"CA certs file ${f.getAbsolutePath} doesn't exist."))
         .action((f, c) => c.copy(tlsCacertsPath = Some(f.toPath.toAbsolutePath)))
 
-      cmd("generate-deployment")
-        .text("Generate deployment resources")
-        .action((_, inputArgs) => inputArgs.copy(commandArgs = Some(GenerateDeploymentArgs())))
+      opt[LogLevel]('l', "loglevel")
+        .text("Sets the log level. Available: error, warn, info, debug, trace")
+        .action((v, c) => c.copy(logLevel = v))
+
+      help("help")
+        .text("Print this help text")
+
+      cmd("version")
+        .text("Outputs the program's version")
+        .action((_, inputArgs) => inputArgs.copy(commandArgs = Some(VersionArgs)))
+
+      cmd("generate-kubernetes-deployment")
+        .text("Generate Kubernetes resource files for kubectl")
+        .action((_, inputArgs) => inputArgs.copy(commandArgs = Some(GenerateDeploymentArgs(targetRuntimeArgs = Some(KubernetesArgs())))))
         .children(
-          arg[String]("docker-image")
+          arg[String]("docker-image") /* note: this argument will apply for other targets */
             .text("Docker image to be deployed. Format: [<registry host>/][<repo>/]image[:tag]")
             .required()
             .action(GenerateDeploymentArgs.set((v, args) => args.copy(dockerImage = Some(v)))),
 
-          opt[String]("target")
-            .text("Generates the resource for target runtime. Supported: kubernetes")
-            .required()
-            .validate {
-              case v if v.toLowerCase == "kubernetes" => success
-              case v => failure(s"Unsupported target runtime: $v")
-            }
-            .action(GenerateDeploymentArgs.set {
-              case (v, args) if v.toLowerCase == "kubernetes" => args.copy(targetRuntimeArgs = Some(KubernetesArgs()))
-              case (_, args) => args
-            })
-            .children(
-              opt[File]('o', "output")
-                .text("Specify the output directory of the generated resources")
-                .optional()
-                .action(KubernetesArgs.set((v, args) => args.copy(output = KubernetesArgs.Output.SaveToFile(v.toPath)))),
-
-              opt[KubernetesVersion]("kubernetes-version")
-                .text("Kubernetes major and minor version. Example: 1.6")
-                .required()
-                .action(KubernetesArgs.set((v, args) => args.copy(kubernetesVersion = Some(v)))),
-
-              opt[String]("kubernetes-namespace")
-                .text("Kubernetes namespace of the artefact to be generated")
-                .action(KubernetesArgs.set((v, args) => args.copy(kubernetesNamespace = Some(v)))),
-
-              opt[Int]("kubernetes-deployment-nr-of-replicas")
-                .text("Sets the number of replicas set for Kubernetes deployment resource")
-                .validate(v => if (v >= 0) success else failure("Number of replicas must be zero or more"))
-                .action(DeploymentArgs.set((v, args) => args.copy(numberOfReplicas = v))),
-
-              opt[ImagePullPolicy.Value]("kubernetes-deployment-image-pull-policy")
-                .text(s"Sets the docker image pull policy for Kubernetes deployment resource. Option: ${Deployment.ImagePullPolicy.values.mkString(", ")}")
-                .action(DeploymentArgs.set((v, args) => args.copy(imagePullPolicy = v))),
-
-              opt[String]("kubernetes-service-cluster-ip")
-                .text("Sets the cluster IP for Kubernetes service resource")
-                .action(ServiceArgs.set((v, args) => args.copy(clusterIp = Some(v)))),
-
-              opt[String]("kubernetes-ingress-annotation")
-                .text("Specifies the Kubernetes ingress annotation. Format: NAME=value")
-                .minOccurs(0)
-                .unbounded()
-                .action(IngressArgs.set {
-                  (v, c) =>
-                    val parts = v.split("=", 2).lift
-                    c.copy(
-                      ingressAnnotations = c.ingressAnnotations.updated(
-                        parts(0).get,
-                        parts(1).getOrElse("")))
-                }),
-
-              opt[String]("kubernetes-ingress-path-append")
-                .text("Appends the expression specified to the ingress path. For example: if .* is specified, then the ingress path /my-path will be rendered as /my-path.*")
-                .action(IngressArgs.set((v, c) => c.copy(pathAppend = Some(v))))),
-
-          opt[String]("env")
+          opt[String]("env") /* note: this argument will apply for other targets */
             .text("Sets an environment variable. Format: NAME=value")
             .minOccurs(0)
             .unbounded()
@@ -154,58 +88,99 @@ object InputArgs {
                     parts(1).getOrElse("")))
             }),
 
-          opt[Double]("nr-of-cpus")
-            .text("Specify the number of CPU shares")
+          opt[String]("external-service") /* note: this argument will apply for other targets */
+            .text("Declares an external service address. Format: NAME=value")
             .optional()
-            .action(GenerateDeploymentArgs.set((v, c) => c.copy(nrOfCpus = Some(v)))),
+            .minOccurs(0)
+            .unbounded()
+            .action(GenerateDeploymentArgs.set {
+              (v, c) =>
+                val parts = v.split("=", 2)
 
-          opt[Long]("memory")
-            .text("Specify the memory limit")
+                if (parts.length == 2) {
+                  val current = c.externalServices.getOrElse(parts(0), Seq.empty)
+
+                  c.copy(externalServices = c.externalServices.updated(parts(0), current :+ parts(1)))
+                } else {
+                  c
+                }
+            }),
+
+          opt[String]("ingress-annotation")
+            .text("Adds an annotation to the generated Ingress resources. Format: NAME=value")
+            .minOccurs(0)
+            .unbounded()
+            .action(IngressArgs.set {
+              (v, c) =>
+                val parts = v.split("=", 2).lift
+                c.copy(
+                  ingressAnnotations = c.ingressAnnotations.updated(
+                    parts(0).get,
+                    parts(1).getOrElse("")))
+            }),
+
+          opt[String]("ingress-api-version")
+            .text(s"Sets the Ingress API version. Default: ${KubernetesArgs.DefaultIngressApiVersion}")
             .optional()
-            .action(GenerateDeploymentArgs.set((v, c) => c.copy(memory = Some(v)))),
+            .action(IngressArgs.set((v, args) => args.copy(apiVersion = v))),
 
-          opt[Long]("disk-space")
-            .text("Specify the disk space limit")
+          opt[String]("ingress-path-suffix")
+            .text("Appends the expression specified to the paths of the generated Ingress resources")
+            .action(IngressArgs.set((v, c) => c.copy(pathAppend = Some(v)))),
+
+          opt[String]("namespace")
+            .text("Resources will be generated with the supplied namespace")
+            .action(KubernetesArgs.set((v, args) => args.copy(namespace = Some(v)))),
+
+          opt[File]('o', "output")
+            .text("Specify the output directory for the generated resources")
             .optional()
-            .action(GenerateDeploymentArgs.set((v, c) => c.copy(diskSpace = Some(v)))),
+            .action(KubernetesArgs.set((v, args) => args.copy(output = KubernetesArgs.Output.SaveToFile(v.toPath)))),
 
-          opt[String]("registry-username")
-            .text("Specify username to access docker registry. Password must be specified also.")
+          opt[String]("pod-controller-api-version")
+            .text(s"Sets the Pod Controller (e.g. Deployment) API version. Default: ${KubernetesArgs.DefaultPodControllerApiVersion}")
             .optional()
-            .action(GenerateDeploymentArgs.set((v, c) => c.copy(registryUsername = Some(v)))),
+            .action(PodControllerArgs.set((v, args) => args.copy(apiVersion = v))),
 
-          opt[String]("registry-password")
-            .text("Specify password to access docker registry. Username must be specified also.")
-            .optional()
-            .action(GenerateDeploymentArgs.set((v, c) => c.copy(registryPassword = Some(v)))),
+          opt[ImagePullPolicy.Value]("pod-controller-image-pull-policy")
+            .text(s"Sets the Docker image pull policy for Pod Controller resources. Supported: ${Deployment.ImagePullPolicy.values.mkString(", ")}")
+            .action(PodControllerArgs.set((v, args) => args.copy(imagePullPolicy = v))),
 
-          opt[Unit]("registry-https-disable")
+          opt[Int]("pod-controller-replicas")
+            .text("Sets the number of replicas for the Pod Controller resources")
+            .validate(v => if (v >= 0) success else failure("Number of replicas must be zero or more"))
+            .action(PodControllerArgs.set((v, args) => args.copy(numberOfReplicas = v))),
+
+          opt[Unit]("registry-disable-https") /* note: this argument will apply for other targets */
             .text("Disables HTTPS when accessing docker registry")
             .optional()
             .action(GenerateDeploymentArgs.set((_, c) => c.copy(registryUseHttps = false))),
 
-          opt[Unit]("registry-tls-validation-disable")
+          opt[Unit]("registry-disable-tls-validation") /* note: this argument will apply for other targets */
             .text("Disables TLS cert validation when accessing docker registry through HTTPS")
             .optional()
-            .action(GenerateDeploymentArgs.set((_, c) => c.copy(registryValidateTls = false))))
+            .action(GenerateDeploymentArgs.set((_, c) => c.copy(registryValidateTls = false))),
 
-      opt[String]("external-service")
-        .text("Declare an external service address. Format: NAME=value")
-        .optional()
-        .minOccurs(0)
-        .unbounded()
-        .action(GenerateDeploymentArgs.set {
-          (v, c) =>
-            val parts = v.split("=", 2)
+          opt[String]("registry-username") /* note: this argument will apply for other targets */
+            .text("Specify username to access docker registry. Password must be specified also.")
+            .optional()
+            .action(GenerateDeploymentArgs.set((v, c) => c.copy(registryUsername = Some(v)))),
 
-            if (parts.length == 2) {
-              val current = c.externalServices.getOrElse(parts(0), Seq.empty)
+          opt[String]("registry-password") /* note: this argument will apply for other targets */
+            .text("Specify password to access docker registry. Username must be specified also.")
+            .optional()
+            .action(GenerateDeploymentArgs.set((v, c) => c.copy(registryPassword = Some(v)))),
 
-              c.copy(externalServices = c.externalServices.updated(parts(0), current :+ parts(1)))
-            } else {
-              c
-            }
-        })
+          opt[String]("service-api-version")
+            .text(s"Sets the Service API version. Default: ${KubernetesArgs.DefaultServiceApiVersion}")
+            .optional()
+            .action(ServiceArgs.set((v, args) => args.copy(apiVersion = v))),
+
+          opt[String]("service-cluster-ip")
+            .text("Sets the cluster IP for Service resources")
+            .action(ServiceArgs.set((v, args) => args.copy(clusterIp = Some(v))))
+
+      )
 
       checkConfig { inputArgs =>
         inputArgs.commandArgs match {

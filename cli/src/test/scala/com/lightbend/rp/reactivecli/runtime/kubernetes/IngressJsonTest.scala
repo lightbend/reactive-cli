@@ -56,6 +56,7 @@ object IngressJsonTest extends TestSuite {
       "without additional arguments" - {
         val generatedJson = Ingress.generate(
           annotations,
+          "extensions/v1beta1",
           ingressAnnotations = Map.empty,
           pathAppend = Option.empty).get
         val expectedJson =
@@ -148,6 +149,7 @@ object IngressJsonTest extends TestSuite {
       "with ingress specific input" - {
         val generatedJson = Ingress.generate(
           annotations,
+          "extensions/v1beta1",
           ingressAnnotations = Map("kubernetes.io/ingress.class" -> "istio"),
           pathAppend = Some(".*")).get
 
@@ -242,7 +244,7 @@ object IngressJsonTest extends TestSuite {
       }
 
       "should fail if application name is not defined" - {
-        assert(Ingress.generate(annotations.copy(appName = None), Map.empty, Option.empty).isFailure)
+        assert(Ingress.generate(annotations.copy(appName = None), "extensions/v1beta1", Map.empty, Option.empty).isFailure)
       }
 
     }

@@ -44,7 +44,7 @@ object NamespaceJsonTest extends TestSuite {
         modules = Set.empty)
 
       "namespace present" - {
-        val result = Namespace.generate(annotations.copy(namespace = Some("chirper")))
+        val result = Namespace.generate(annotations.copy(namespace = Some("chirper")), "v1")
 
         assert(result.isSuccess)
 
@@ -65,7 +65,7 @@ object NamespaceJsonTest extends TestSuite {
       }
 
       "namespace not present" - {
-        val result = Namespace.generate(annotations.copy(namespace = None))
+        val result = Namespace.generate(annotations.copy(namespace = None), "v1")
 
         assert(result.isSuccess)
         assert(result.get.isEmpty)
