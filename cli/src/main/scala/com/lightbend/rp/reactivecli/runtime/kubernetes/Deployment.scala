@@ -142,11 +142,6 @@ object Deployment {
   }
 
   /**
-   * Represents Kubernetes major and minor version which is required for generating [[Deployment]] resource.
-   */
-  case class KubernetesVersion(major: Int, minor: Int)
-
-  /**
    * Represents possible values for imagePullPolicy field within the Kubernetes deployment resource.
    */
   object ImagePullPolicy extends Enumeration {
@@ -323,18 +318,6 @@ object Deployment {
       case _ =>
         Failure(new IllegalArgumentException("Unable to generate Kubernetes Deployment: both application name and version are required"))
     }
-
-  private[kubernetes] def apiVersion(kubernetesVersion: KubernetesVersion): String = {
-    val version = (kubernetesVersion.major, kubernetesVersion.minor)
-    val kubernetes18 = (1, 8)
-    val versionCompare = Seq(version, kubernetes18).sorted
-
-    if (versionCompare.head == kubernetes18)
-      "apps/v1beta2"
-    else
-      "apps/v1beta1"
-  }
-
 }
 
 /**

@@ -21,7 +21,7 @@ import java.nio.file.{ Path, Paths }
 
 import com.lightbend.rp.reactivecli.argparse.kubernetes.{ PodControllerArgs, IngressArgs, KubernetesArgs, ServiceArgs }
 import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment
-import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment.{ ImagePullPolicy, KubernetesVersion }
+import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment.{ ImagePullPolicy }
 import scala.collection.immutable.Seq
 import scopt.OptionParser
 import slogging.LogLevel
@@ -40,16 +40,6 @@ object InputArgs {
 
   implicit val imagePullPolicyRead: scopt.Read[ImagePullPolicy.Value] =
     scopt.Read.reads(ImagePullPolicy.withName)
-
-  implicit val kubernetesVersionRead: scopt.Read[KubernetesVersion] =
-    scopt.Read.reads { v =>
-      v.split("\\.").toVector match {
-        case Vector(major, minor) =>
-          KubernetesVersion(major.toInt, minor.toInt)
-        case _ =>
-          throw new IllegalArgumentException(s"Invalid Kubernetes version number $v. Example: 1.6")
-      }
-    }
 
   val default = InputArgs()
 
