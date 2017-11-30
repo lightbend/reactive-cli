@@ -271,7 +271,7 @@ object Deployment {
    */
   def generate(
     annotations: Annotations,
-    kubernetesVersion: KubernetesVersion,
+    apiVersion: String,
     imageName: String,
     imagePullPolicy: ImagePullPolicy.Value,
     noOfReplicas: Int,
@@ -287,7 +287,7 @@ object Deployment {
           Deployment(
             appVersion,
             Json(
-              "apiVersion" -> apiVersion(kubernetesVersion).asJson,
+              "apiVersion" -> apiVersion.asJson,
               "kind" -> "Deployment".asJson,
               "metadata" -> Json(
                 "name" -> appVersion.asJson,

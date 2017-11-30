@@ -19,16 +19,16 @@ package com.lightbend.rp.reactivecli.argparse.kubernetes
 import com.lightbend.rp.reactivecli.argparse.InputArgs
 import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment
 
-object DeploymentArgs {
+object PodControllerArgs {
   /**
-   * Convenience method to set the [[DeploymentArgs]] values when parsing the complete user input.
+   * Convenience method to set the [[PodControllerArgs]] values when parsing the complete user input.
    * Refer to [[InputArgs.parser()]] for more details.
    */
-  def set[T](f: (T, DeploymentArgs) => DeploymentArgs): (T, InputArgs) => InputArgs = { (val1: T, inputArgs: InputArgs) =>
+  def set[T](f: (T, PodControllerArgs) => PodControllerArgs): (T, InputArgs) => InputArgs = { (val1: T, inputArgs: InputArgs) =>
     KubernetesArgs
       .set { (val2: T, kubernetesArgs) =>
         kubernetesArgs.copy(
-          deploymentArgs = f(val2, kubernetesArgs.deploymentArgs))
+          podControllerArgs = f(val2, kubernetesArgs.podControllerArgs))
       }
       .apply(val1, inputArgs)
   }
@@ -37,6 +37,7 @@ object DeploymentArgs {
 /**
  * Represents user input arguments required to build Kubernetes Deployment resource.
  */
-case class DeploymentArgs(
+case class PodControllerArgs(
+  apiVersion: String = KubernetesArgs.DefaultPodControllerApiVersion,
   numberOfReplicas: Int = KubernetesArgs.DefaultNumberOfReplicas,
   imagePullPolicy: Deployment.ImagePullPolicy.Value = KubernetesArgs.DefaultImagePullPolicy)

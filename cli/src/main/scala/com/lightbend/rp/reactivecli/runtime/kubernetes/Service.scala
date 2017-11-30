@@ -51,14 +51,14 @@ object Service {
   /**
    * Generates the [[Service]] resource.
    */
-  def generate(annotations: Annotations, clusterIp: Option[String]): Try[Service] =
+  def generate(annotations: Annotations, apiVersion: String, clusterIp: Option[String]): Try[Service] =
     annotations.appName match {
       case Some(appName) =>
         Success(
           Service(
             appName,
             Json(
-              "apiVersion" -> "v1".asJson,
+              "apiVersion" -> apiVersion.asJson,
               "kind" -> "Service".asJson,
               "metadata" -> Json(
                 "labels" -> Json(

@@ -41,8 +41,12 @@ object KubernetesArgs {
    */
   sealed trait Output
 
+  val DefaultNamespaceApiVersion: String = "v1"
   val DefaultNumberOfReplicas: Int = 1
   val DefaultImagePullPolicy: Deployment.ImagePullPolicy.Value = Deployment.ImagePullPolicy.IfNotPresent
+  val DefaultIngressApiVersion: String = "extensions/v1beta1"
+  val DefaultPodControllerApiVersion: String = "apps/v1beta2"
+  val DefaultServiceApiVersion: String = "v1"
 
   /**
    * Convenience method to set the [[KubernetesArgs]] values when parsing the complete user input.
@@ -66,9 +70,8 @@ object KubernetesArgs {
  * Represents user input arguments required to build Kubernetes specific resources.
  */
 case class KubernetesArgs(
-  kubernetesVersion: Option[Deployment.KubernetesVersion] = None,
-  kubernetesNamespace: Option[String] = None,
-  deploymentArgs: DeploymentArgs = DeploymentArgs(),
-  serviceArgs: ServiceArgs = ServiceArgs(),
-  ingressArgs: IngressArgs = IngressArgs(),
-  output: KubernetesArgs.Output = KubernetesArgs.Output.PipeToKubeCtl(System.out)) extends TargetRuntimeArgs
+                           namespace: Option[String] = None,
+                           podControllerArgs: PodControllerArgs = PodControllerArgs(),
+                           serviceArgs: ServiceArgs = ServiceArgs(),
+                           ingressArgs: IngressArgs = IngressArgs(),
+                           output: KubernetesArgs.Output = KubernetesArgs.Output.PipeToKubeCtl(System.out)) extends TargetRuntimeArgs

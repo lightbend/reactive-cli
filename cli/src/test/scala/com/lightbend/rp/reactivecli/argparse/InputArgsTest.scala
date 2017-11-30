@@ -18,9 +18,8 @@ package com.lightbend.rp.reactivecli.argparse
 
 import java.nio.file.{ Files, Paths }
 
-import com.lightbend.rp.reactivecli.argparse.kubernetes.{ DeploymentArgs, IngressArgs, KubernetesArgs, ServiceArgs }
+import com.lightbend.rp.reactivecli.argparse.kubernetes.{ PodControllerArgs, IngressArgs, KubernetesArgs, ServiceArgs }
 import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment
-import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment.KubernetesVersion
 import slogging.LogLevel
 import utest._
 
@@ -37,18 +36,15 @@ object InputArgsTest extends TestSuite {
           "minimum arguments" - {
             val result = parser.parse(
               Seq(
-                "generate-deployment",
-                "dockercloud/hello-world:1.0.0-SNAPSHOT",
-                "--target", "kubernetes",
-                "--kubernetes-version", "1.7"),
+                "generate-kubernetes-deployment",
+                "dockercloud/hello-world:1.0.0-SNAPSHOT"),
               InputArgs.default)
             assert(
               result.contains(
                 InputArgs(
                   commandArgs = Some(GenerateDeploymentArgs(
                     dockerImage = Some("dockercloud/hello-world:1.0.0-SNAPSHOT"),
-                    targetRuntimeArgs = Some(KubernetesArgs(
-                      kubernetesVersion = Some(KubernetesVersion(1, 7)))))))))
+                    targetRuntimeArgs = Some(KubernetesArgs()))))))
           }
 
           "all arguments" - {
@@ -57,31 +53,30 @@ object InputArgsTest extends TestSuite {
             try {
               val result = parser.parse(
                 Seq(
-                  "generate-deployment",
+                  "generate-kubernetes-deployment",
                   "--loglevel", "debug",
                   "--cainfo", mockCacerts.toAbsolutePath.toString,
                   "dockercloud/hello-world:1.0.0-SNAPSHOT",
-                  "--target", "kubernetes",
-                  "--kubernetes-version", "1.7",
-                  "--kubernetes-namespace", "chirper",
-                  "--kubernetes-deployment-nr-of-replicas", "10",
-                  "--kubernetes-deployment-image-pull-policy", "Always",
-                  "--kubernetes-service-cluster-ip", "10.0.0.1",
-                  "--kubernetes-ingress-annotation", "ing=123",
-                  "--kubernetes-ingress-path-append", ".*",
+                  "--namespace", "chirper",
+                  "--pod-controller-api-version", "hello1",
+                  "--pod-controller-replicas", "10",
+                  "--pod-controller-image-pull-policy", "Always",
+                  "--service-cluster-ip", "10.0.0.1",
+                  "--ingress-annotation", "ing=123",
+                  "--ingress-path-suffix", ".*",
+                  "--ingress-api-version", "hello2",
                   "--env", "test1=test2",
-                  "--nr-of-cpus", "0.5",
-                  "--memory", "1024",
-                  "--disk-space", "2048",
                   "--output", "/tmp/foo",
                   "--registry-username", "john",
                   "--registry-password", "wick",
-                  "--registry-https-disable",
-                  "--registry-tls-validation-disable",
+                  "--registry-disable-https",
+                  "--registry-disable-tls-validation",
+                  "--service-api-version", "hello3",
                   "--external-service", "cas1=1.2.3.4",
                   "--external-service", "cas1=5.6.7.8",
                   "--external-service", "cas2=hello"),
                 InputArgs.default)
+
               assert(
                 result.contains(
                   InputArgs(
@@ -90,20 +85,18 @@ object InputArgsTest extends TestSuite {
                     commandArgs = Some(GenerateDeploymentArgs(
                       dockerImage = Some("dockercloud/hello-world:1.0.0-SNAPSHOT"),
                       targetRuntimeArgs = Some(KubernetesArgs(
-                        kubernetesVersion = Some(KubernetesVersion(1, 7)),
-                        kubernetesNamespace = Some("chirper"),
+                        namespace = Some("chirper"),
                         output = KubernetesArgs.Output.SaveToFile(Paths.get("/tmp/foo")),
-                        deploymentArgs = DeploymentArgs(
+                        podControllerArgs = PodControllerArgs(
+                          apiVersion = "hello1",
                           numberOfReplicas = 10,
                           imagePullPolicy = Deployment.ImagePullPolicy.Always),
-                        serviceArgs = ServiceArgs(clusterIp = Some("10.0.0.1")),
+                        serviceArgs = ServiceArgs(apiVersion = "hello3", clusterIp = Some("10.0.0.1")),
                         ingressArgs = IngressArgs(
+                          apiVersion = "hello2",
                           ingressAnnotations = Map("ing" -> "123"),
                           pathAppend = Some(".*")))),
                       environmentVariables = Map("test1" -> "test2"),
-                      nrOfCpus = Some(0.5),
-                      memory = Some(1024),
-                      diskSpace = Some(2048),
                       registryUsername = Some("john"),
                       registryPassword = Some("wick"),
                       registryUseHttps = false,
@@ -112,31 +105,29 @@ object InputArgsTest extends TestSuite {
             } finally {
               Files.deleteIfExists(mockCacerts)
             }
+          }
 
-            "registry credentials" - {
-              val baseArgs = Seq(
-                "generate-deployment",
-                "dockercloud/hello-world:1.0.0-SNAPSHOT",
-                "--target", "kubernetes",
-                "--kubernetes-version", "1.7")
+          "registry credentials" - {
+            val baseArgs = Seq(
+              "generate-kubernetes-deployment",
+              "dockercloud/hello-world:1.0.0-SNAPSHOT")
 
-              "should fail if username is defined but password is empty" - {
-                val result = parser.parse(
-                  baseArgs ++ Seq(
-                    "--registry-username", "john"),
-                  InputArgs.default)
+            "should fail if username is defined but password is empty" - {
+              val result = parser.parse(
+                baseArgs ++ Seq(
+                  "--registry-username", "john"),
+                InputArgs.default)
 
-                assert(result.isEmpty)
-              }
+              assert(result.isEmpty)
+            }
 
-              "should fail if username is empty but password is defined" - {
-                val result = parser.parse(
-                  baseArgs ++ Seq(
-                    "--registry-password", "wick"),
-                  InputArgs.default)
+            "should fail if username is empty but password is defined" - {
+              val result = parser.parse(
+                baseArgs ++ Seq(
+                  "--registry-password", "wick"),
+                InputArgs.default)
 
-                assert(result.isEmpty)
-              }
+              assert(result.isEmpty)
             }
           }
         }

@@ -67,7 +67,7 @@ object Ingress {
   /**
    * Generates the [[Ingress]] resources.
    */
-  def generate(annotations: Annotations, ingressAnnotations: Map[String, String], pathAppend: Option[String]): Try[Option[Ingress]] =
+  def generate(annotations: Annotations, apiVersion: String, ingressAnnotations: Map[String, String], pathAppend: Option[String]): Try[Option[Ingress]] =
     annotations.appName match {
       case Some(appName) =>
         val encodedEndpoints = encodeEndpoints(appName, annotations.endpoints, pathAppend)
@@ -78,7 +78,7 @@ object Ingress {
           Success(
             Some(
               Ingress(appName, Json(
-                "apiVersion" -> "extensions/v1beta1".asJson,
+                "apiVersion" -> apiVersion.asJson,
                 "kind" -> "Ingress".asJson,
                 "metadata" -> Json(
                   "name" -> appName.asJson)

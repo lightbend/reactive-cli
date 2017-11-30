@@ -22,11 +22,9 @@ import java.util.UUID
 
 import argonaut._
 import Argonaut._
-import com.lightbend.rp.reactivecli.annotations.TcpEndpoint
 import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
 import com.lightbend.rp.reactivecli.docker.Config
-import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment.KubernetesVersion
 import utest._
 
 import scala.util.{ Failure, Success, Try }
@@ -36,8 +34,7 @@ object KubernetesPackageTest extends TestSuite {
     "generateResources" - {
       val imageName = "fsat/testimpl:1.0.0-SNAPSHOT"
 
-      val kubernetesArgs = KubernetesArgs(
-        kubernetesVersion = Some(KubernetesVersion(1, 7)))
+      val kubernetesArgs = KubernetesArgs()
       val generateDeploymentArgs = GenerateDeploymentArgs(
         dockerImage = Some(imageName),
         targetRuntimeArgs = Some(kubernetesArgs))
