@@ -282,11 +282,23 @@ object Deployment {
         val appVersionMajorMinor = serviceName(s"$appName$VersionSeparator${version.versionMajorMinor}")
         val appVersion = serviceName(s"$appName$VersionSeparator${version.version}")
 
-        val deploymentName =
+        val (deploymentName, deploymentLabels, deploymentMatchLabels) =
             deploymentType match {
-              case CanaryDeploymentType    => appVersion
-              case RollingDeploymentType   => appName
-              case BlueGreenDeploymentType => appVersion
+              case CanaryDeploymentType | BlueGreenDeploymentType =>
+                (
+                  appVersion,
+                  Json(
+                    "app" -> appName.asJson,
+                    "appVersionMajor" -> appVersionMajor.asJson,
+                    "appVersionMajorMinor" -> appVersionMajorMinor.asJson,
+                    "appVersion" -> appVersion.asJson),
+                  Json("appVersionMajorMinor" -> appVersionMajorMinor.asJson))
+
+              case RollingDeploymentType   =>
+                (
+                  appName,
+                  Json("app" -> appName.asJson),
+                  Json("app" -> appName.asJson))
             }
 
         Success(
@@ -297,25 +309,14 @@ object Deployment {
               "kind" -> "Deployment".asJson,
               "metadata" -> Json(
                 "name" -> deploymentName.asJson,
-                "labels" -> Json(
-                  "app" -> appName.asJson,
-                  "appVersionMajor" -> appVersionMajor.asJson,
-                  "appVersionMajorMinor" -> appVersionMajorMinor.asJson,
-                  "appVersion" -> appVersion.asJson))
+                "labels" -> deploymentLabels)
                 .deepmerge(
                   annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
               "spec" -> Json(
                 "replicas" -> noOfReplicas.asJson,
-                "selector" -> Json(
-                  "matchLabels" -> Json(
-                    "appVersionMajorMinor" -> appVersionMajorMinor.asJson)),
+                "selector" -> Json("matchLabels" -> deploymentMatchLabels),
                 "template" -> Json(
-                  "metadata" -> Json(
-                    "labels" -> Json(
-                      "app" -> appName.asJson,
-                      "appVersionMajor" -> appVersionMajor.asJson,
-                      "appVersionMajorMinor" -> appVersionMajorMinor.asJson,
-                      "appVersion" -> appVersion.asJson)),
+                  "metadata" -> Json("labels" -> deploymentLabels),
                   "spec" -> Json(
                     "containers" -> List(
                       Json(
