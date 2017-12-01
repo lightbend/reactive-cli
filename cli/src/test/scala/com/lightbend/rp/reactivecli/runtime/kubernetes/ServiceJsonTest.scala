@@ -20,6 +20,7 @@ import utest._
 import argonaut._
 import Argonaut._
 import com.lightbend.rp.reactivecli.annotations._
+import com.lightbend.rp.reactivecli.argparse.CanaryDeploymentType
 
 import scala.collection.immutable.Seq
 
@@ -48,14 +49,34 @@ object ServiceJsonTest extends TestSuite {
   val tests = this{
     "json serialization" - {
       "empty" - {
-        val result = Service.generate(annotations.copy(endpoints = Map.empty), "v1", clusterIp = None).get.isEmpty
+        val result = Service.generate(annotations.copy(endpoints = Map.empty), "v1", clusterIp = None, CanaryDeploymentType).get.isEmpty
 
         assert(result)
       }
 
+      "deploymentType" - {
+        "Canary" - {
+          (Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType).get.get.payload.hcursor --\ "spec" --\ "selector")
+            .focus
+            .contains(jString("friendimpl"))
+        }
+
+        "BlueGreen" - {
+          (Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType).get.get.payload.hcursor --\ "spec" --\ "selector")
+            .focus
+            .contains(jString("friendimpl-v3-2-1-snapshot"))
+        }
+
+        "Rolling" - {
+          (Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType).get.get.payload.hcursor --\ "spec" --\ "selector")
+            .focus
+            .contains(jString("friendimpl"))
+        }
+      }
+
       "clusterIp" - {
         "not defined" - {
-          val generatedJson = Service.generate(annotations, "v1", clusterIp = None).get
+          val generatedJson = Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType).get
           val expectedJson =
             """
               |{
@@ -88,7 +109,7 @@ object ServiceJsonTest extends TestSuite {
         }
 
         "defined" - {
-          val generatedJson = Service.generate(annotations, "v1", clusterIp = Some("10.0.0.5")).get
+          val generatedJson = Service.generate(annotations, "v1", clusterIp = Some("10.0.0.5"), CanaryDeploymentType).get
           val expectedJson =
             """
               |{

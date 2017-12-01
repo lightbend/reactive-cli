@@ -20,8 +20,9 @@ import argonaut._
 import Argonaut._
 import com.lightbend.rp.reactivecli.annotations.kubernetes._
 import com.lightbend.rp.reactivecli.annotations._
-import utest._
+import com.lightbend.rp.reactivecli.argparse._
 import scala.collection.immutable.Seq
+import utest._
 
 object DeploymentJsonTest extends TestSuite {
   import Deployment._
@@ -55,6 +56,26 @@ object DeploymentJsonTest extends TestSuite {
   val tests = this{
     "json serialization" - {
       "deployment" - {
+        "deploymentType" - {
+          "Canary" - {
+            (Deployment.generate(annotations, "apps/v1beta2", imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, CanaryDeploymentType).get.payload.hcursor --\ "metadata" --\ "name")
+              .focus
+              .contains(jString("friendimpl-v3-2-1-snapshot"))
+          }
+
+          "BlueGreen" - {
+            (Service.generate(annotations, "v1", clusterIp = None, BlueGreenDeploymentType).get.get.payload.hcursor --\ "metadata" --\ "name")
+              .focus
+              .contains(jString("friendimpl-v3-2-1-snapshot"))
+          }
+
+          "Rolling" - {
+            (Service.generate(annotations, "v1", clusterIp = None, RollingDeploymentType).get.get.payload.hcursor --\ "metadata" --\ "name")
+              .focus
+              .contains(jString("friendimpl"))
+          }
+        }
+
         "K8" - {
           val expectedJson =
             """
@@ -323,7 +344,7 @@ object DeploymentJsonTest extends TestSuite {
             """.stripMargin.parse.right.get
 
           val result = Deployment.generate(annotations, "apps/v1beta2", imageName,
-            Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty).get
+            Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, CanaryDeploymentType).get
 
           // @TODO uncomment this test when we actually have the right format generated
           // @TODO i am proposing keeping them updated for now is counter-productive
@@ -612,7 +633,7 @@ object DeploymentJsonTest extends TestSuite {
             readinessCheck = Some(CommandCheck("ls", "-al")),
             healthCheck = Some(TcpCheck(Check.PortNumber(1234), intervalSeconds = 3)))
           val generatedJson = Deployment.generate(input, "apps/v1beta2", imageName,
-            Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty).get
+            Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, CanaryDeploymentType).get
 
           // @TODO uncomment this test when we actually have the right format generated
           // @TODO i am proposing keeping them updated for now is counter-productive
@@ -622,7 +643,7 @@ object DeploymentJsonTest extends TestSuite {
         "should fail if application name is not defined" - {
           val invalid = annotations.copy(appName = None)
           assert(Deployment.generate(invalid, "apps/v1beta2", imageName,
-            Deployment.ImagePullPolicy.Never, 1, Map.empty).isFailure)
+            Deployment.ImagePullPolicy.Never, 1, Map.empty, CanaryDeploymentType).isFailure)
         }
       }
 

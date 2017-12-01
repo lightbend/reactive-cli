@@ -23,7 +23,6 @@ import com.lightbend.rp.reactivecli.runtime.kubernetes
 import libhttpsimple.{ HttpRequest, LibHttpSimple }
 import libhttpsimple.LibHttpSimple.HttpExchange
 import java.nio.file.{ Files, Path, Paths }
-
 import scala.annotation.tailrec
 import scala.util.Try
 import slogging._
@@ -58,7 +57,7 @@ object Main extends LazyLogging {
             case VersionArgs =>
               System.out.println(s"rp (Reactive CLI) ${ProgramVersion.current}")
 
-            case generateDeploymentArgs @ GenerateDeploymentArgs(_, _, _, _, _, Some(kubernetesArgs: KubernetesArgs), _, _, _, _, _) =>
+            case generateDeploymentArgs @ GenerateDeploymentArgs(_, _, _, _, _, _, Some(kubernetesArgs: KubernetesArgs), _, _, _, _, _) =>
               implicit val httpSettings: LibHttpSimple.Settings =
                 inputArgs.tlsCacertsPath.fold(LibHttpSimple.defaultSettings)(v => LibHttpSimple.defaultSettings.copy(tlsCacertsPath = Some(v)))
 

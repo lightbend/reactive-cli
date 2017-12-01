@@ -21,12 +21,22 @@ import java.nio.file.{ Path, Paths }
 
 import com.lightbend.rp.reactivecli.argparse.kubernetes.{ PodControllerArgs, IngressArgs, KubernetesArgs, ServiceArgs }
 import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment
-import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment.{ ImagePullPolicy }
+import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment.ImagePullPolicy
 import scala.collection.immutable.Seq
 import scopt.OptionParser
 import slogging.LogLevel
 
 object InputArgs {
+  implicit val deploymentTypeRead: scopt.Read[DeploymentType] =
+    scopt.Read.reads {
+      case v if v.toLowerCase == DeploymentType.Canary => CanaryDeploymentType
+      case v if v.toLowerCase == DeploymentType.Rolling => RollingDeploymentType
+      case v if v.toLowerCase == DeploymentType.BlueGreen => BlueGreenDeploymentType
+      case v =>
+        throw new IllegalArgumentException(s"Invalid deployment type $v. Available: ${DeploymentType.All.mkString(", ")}")
+    }
+
+
   implicit val logLevelsRead: scopt.Read[LogLevel] =
     scopt.Read.reads {
       case v if v.toLowerCase == "error" => LogLevel.ERROR
@@ -74,6 +84,11 @@ object InputArgs {
             .text("Docker image to be deployed. Format: [<registry host>/][<repo>/]image[:tag]")
             .required()
             .action(GenerateDeploymentArgs.set((v, args) => args.copy(dockerImage = Some(v)))),
+
+          opt[DeploymentType]("deployment-type")
+            .text(s"Sets the deployment type. Default: ${DeploymentType.Canary}; Available: ${DeploymentType.All.mkString(", ")}")
+            .optional()
+            .action(GenerateDeploymentArgs.set((t, args) => args.copy(deploymentType = t))),
 
           opt[String]("env") /* note: this argument will apply for other targets */
             .text("Sets an environment variable. Format: NAME=value")

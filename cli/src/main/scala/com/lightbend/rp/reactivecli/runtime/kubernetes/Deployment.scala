@@ -20,6 +20,8 @@ import argonaut._
 import Argonaut._
 import com.lightbend.rp.reactivecli.annotations.kubernetes.{ ConfigMapEnvironmentVariable, FieldRefEnvironmentVariable, SecretKeyRefEnvironmentVariable }
 import com.lightbend.rp.reactivecli.annotations._
+import com.lightbend.rp.reactivecli.argparse._
+
 import scala.collection.immutable.Seq
 import scala.util.{ Failure, Success, Try }
 
@@ -148,7 +150,7 @@ object Deployment {
     val Never, IfNotPresent, Always = Value
   }
 
-  private[Deployment] val VersionSeparator = "-v"
+  private[kubernetes] val VersionSeparator = "-v"
 
   implicit def imagePullPolicyEncode = EncodeJson[ImagePullPolicy.Value] {
     case ImagePullPolicy.Never => "Never".asJson
@@ -270,29 +272,38 @@ object Deployment {
     imageName: String,
     imagePullPolicy: ImagePullPolicy.Value,
     noOfReplicas: Int,
-    externalServices: Map[String, Seq[String]]): Try[Deployment] =
+    externalServices: Map[String, Seq[String]],
+    deploymentType: DeploymentType): Try[Deployment] =
     (annotations.appName, annotations.version) match {
-      case (Some(appName), Some(version)) =>
-        val appVersionMajor = s"$appName$VersionSeparator${version.major}"
-        val appVersionMajorMinor = s"$appName$VersionSeparator${version.versionMajorMinor}"
-        val appVersion = s"$appName$VersionSeparator${version.version}"
-          .replaceAllLiterally(".", "-")
-          .toLowerCase
+      case (Some(rawAppName), Some(version)) =>
+        // FIXME there's a bit of code duplicate in Service
+        val appName = serviceName(rawAppName)
+        val appVersionMajor = serviceName(s"$appName$VersionSeparator${version.major}")
+        val appVersionMajorMinor = serviceName(s"$appName$VersionSeparator${version.versionMajorMinor}")
+        val appVersion = serviceName(s"$appName$VersionSeparator${version.version}")
+
+        val deploymentName =
+            deploymentType match {
+              case CanaryDeploymentType    => appVersion
+              case RollingDeploymentType   => appName
+              case BlueGreenDeploymentType => appVersion
+            }
+
         Success(
           Deployment(
-            appVersion,
+            deploymentName,
             Json(
               "apiVersion" -> apiVersion.asJson,
               "kind" -> "Deployment".asJson,
               "metadata" -> Json(
-                "name" -> appVersion.asJson,
+                "name" -> deploymentName.asJson,
                 "labels" -> Json(
                   "app" -> appName.asJson,
                   "appVersionMajor" -> appVersionMajor.asJson,
                   "appVersionMajorMinor" -> appVersionMajorMinor.asJson,
                   "appVersion" -> appVersion.asJson))
                 .deepmerge(
-                  annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> ns.asJson))),
+                  annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
               "spec" -> Json(
                 "replicas" -> noOfReplicas.asJson,
                 "selector" -> Json(
