@@ -27,7 +27,9 @@ object Namespace {
    */
   def generate(annotations: Annotations, apiVersion: String): Try[Option[Namespace]] =
     Success(
-      annotations.namespace.map { ns =>
+      annotations.namespace.map { rawNs =>
+        val ns = serviceName(rawNs)
+
         Namespace(ns, Json(
           "apiVersion" -> apiVersion.asJson,
           "kind" -> "Namespace".asJson,

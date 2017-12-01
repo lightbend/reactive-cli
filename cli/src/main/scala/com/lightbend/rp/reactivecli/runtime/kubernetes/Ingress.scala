@@ -69,7 +69,8 @@ object Ingress {
    */
   def generate(annotations: Annotations, apiVersion: String, ingressAnnotations: Map[String, String], pathAppend: Option[String]): Try[Option[Ingress]] =
     annotations.appName match {
-      case Some(appName) =>
+      case Some(rawAppName) =>
+        val appName = serviceName(rawAppName)
         val encodedEndpoints = encodeEndpoints(appName, annotations.endpoints, pathAppend)
 
         if (encodedEndpoints.isEmpty)
@@ -103,7 +104,7 @@ object Ingress {
           .reduce(_.deepmerge(_)))
 
   private def generateNamespaceAnnotation(namespace: Option[String]): Json =
-    namespace.fold(jEmptyObject)(ns => Json("namespace" -> ns.asJson))
+    namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))
 }
 
 /**

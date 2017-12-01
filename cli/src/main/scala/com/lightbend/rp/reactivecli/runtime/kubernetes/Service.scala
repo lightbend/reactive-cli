@@ -19,7 +19,7 @@ package com.lightbend.rp.reactivecli.runtime.kubernetes
 import argonaut._
 import Argonaut._
 import com.lightbend.rp.reactivecli.annotations._
-
+import com.lightbend.rp.reactivecli.argparse._
 import scala.util.{ Failure, Success, Try }
 
 object Service {
@@ -51,12 +51,26 @@ object Service {
   /**
    * Generates the [[Service]] resource.
    */
-  def generate(annotations: Annotations, apiVersion: String, clusterIp: Option[String]): Try[Option[Service]] =
+  def generate(annotations: Annotations,
+               apiVersion: String,
+               clusterIp: Option[String],
+               deploymentType: DeploymentType): Try[Option[Service]] =
     if (annotations.endpoints.isEmpty)
       Success(None)
     else
-      annotations.appName match {
-        case Some(appName) =>
+      (annotations.appName, annotations.version) match {
+        case (Some(rawAppName), Some(version)) =>
+          // FIXME there's a bit of code duplicate in Deployment
+          val appName = serviceName(rawAppName)
+          val appVersion = serviceName(s"$appName${Deployment.VersionSeparator}${version.version}")
+
+          val selector =
+            deploymentType match {
+              case CanaryDeploymentType    => "app" -> appName.asJson
+              case RollingDeploymentType   => "app" -> appName.asJson
+              case BlueGreenDeploymentType => "appVersion" -> appVersion.asJson
+            }
+
           Success(
             Some(
               Service(
@@ -66,15 +80,14 @@ object Service {
                   "kind" -> "Service".asJson,
                   "metadata" -> Json(
                     "labels" -> Json(
-                      "app" -> annotations.appName.asJson),
-                    "name" -> annotations.appName.asJson)
+                      "app" -> appName.asJson),
+                    "name" -> appName.asJson)
                     .deepmerge(
-                      annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> ns.asJson))),
+                      annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
                   "spec" -> Json(
                     "clusterIP" -> clusterIp.getOrElse("None").asJson,
                     "ports" -> annotations.endpoints.asJson,
-                    "selector" -> Json(
-                      "app" -> annotations.appName.asJson))))))
+                    "selector" -> Json(selector))))))
         case _ =>
           Failure(new IllegalArgumentException("Unable to generate Service resource: application name is required"))
       }

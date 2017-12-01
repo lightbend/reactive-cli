@@ -46,10 +46,24 @@ object GenerateDeploymentArgs {
     }
 }
 
+object DeploymentType {
+  val Canary = "canary"
+  val BlueGreen = "blue-green"
+  val Rolling = "rolling"
+  val All = Seq(Canary, BlueGreen, Rolling)
+}
+
+sealed trait DeploymentType
+
+case object CanaryDeploymentType extends DeploymentType
+case object BlueGreenDeploymentType extends DeploymentType
+case object RollingDeploymentType extends DeploymentType
+
 /**
  * Represents the input argument for `generate-deployment` command.
  */
 case class GenerateDeploymentArgs(
+  deploymentType: DeploymentType = CanaryDeploymentType,
   dockerImage: Option[String] = None,
   environmentVariables: Map[String, String] = Map.empty,
   nrOfCpus: Option[Double] = None,

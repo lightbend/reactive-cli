@@ -16,17 +16,15 @@
 
 package com.lightbend.rp.reactivecli.runtime
 
-import java.io.PrintStream
-import java.nio.file.{ Files, Path }
-
 import argonaut.PrettyParams
 import com.lightbend.rp.reactivecli.annotations.Annotations
 import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
 import com.lightbend.rp.reactivecli.docker.Config
-import slogging.LazyLogging
-
+import java.io.PrintStream
+import java.nio.file.{ Files, Path }
 import scala.util.{ Failure, Success, Try }
+import slogging.LazyLogging
 
 package object kubernetes extends LazyLogging {
   /**
@@ -73,20 +71,20 @@ package object kubernetes extends LazyLogging {
         generateDeploymentArgs.dockerImage.get,
         kubernetesArgs.podControllerArgs.imagePullPolicy,
         kubernetesArgs.podControllerArgs.numberOfReplicas,
-        generateDeploymentArgs.externalServices)
+        generateDeploymentArgs.externalServices,
+        generateDeploymentArgs.deploymentType)
 
-      service <- Service.generate(annotations, kubernetesArgs.serviceArgs.apiVersion, kubernetesArgs.serviceArgs.clusterIp)
+      service <- Service.generate(annotations, kubernetesArgs.serviceArgs.apiVersion, kubernetesArgs.serviceArgs.clusterIp, generateDeploymentArgs.deploymentType)
 
       ingress <- Ingress.generate(
         annotations,
         kubernetesArgs.ingressArgs.apiVersion,
         kubernetesArgs.ingressArgs.ingressAnnotations,
         kubernetesArgs.ingressArgs.pathAppend)
-    } yield
-      namespace.filter(_ => kubernetesArgs.shouldGenerateNamespaces).toSeq ++
-        Seq(deployment).filter(_ => kubernetesArgs.shouldGeneratePodControllers) ++
-        service.toSeq.filter(_ => kubernetesArgs.shouldGenerateServices) ++
-        ingress.toSeq.filter(_ => kubernetesArgs.shouldGenerateIngress)
+    } yield namespace.filter(_ => kubernetesArgs.shouldGenerateNamespaces).toSeq ++
+      Seq(deployment).filter(_ => kubernetesArgs.shouldGeneratePodControllers) ++
+      service.toSeq.filter(_ => kubernetesArgs.shouldGenerateServices) ++
+      ingress.toSeq.filter(_ => kubernetesArgs.shouldGenerateIngress)
   }
 
   /**

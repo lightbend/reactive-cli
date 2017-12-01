@@ -79,7 +79,8 @@ object InputArgsTest extends TestSuite {
                   "--generate-ingress",
                   "--generate-namespaces",
                   "--generate-pod-controllers",
-                  "--generate-services"),
+                  "--generate-services",
+                  "--deployment-type", "rolling"),
                 InputArgs.default)
 
               assert(
@@ -88,6 +89,7 @@ object InputArgsTest extends TestSuite {
                     logLevel = LogLevel.DEBUG,
                     tlsCacertsPath = Some(mockCacerts),
                     commandArgs = Some(GenerateDeploymentArgs(
+                      deploymentType = RollingDeploymentType,
                       dockerImage = Some("dockercloud/hello-world:1.0.0-SNAPSHOT"),
                       targetRuntimeArgs = Some(KubernetesArgs(
                         generateIngress = true,
