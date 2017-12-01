@@ -108,12 +108,18 @@ object Main extends LazyLogging {
                   .orElse(getDockerRegistryConfig(imageName))
               }
 
-              val output = kubernetes.handleGeneratedResources(kubernetesArgs.output)
-              kubernetes.generateResources(getDockerConfig, output)(generateDeploymentArgs, kubernetesArgs)
-                .recover {
-                  case error =>
-                    logger.error(s"Failure generating Kubernetes resources for docker image ${generateDeploymentArgs.dockerImage.get} ({})", error.getMessage)
-                }
+              val outputHandler = kubernetes.handleGeneratedResources(kubernetesArgs.output)
+
+              val output =
+                for {
+                  config <- getDockerConfig(generateDeploymentArgs.dockerImage.get)
+                  resources <- kubernetes.generateResources(config, generateDeploymentArgs, kubernetesArgs)
+                } yield outputHandler(resources)
+
+              output.recover {
+                case error =>
+                  logger.error(s"Failure generating Kubernetes resources for docker image ${generateDeploymentArgs.dockerImage.get} ({})", error.getMessage)
+              }
           }
       }
     } else {

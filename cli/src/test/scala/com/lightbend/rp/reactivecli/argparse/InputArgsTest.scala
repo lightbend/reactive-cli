@@ -74,7 +74,12 @@ object InputArgsTest extends TestSuite {
                   "--service-api-version", "hello3",
                   "--external-service", "cas1=1.2.3.4",
                   "--external-service", "cas1=5.6.7.8",
-                  "--external-service", "cas2=hello"),
+                  "--external-service", "cas2=hello",
+                  "--generate-all",
+                  "--generate-ingress",
+                  "--generate-namespaces",
+                  "--generate-pod-controllers",
+                  "--generate-services"),
                 InputArgs.default)
 
               assert(
@@ -85,6 +90,10 @@ object InputArgsTest extends TestSuite {
                     commandArgs = Some(GenerateDeploymentArgs(
                       dockerImage = Some("dockercloud/hello-world:1.0.0-SNAPSHOT"),
                       targetRuntimeArgs = Some(KubernetesArgs(
+                        generateIngress = true,
+                        generateNamespaces = true,
+                        generatePodControllers = true,
+                        generateServices = true,
                         namespace = Some("chirper"),
                         output = KubernetesArgs.Output.SaveToFile(Paths.get("/tmp/foo")),
                         podControllerArgs = PodControllerArgs(

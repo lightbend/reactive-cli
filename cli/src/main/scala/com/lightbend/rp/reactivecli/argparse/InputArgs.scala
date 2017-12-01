@@ -106,6 +106,32 @@ object InputArgs {
                 }
             }),
 
+          opt[Unit]("generate-all")
+            .text("Generate all resource types. This is the default and overrides other generate flags")
+            .action(
+              KubernetesArgs.set((v, args) =>
+                args.copy(
+                  generateIngress = false,
+                  generateNamespaces = false,
+                  generatePodControllers = false,
+                  generateServices = false))),
+
+          opt[Unit]("generate-ingress")
+            .text("Generate Ingress resources. When provided, other resource types are not generated unless explicitly requested")
+            .action(KubernetesArgs.set((_, args) => args.copy(generateIngress = true))),
+
+          opt[Unit]("generate-namespaces")
+            .text("Generate Namespace resources. When provided, other resource types are not generated unless explicitly requested")
+            .action(KubernetesArgs.set((_, args) => args.copy(generateNamespaces = true))),
+
+          opt[Unit]("generate-pod-controllers")
+            .text("Generate PodController resources. When provided, other resource types are not generated unless explicitly requested")
+            .action(KubernetesArgs.set((_, args) => args.copy(generatePodControllers = true))),
+
+          opt[Unit]("generate-services")
+            .text("Generate Service resources. When provided, other resource types are not generated unless explicitly requested")
+            .action(KubernetesArgs.set((_, args) => args.copy(generateServices = true))),
+
           opt[String]("ingress-annotation")
             .text("Adds an annotation to the generated Ingress resources. Format: NAME=value")
             .minOccurs(0)

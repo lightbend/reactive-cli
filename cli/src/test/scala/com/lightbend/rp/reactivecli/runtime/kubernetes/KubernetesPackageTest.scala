@@ -87,399 +87,405 @@ object KubernetesPackageTest extends TestSuite {
               "com.lightbend.rp.endpoints.2.protocol" -> "udp",
               "com.lightbend.rp.endpoints.2.port" -> "1234"))))
 
-        def getDockerConfig(input: String): Try[Config] = {
-          assert(input == imageName)
-          Success(dockerConfig)
-        }
-
         "generates kubernetes deployment + service resource" - {
-          def handleOutput(generatedResources: Seq[GeneratedKubernetesResource]): Unit = {
-            val (namespace, deployment, service, ingress) = generatedResources match {
-              case Seq(namespace: Namespace, deployment: Deployment, service: Service, ingress: Ingress) =>
-                (namespace, deployment, service, ingress)
-            }
-
-            assert(namespace.name == "chirper")
-            val namespaceJsonExpected =
-              """
-                |{
-                |  "apiVersion": "v1",
-                |  "kind": "Namespace",
-                |  "metadata": {
-                |    "name": "chirper",
-                |    "labels": {
-                |      "name": "chirper"
-                |    }
-                |  }
-                |}
-              """.stripMargin.parse.right.get
-            // TODO: assert json later
-            //assert(namespace.payload == namespaceJsonExpected)
-
-            assert(deployment.name == "my-app-v3-2-1-snapshot")
-            val deploymentJsonExpected =
-              """
-                |{
-                |  "apiVersion": "apps/v1beta1",
-                |  "kind": "Deployment",
-                |  "metadata": {
-                |    "name": "my-app-v3-2-1-snapshot",
-                |    "labels": {
-                |      "app": "my-app",
-                |      "appVersionMajor": "my-app-v3",
-                |      "appVersionMajorMinor": "my-app-v3.2",
-                |      "appVersion": "my-app-v3.2.1-SNAPSHOT"
-                |    }
-                |  },
-                |  "spec": {
-                |    "replicas": 1,
-                |    "serviceName": "my-app",
-                |    "template": {
-                |      "app": "my-app",
-                |      "appVersionMajor": "my-app-v3",
-                |      "appVersionMajorMinor": "my-app-v3.2",
-                |      "appVersion": "my-app-v3.2.1-SNAPSHOT"
-                |    },
-                |    "spec": {
-                |      "containers": [
-                |        {
-                |          "name": "my-app",
-                |          "image": "fsat/testimpl:1.0.0-SNAPSHOT",
-                |          "imagePullPolicy": "IfNotPresent",
-                |          "env": [
-                |            {
-                |              "name": "RP_ENDPOINTS",
-                |              "value": "EP1-V9,EP2-V1,EP3-V3"
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINTS_COUNT",
-                |              "value": "3"
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_0_BIND_HOST",
-                |              "valueFrom": {
-                |                "fieldRef": {
-                |                  "fieldPath": "status.podIP"
-                |                }
-                |              }
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_0_BIND_PORT",
-                |              "value": "10000"
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_0_HOST",
-                |              "valueFrom": {
-                |                "fieldRef": {
-                |                  "fieldPath": "status.podIP"
-                |                }
-                |              }
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_0_PORT",
-                |              "value": "10000"
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_1_BIND_HOST",
-                |              "valueFrom": {
-                |                "fieldRef": {
-                |                  "fieldPath": "status.podIP"
-                |                }
-                |              }
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_1_BIND_PORT",
-                |              "value": "1234"
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_1_HOST",
-                |              "valueFrom": {
-                |                "fieldRef": {
-                |                  "fieldPath": "status.podIP"
-                |                }
-                |              }
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_1_PORT",
-                |              "value": "1234"
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_2_BIND_HOST",
-                |              "valueFrom": {
-                |                "fieldRef": {
-                |                  "fieldPath": "status.podIP"
-                |                }
-                |              }
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_2_BIND_PORT",
-                |              "value": "1234"
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_2_HOST",
-                |              "valueFrom": {
-                |                "fieldRef": {
-                |                  "fieldPath": "status.podIP"
-                |                }
-                |              }
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_2_PORT",
-                |              "value": "1234"
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_EP1-V9_BIND_HOST",
-                |              "valueFrom": {
-                |                "fieldRef": {
-                |                  "fieldPath": "status.podIP"
-                |                }
-                |              }
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_EP1-V9_BIND_PORT",
-                |              "value": "10000"
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_EP1-V9_HOST",
-                |              "valueFrom": {
-                |                "fieldRef": {
-                |                  "fieldPath": "status.podIP"
-                |                }
-                |              }
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_EP1-V9_PORT",
-                |              "value": "10000"
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_EP2-V1_BIND_HOST",
-                |              "valueFrom": {
-                |                "fieldRef": {
-                |                  "fieldPath": "status.podIP"
-                |                }
-                |              }
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_EP2-V1_BIND_PORT",
-                |              "value": "1234"
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_EP2-V1_HOST",
-                |              "valueFrom": {
-                |                "fieldRef": {
-                |                  "fieldPath": "status.podIP"
-                |                }
-                |              }
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_EP2-V1_PORT",
-                |              "value": "1234"
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_EP3-V3_BIND_HOST",
-                |              "valueFrom": {
-                |                "fieldRef": {
-                |                  "fieldPath": "status.podIP"
-                |                }
-                |              }
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_EP3-V3_BIND_PORT",
-                |              "value": "1234"
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_EP3-V3_HOST",
-                |              "valueFrom": {
-                |                "fieldRef": {
-                |                  "fieldPath": "status.podIP"
-                |                }
-                |              }
-                |            },
-                |            {
-                |              "name": "RP_ENDPOINT_EP3-V3_PORT",
-                |              "value": "1234"
-                |            },
-                |            {
-                |              "name": "RP_KUBERNETES_POD_IP",
-                |              "valueFrom": {
-                |                "fieldRef": {
-                |                  "fieldPath": "status.podIP"
-                |                }
-                |              }
-                |            },
-                |            {
-                |              "name": "RP_KUBERNETES_POD_NAME",
-                |              "valueFrom": {
-                |                "fieldRef": {
-                |                  "fieldPath": "metadata.name"
-                |                }
-                |              }
-                |            },
-                |            {
-                |              "name": "RP_PLATFORM",
-                |              "value": "kubernetes"
-                |            },
-                |            {
-                |              "name": "RP_VERSION",
-                |              "value": "3.2.1-SNAPSHOT"
-                |            },
-                |            {
-                |              "name": "RP_VERSION_MAJOR",
-                |              "value": "3"
-                |            },
-                |            {
-                |              "name": "RP_VERSION_MINOR",
-                |              "value": "2"
-                |            },
-                |            {
-                |              "name": "RP_VERSION_PATCH",
-                |              "value": "1"
-                |            },
-                |            {
-                |              "name": "RP_VERSION_PATCH_LABEL",
-                |              "value": "SNAPSHOT"
-                |            },
-                |            {
-                |              "name": "testing1",
-                |              "value": "testingvalue1"
-                |            },
-                |            {
-                |              "name": "testing2",
-                |              "valueFrom": {
-                |                "configMapKeyRef": {
-                |                  "name": "mymap",
-                |                  "key": "mykey"
-                |                }
-                |              }
-                |            },
-                |            {
-                |              "name": "testing3",
-                |              "valueFrom": {
-                |                "fieldRef": {
-                |                  "fieldPath": "metadata.name"
-                |                }
-                |              }
-                |            }
-                |          ],
-                |          "ports": [
-                |            {
-                |              "containerPort": 10000,
-                |              "name": "ep1"
-                |            },
-                |            {
-                |              "containerPort": 1234,
-                |              "name": "ep2"
-                |            },
-                |            {
-                |              "containerPort": 1234,
-                |              "name": "ep3"
-                |            }
-                |          ]
-                |        }
-                |      ]
-                |    }
-                |  }
-                |}
-              """.stripMargin.parse.right.get
-
-            // @TODO uncomment this test when we actually have the right format generated
-            // @TODO i am proposing keeping them updated for now is counter-productive
-            //assert(deployment.payload == deploymentJsonExpected)
-
-            assert(service.name == "my-app")
-            val serviceJsonExpected =
-              """
-                |{
-                |  "apiVersion": "v1",
-                |  "kind": "Service",
-                |  "metadata": {
-                |    "labels": {
-                |      "app": "my-app"
-                |    },
-                |    "name": "my-app",
-                |    "namespace": "chirper"
-                |  },
-                |  "spec": {
-                |    "clusterIP": "None",
-                |    "ports": [
-                |      {
-                |        "name": "ep1",
-                |        "port": 10000,
-                |        "protocol": "TCP",
-                |        "targetPort": 10000
-                |      },
-                |      {
-                |        "name": "ep2",
-                |        "port": 1234,
-                |        "protocol": "TCP",
-                |        "targetPort": 1234
-                |      },
-                |      {
-                |        "name": "ep3",
-                |        "port": 1234,
-                |        "protocol": "UDP",
-                |        "targetPort": 1234
-                |      }
-                |    ],
-                |    "selector": {
-                |      "app": "my-app"
-                |    }
-                |  }
-                |}
-              """.stripMargin.parse.right.get
-            assert(service.payload == serviceJsonExpected)
-
-            assert(ingress.name == "my-app")
-            val ingressJsonExpected =
-              """
-                |{
-                |	"apiVersion": "extensions/v1beta1",
-                |	"kind": "Ingress",
-                |	"metadata": {
-                |		"name": "my-app",
-                |   "namespace": "chirper"
-                |	},
-                |	"spec": {
-                |		"rules": [{
-                |			"http": {
-                |				"paths": [{
-                |					"path": "/pizza",
-                |					"backend": {
-                |						"serviceName": "my-app",
-                |						"servicePort": 10000
-                |					}
-                |				}]
-                |			}
-                |		}]
-                |	}
-                |}
-              """.stripMargin.parse.right.get
-
-            assert(ingress.payload == ingressJsonExpected)
-          }
-
-          val result = generateResources(getDockerConfig, handleOutput)(generateDeploymentArgs, kubernetesArgs)
+          val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs)
 
           assert(result.isSuccess)
+
+          val generatedResources = result.get
+
+          val (namespace, deployment, service, ingress) = generatedResources match {
+            case Seq(namespace: Namespace, deployment: Deployment, service: Service, ingress: Ingress) =>
+              (namespace, deployment, service, ingress)
+          }
+
+          assert(namespace.name == "chirper")
+          val namespaceJsonExpected =
+            """
+              |{
+              |  "apiVersion": "v1",
+              |  "kind": "Namespace",
+              |  "metadata": {
+              |    "name": "chirper",
+              |    "labels": {
+              |      "name": "chirper"
+              |    }
+              |  }
+              |}
+            """.stripMargin.parse.right.get
+          // TODO: assert json later
+          //assert(namespace.payload == namespaceJsonExpected)
+
+          assert(deployment.name == "my-app-v3-2-1-snapshot")
+          val deploymentJsonExpected =
+            """
+              |{
+              |  "apiVersion": "apps/v1beta1",
+              |  "kind": "Deployment",
+              |  "metadata": {
+              |    "name": "my-app-v3-2-1-snapshot",
+              |    "labels": {
+              |      "app": "my-app",
+              |      "appVersionMajor": "my-app-v3",
+              |      "appVersionMajorMinor": "my-app-v3.2",
+              |      "appVersion": "my-app-v3.2.1-SNAPSHOT"
+              |    }
+              |  },
+              |  "spec": {
+              |    "replicas": 1,
+              |    "serviceName": "my-app",
+              |    "template": {
+              |      "app": "my-app",
+              |      "appVersionMajor": "my-app-v3",
+              |      "appVersionMajorMinor": "my-app-v3.2",
+              |      "appVersion": "my-app-v3.2.1-SNAPSHOT"
+              |    },
+              |    "spec": {
+              |      "containers": [
+              |        {
+              |          "name": "my-app",
+              |          "image": "fsat/testimpl:1.0.0-SNAPSHOT",
+              |          "imagePullPolicy": "IfNotPresent",
+              |          "env": [
+              |            {
+              |              "name": "RP_ENDPOINTS",
+              |              "value": "EP1-V9,EP2-V1,EP3-V3"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINTS_COUNT",
+              |              "value": "3"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_0_BIND_HOST",
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "status.podIP"
+              |                }
+              |              }
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_0_BIND_PORT",
+              |              "value": "10000"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_0_HOST",
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "status.podIP"
+              |                }
+              |              }
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_0_PORT",
+              |              "value": "10000"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_1_BIND_HOST",
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "status.podIP"
+              |                }
+              |              }
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_1_BIND_PORT",
+              |              "value": "1234"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_1_HOST",
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "status.podIP"
+              |                }
+              |              }
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_1_PORT",
+              |              "value": "1234"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_2_BIND_HOST",
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "status.podIP"
+              |                }
+              |              }
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_2_BIND_PORT",
+              |              "value": "1234"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_2_HOST",
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "status.podIP"
+              |                }
+              |              }
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_2_PORT",
+              |              "value": "1234"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_EP1-V9_BIND_HOST",
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "status.podIP"
+              |                }
+              |              }
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_EP1-V9_BIND_PORT",
+              |              "value": "10000"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_EP1-V9_HOST",
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "status.podIP"
+              |                }
+              |              }
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_EP1-V9_PORT",
+              |              "value": "10000"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_EP2-V1_BIND_HOST",
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "status.podIP"
+              |                }
+              |              }
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_EP2-V1_BIND_PORT",
+              |              "value": "1234"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_EP2-V1_HOST",
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "status.podIP"
+              |                }
+              |              }
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_EP2-V1_PORT",
+              |              "value": "1234"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_EP3-V3_BIND_HOST",
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "status.podIP"
+              |                }
+              |              }
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_EP3-V3_BIND_PORT",
+              |              "value": "1234"
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_EP3-V3_HOST",
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "status.podIP"
+              |                }
+              |              }
+              |            },
+              |            {
+              |              "name": "RP_ENDPOINT_EP3-V3_PORT",
+              |              "value": "1234"
+              |            },
+              |            {
+              |              "name": "RP_KUBERNETES_POD_IP",
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "status.podIP"
+              |                }
+              |              }
+              |            },
+              |            {
+              |              "name": "RP_KUBERNETES_POD_NAME",
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "metadata.name"
+              |                }
+              |              }
+              |            },
+              |            {
+              |              "name": "RP_PLATFORM",
+              |              "value": "kubernetes"
+              |            },
+              |            {
+              |              "name": "RP_VERSION",
+              |              "value": "3.2.1-SNAPSHOT"
+              |            },
+              |            {
+              |              "name": "RP_VERSION_MAJOR",
+              |              "value": "3"
+              |            },
+              |            {
+              |              "name": "RP_VERSION_MINOR",
+              |              "value": "2"
+              |            },
+              |            {
+              |              "name": "RP_VERSION_PATCH",
+              |              "value": "1"
+              |            },
+              |            {
+              |              "name": "RP_VERSION_PATCH_LABEL",
+              |              "value": "SNAPSHOT"
+              |            },
+              |            {
+              |              "name": "testing1",
+              |              "value": "testingvalue1"
+              |            },
+              |            {
+              |              "name": "testing2",
+              |              "valueFrom": {
+              |                "configMapKeyRef": {
+              |                  "name": "mymap",
+              |                  "key": "mykey"
+              |                }
+              |              }
+              |            },
+              |            {
+              |              "name": "testing3",
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "metadata.name"
+              |                }
+              |              }
+              |            }
+              |          ],
+              |          "ports": [
+              |            {
+              |              "containerPort": 10000,
+              |              "name": "ep1"
+              |            },
+              |            {
+              |              "containerPort": 1234,
+              |              "name": "ep2"
+              |            },
+              |            {
+              |              "containerPort": 1234,
+              |              "name": "ep3"
+              |            }
+              |          ]
+              |        }
+              |      ]
+              |    }
+              |  }
+              |}
+            """.stripMargin.parse.right.get
+
+          // @TODO uncomment this test when we actually have the right format generated
+          // @TODO i am proposing keeping them updated for now is counter-productive
+          //assert(deployment.payload == deploymentJsonExpected)
+
+          assert(service.name == "my-app")
+          val serviceJsonExpected =
+            """
+              |{
+              |  "apiVersion": "v1",
+              |  "kind": "Service",
+              |  "metadata": {
+              |    "labels": {
+              |      "app": "my-app"
+              |    },
+              |    "name": "my-app",
+              |    "namespace": "chirper"
+              |  },
+              |  "spec": {
+              |    "clusterIP": "None",
+              |    "ports": [
+              |      {
+              |        "name": "ep1",
+              |        "port": 10000,
+              |        "protocol": "TCP",
+              |        "targetPort": 10000
+              |      },
+              |      {
+              |        "name": "ep2",
+              |        "port": 1234,
+              |        "protocol": "TCP",
+              |        "targetPort": 1234
+              |      },
+              |      {
+              |        "name": "ep3",
+              |        "port": 1234,
+              |        "protocol": "UDP",
+              |        "targetPort": 1234
+              |      }
+              |    ],
+              |    "selector": {
+              |      "app": "my-app"
+              |    }
+              |  }
+              |}
+            """.stripMargin.parse.right.get
+          assert(service.payload == serviceJsonExpected)
+
+          assert(ingress.name == "my-app")
+          val ingressJsonExpected =
+            """
+              |{
+              |	"apiVersion": "extensions/v1beta1",
+              |	"kind": "Ingress",
+              |	"metadata": {
+              |		"name": "my-app",
+              |   "namespace": "chirper"
+              |	},
+              |	"spec": {
+              |		"rules": [{
+              |			"http": {
+              |				"paths": [{
+              |					"path": "/pizza",
+              |					"backend": {
+              |						"serviceName": "my-app",
+              |						"servicePort": 10000
+              |					}
+              |				}]
+              |			}
+              |		}]
+              |	}
+              |}
+            """.stripMargin.parse.right.get
+
+          assert(ingress.payload == ingressJsonExpected)
         }
-      }
 
-      "handles failure getting docker image" - {
-        val error = new RuntimeException("test only")
-        def getDockerConfigFailed(input: String): Try[Config] = {
-          assert(input == imageName)
-          Failure(error)
-        }
+        "honor generate flags" - {
+          "generateIngress" - {
+            val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs.copy(generateIngress = true)).get
 
-        def handleOutput(generatedResources: Seq[GeneratedKubernetesResource]): Unit = {
-          throw new IllegalArgumentException("This should not be called")
-        }
+            assert(result.length == 1)
+            assert(result.head.resourceType == "ingress")
+          }
 
-        val result = generateResources(getDockerConfigFailed, handleOutput)(generateDeploymentArgs, kubernetesArgs)
+          "generateNamespaces" - {
+            val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs.copy(generateNamespaces = true)).get
 
-        assert(result.isFailure)
-        result.recover {
-          case e => assert(e == error)
+            assert(result.length == 1)
+            assert(result.head.resourceType == "namespace")
+          }
+
+          "generatePodControllers" - {
+            val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs.copy(generatePodControllers = true)).get
+
+            assert(result.length == 1)
+            assert(result.head.resourceType == "deployment")
+          }
+
+          "generatePodControllers" - {
+            val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs.copy(generateServices = true)).get
+
+            assert(result.length == 1)
+            assert(result.head.resourceType == "service")
+          }
         }
       }
     }
@@ -526,7 +532,7 @@ object KubernetesPackageTest extends TestSuite {
         val output = new ByteArrayOutputStream()
         val printStream = new PrintStream(output)
 
-        handleGeneratedResources(KubernetesArgs.Output.PipeToKubeCtl(printStream))(generatedResources)
+        handleGeneratedResources(KubernetesArgs.Output.PipeToStream(printStream))(generatedResources)
 
         printStream.close()
 

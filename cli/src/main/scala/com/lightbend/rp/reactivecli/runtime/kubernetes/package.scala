@@ -20,10 +20,9 @@ import java.io.PrintStream
 import java.nio.file.{ Files, Path }
 
 import argonaut.PrettyParams
-import com.lightbend.rp.reactivecli.annotations.{ Annotations, Endpoint }
+import com.lightbend.rp.reactivecli.annotations.Annotations
 import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
-import com.lightbend.rp.reactivecli.Done
 import com.lightbend.rp.reactivecli.docker.Config
 import slogging.LazyLogging
 
@@ -51,15 +50,9 @@ package object kubernetes extends LazyLogging {
   private val EndpointTrimChars = Set('_', '-')
 
   /**
-   * This is the main method which generates the kubernetes resources.
-   *
-   * This method accepts a docker config supplied by `getDockerConfig`, generates the Kubernetes resources, and
-   * supplies these generated resources to the `outputHandler`.
-   *
-   * The `getDockerConfig` and `outputHandler` are supplied as function, and when `generateDeploymentArgs` and
-   * `kubernetesArgs` are supplied, the function is invoked and the resulting [[Try[Done]] is returned.
+   * This is the main method which generates the Kubernetes resources.
    */
-  def generateResources(getDockerConfig: String => Try[Config], outputHandler: Seq[GeneratedKubernetesResource] => Unit)(generateDeploymentArgs: GenerateDeploymentArgs, kubernetesArgs: KubernetesArgs): Try[Done] = {
+  def generateResources(config: Config, generateDeploymentArgs: GenerateDeploymentArgs, kubernetesArgs: KubernetesArgs): Try[Seq[GeneratedKubernetesResource]] = {
 
     def getLabel(config: Config): Try[Map[String, String]] =
       config.config.Labels match {
@@ -68,8 +61,6 @@ package object kubernetes extends LazyLogging {
       }
 
     for {
-      config <- getDockerConfig(generateDeploymentArgs.dockerImage.get)
-
       label <- getLabel(config)
 
       annotations = Annotations(label, generateDeploymentArgs)
@@ -91,10 +82,11 @@ package object kubernetes extends LazyLogging {
         kubernetesArgs.ingressArgs.apiVersion,
         kubernetesArgs.ingressArgs.ingressAnnotations,
         kubernetesArgs.ingressArgs.pathAppend)
-    } yield {
-      outputHandler(namespace.toSeq ++ Seq(deployment, service) ++ ingress.toSeq)
-      Done
-    }
+    } yield
+      namespace.filter(_ => kubernetesArgs.shouldGenerateNamespaces).toSeq ++
+        Seq(deployment).filter(_ => kubernetesArgs.shouldGeneratePodControllers) ++
+        service.toSeq.filter(_ => kubernetesArgs.shouldGenerateServices) ++
+        ingress.toSeq.filter(_ => kubernetesArgs.shouldGenerateIngress)
   }
 
   /**
@@ -103,7 +95,7 @@ package object kubernetes extends LazyLogging {
    */
   def handleGeneratedResources(output: KubernetesArgs.Output): Seq[GeneratedKubernetesResource] => Unit =
     output match {
-      case KubernetesArgs.Output.PipeToKubeCtl(out) => pipeToStream(out)
+      case KubernetesArgs.Output.PipeToStream(out) => pipeToStream(out)
       case KubernetesArgs.Output.SaveToFile(path) => saveToFile(path)
     }
 
