@@ -47,6 +47,12 @@ object ServiceJsonTest extends TestSuite {
 
   val tests = this{
     "json serialization" - {
+      "empty" - {
+        val result = Service.generate(annotations.copy(endpoints = Map.empty), "v1", clusterIp = None).get.isEmpty
+
+        assert(result)
+      }
+
       "clusterIp" - {
         "not defined" - {
           val generatedJson = Service.generate(annotations, "v1", clusterIp = None).get
@@ -78,7 +84,7 @@ object ServiceJsonTest extends TestSuite {
               |  }
               |}
             """.stripMargin.parse.right.get
-          assert(generatedJson == Service("friendimpl", expectedJson))
+          assert(generatedJson.get == Service("friendimpl", expectedJson))
         }
 
         "defined" - {
@@ -111,7 +117,7 @@ object ServiceJsonTest extends TestSuite {
               |  }
               |}
             """.stripMargin.parse.right.get
-          assert(generatedJson == Service("friendimpl", expectedJson))
+          assert(generatedJson.get == Service("friendimpl", expectedJson))
         }
       }
     }

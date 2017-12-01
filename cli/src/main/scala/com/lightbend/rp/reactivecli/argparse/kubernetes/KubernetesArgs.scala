@@ -33,7 +33,7 @@ object KubernetesArgs {
      * Represents user input to pipe the generated resources into the stream specified by [[out]].
      * The generated resources will be formatted in the format acceptable to `kubectl` command.
      */
-    case class PipeToKubeCtl(out: PrintStream) extends Output
+    case class PipeToStream(out: PrintStream) extends Output
   }
 
   /**
@@ -70,8 +70,27 @@ object KubernetesArgs {
  * Represents user input arguments required to build Kubernetes specific resources.
  */
 case class KubernetesArgs(
+                           generateIngress: Boolean = false,
+                           generateNamespaces: Boolean = false,
+                           generatePodControllers: Boolean = false,
+                           generateServices: Boolean = false,
                            namespace: Option[String] = None,
                            podControllerArgs: PodControllerArgs = PodControllerArgs(),
                            serviceArgs: ServiceArgs = ServiceArgs(),
                            ingressArgs: IngressArgs = IngressArgs(),
-                           output: KubernetesArgs.Output = KubernetesArgs.Output.PipeToKubeCtl(System.out)) extends TargetRuntimeArgs
+                           output: KubernetesArgs.Output = KubernetesArgs.Output.PipeToStream(System.out)) extends TargetRuntimeArgs {
+  def generateAll: Boolean =
+    !generateIngress && !generateNamespaces && !generatePodControllers && !generateServices
+
+  def shouldGenerateIngress: Boolean =
+    generateIngress || generateAll
+
+  def shouldGenerateNamespaces: Boolean =
+    generateNamespaces || generateAll
+
+  def shouldGeneratePodControllers: Boolean =
+    generatePodControllers || generateAll
+
+  def shouldGenerateServices: Boolean =
+    generateServices || generateAll
+}
