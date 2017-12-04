@@ -88,9 +88,9 @@ object KubernetesPackageTest extends TestSuite {
               "com.lightbend.rp.endpoints.2.port" -> "1234"))))
 
         "generates kubernetes deployment + service resource" - {
-          val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs)
+          val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs).toOption
 
-          assert(result.isSuccess)
+          assert(result.nonEmpty)
 
           val generatedResources = result.get
 
@@ -460,32 +460,49 @@ object KubernetesPackageTest extends TestSuite {
 
         "honor generate flags" - {
           "generateIngress" - {
-            val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs.copy(generateIngress = true)).get
+            val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs.copy(generateIngress = true)).toOption.get
 
             assert(result.length == 1)
             assert(result.head.resourceType == "ingress")
           }
 
           "generateNamespaces" - {
-            val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs.copy(generateNamespaces = true)).get
+            val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs.copy(generateNamespaces = true)).toOption.get
 
             assert(result.length == 1)
             assert(result.head.resourceType == "namespace")
           }
 
           "generatePodControllers" - {
-            val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs.copy(generatePodControllers = true)).get
+            val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs.copy(generatePodControllers = true)).toOption.get
 
             assert(result.length == 1)
             assert(result.head.resourceType == "deployment")
           }
 
           "generatePodControllers" - {
-            val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs.copy(generateServices = true)).get
+            val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs.copy(generateServices = true)).toOption.get
 
             assert(result.length == 1)
             assert(result.head.resourceType == "service")
           }
+        }
+
+        "Validate Akka Clustering" - {
+          val result = generateResources(
+            dockerConfig.copy(config = dockerConfig.config.copy(Labels = dockerConfig.config.Labels.map(_ ++ Vector(
+              "com.lightbend.rp.modules.akka-cluster-bootstrapping.enabled" -> "true"
+            )))),
+            generateDeploymentArgs,
+            kubernetesArgs.copy(generateIngress = true))
+
+          val failed = result.swap.toOption.get
+
+          val message = failed.head
+
+          val expected = "Akka Cluster Bootstrapping is enabled so you must specify `--pod-controller-replicas 2` (or greater)"
+
+          assert(message == expected)
         }
       }
     }

@@ -70,22 +70,25 @@ object Service {
           case BlueGreenDeploymentType => "appVersion" -> appVersion.asJson
         }
 
-      Some(
-        Service(
-          appName,
-          Json(
-            "apiVersion" -> apiVersion.asJson,
-            "kind" -> "Service".asJson,
-            "metadata" -> Json(
-              "labels" -> Json(
-                "app" -> appName.asJson),
-              "name" -> appName.asJson)
-              .deepmerge(
-                annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
-            "spec" -> Json(
-              "clusterIP" -> clusterIp.getOrElse("None").asJson,
-              "ports" -> annotations.endpoints.asJson,
-              "selector" -> Json(selector)))))
+      if (annotations.endpoints.isEmpty)
+        None
+      else
+        Some(
+          Service(
+            appName,
+            Json(
+              "apiVersion" -> apiVersion.asJson,
+              "kind" -> "Service".asJson,
+              "metadata" -> Json(
+                "labels" -> Json(
+                  "app" -> appName.asJson),
+                "name" -> appName.asJson)
+                .deepmerge(
+                  annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
+              "spec" -> Json(
+                "clusterIP" -> clusterIp.getOrElse("None").asJson,
+                "ports" -> annotations.endpoints.asJson,
+                "selector" -> Json(selector)))))
     }
 }
 

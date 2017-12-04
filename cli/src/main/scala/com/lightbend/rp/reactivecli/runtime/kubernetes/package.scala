@@ -17,7 +17,7 @@
 package com.lightbend.rp.reactivecli.runtime
 
 import argonaut.PrettyParams
-import com.lightbend.rp.reactivecli.annotations.Annotations
+import com.lightbend.rp.reactivecli.annotations.{ Annotations, Module }
 import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
 import com.lightbend.rp.reactivecli.docker.Config
@@ -86,7 +86,7 @@ package object kubernetes extends LazyLogging {
       kubernetesArgs.ingressArgs.pathAppend)
 
     val validateAkkaCluster =
-      if (annotations.modules.contains("akka-cluster-bootstrapping") && kubernetesArgs.podControllerArgs.numberOfReplicas < AkkaClusterMinimumReplicas)
+      if (annotations.modules.contains(Module.AkkaClusterBootstrapping) && kubernetesArgs.podControllerArgs.numberOfReplicas < AkkaClusterMinimumReplicas)
         s"Akka Cluster Bootstrapping is enabled so you must specify `--pod-controller-replicas 2` (or greater)".failureNel
       else
         ().successNel[String]
