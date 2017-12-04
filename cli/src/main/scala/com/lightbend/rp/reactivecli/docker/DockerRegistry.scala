@@ -105,7 +105,7 @@ object DockerRegistry extends LazyLogging {
   private def getWithToken(http: HttpExchange, credentials: Option[HttpRequest.BasicAuth], validateTls: Boolean)(url: String, headers: HttpHeaders, tryNewToken: Boolean = true, token: Option[HttpRequest.BearerToken] = None): Try[(HttpResponse, Option[HttpRequest.BearerToken])] = {
     val request =
       HttpRequest(url)
-        .headers(token.fold(headers)(t => headers.updated("Authorization", s"Bearer $t")))
+        .headers(token.fold(headers)(t => headers.updated("Authorization", s"Bearer ${t.value}")))
         .copy(tlsValidationEnabled = Some(validateTls))
 
     http.apply(request).flatMap {
