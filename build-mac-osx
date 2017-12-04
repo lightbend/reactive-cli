@@ -28,6 +28,7 @@ cp -p cli/target/scala-*/reactive-cli-out "$pkgbase/bin/rp"
 
 # link to the bundled curl
 install_name_tool -change /usr/lib/libcurl.4.dylib /usr/local/opt/reactive-cli/lib/libcurl.4.dylib "$pkgbase/bin/rp"
+install_name_tool -change /usr/lib/libcurl.4.dylib /usr/local/opt/reactive-cli/lib/libcurl.4.dylib "$pkgbase/lib/libhttpsimple.so"
 
 # fix the non-portable link to libhttpsimple
 jenk=$( pwd )/libhttpsimple/target/libhttpsimple.so
