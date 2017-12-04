@@ -44,7 +44,7 @@ object Service {
     val ports = AssignedPort.assignPorts(endpoints)
     val encoded =
       for {
-        (name, endpoint) <- endpoints
+        (_, endpoint) <- endpoints
         port <- ports.find(_.endpoint == endpoint)
       } yield encodeEndpoint(endpoint, port)
 

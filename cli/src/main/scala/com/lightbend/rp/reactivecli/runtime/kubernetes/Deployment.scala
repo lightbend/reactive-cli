@@ -43,7 +43,7 @@ object Deployment {
     /**
      * Generates pod environment variables specific for RP applications.
      */
-    def envs(annotations: Annotations, noOfReplicas: Int, externalServices: Map[String, Seq[String]]): Map[String, EnvironmentVariable] =
+    def envs(annotations: Annotations, serviceResourceName: String, noOfReplicas: Int, externalServices: Map[String, Seq[String]]): Map[String, EnvironmentVariable] =
       mergeEnvs(
         PodEnvs,
         namespaceEnv(annotations.namespace),
@@ -52,7 +52,7 @@ object Deployment {
         appTypeEnvs(annotations.appType, annotations.modules),
         endpointEnvs(annotations.endpoints),
         secretEnvs(annotations.secrets),
-        akkaClusterEnvs(annotations.modules, noOfReplicas),
+        akkaClusterEnvs(annotations.modules, serviceResourceName, noOfReplicas),
         externalServicesEnvs(annotations.modules, externalServices))
 
     private[kubernetes] def namespaceEnv(namespace: Option[String]): Map[String, EnvironmentVariable] =
@@ -68,13 +68,13 @@ object Deployment {
           if (modules.isEmpty) Seq.empty else Seq("RP_MODULES" -> LiteralEnvironmentVariable(modules.toVector.sorted.mkString(","))))
     }.toMap
 
-    private[kubernetes] def akkaClusterEnvs(modules: Set[String], noOfReplicas: Int): Map[String, EnvironmentVariable] =
+    private[kubernetes] def akkaClusterEnvs(modules: Set[String], serviceResourceName: String, noOfReplicas: Int): Map[String, EnvironmentVariable] =
       if (!modules.contains(Module.AkkaClusterBootstrapping))
         Map.empty
       else
         Map(
           "RP_JAVA_OPTS" -> LiteralEnvironmentVariable(
-            s"-Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas"))
+            s"-Dakka.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName -Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas"))
 
     private[kubernetes] def externalServicesEnvs(modules: Set[String], externalServices: Map[String, Seq[String]]): Map[String, EnvironmentVariable] =
       if (!modules.contains(Module.ServiceDiscovery))
@@ -311,9 +311,9 @@ object Deployment {
       val appVersionMajorMinor = serviceName(s"$appName$VersionSeparator${version.versionMajorMinor}")
       val appVersion = serviceName(s"$appName$VersionSeparator${version.version}")
 
-      val (deploymentName, deploymentLabels, deploymentMatchLabels) =
+      val (deploymentName, deploymentLabels, deploymentMatchLabels, serviceResourceName) =
           deploymentType match {
-            case CanaryDeploymentType | BlueGreenDeploymentType =>
+            case CanaryDeploymentType =>
               (
                 appVersion,
                 Json(
@@ -321,13 +321,26 @@ object Deployment {
                   "appVersionMajor" -> appVersionMajor.asJson,
                   "appVersionMajorMinor" -> appVersionMajorMinor.asJson,
                   "appVersion" -> appVersion.asJson),
-                Json("appVersionMajorMinor" -> appVersionMajorMinor.asJson))
+                Json("appVersionMajorMinor" -> appVersionMajorMinor.asJson),
+                appName)
+
+            case BlueGreenDeploymentType =>
+              (
+                appVersion,
+                Json(
+                  "app" -> appName.asJson,
+                  "appVersionMajor" -> appVersionMajor.asJson,
+                  "appVersionMajorMinor" -> appVersionMajorMinor.asJson,
+                  "appVersion" -> appVersion.asJson),
+                Json("appVersionMajorMinor" -> appVersionMajorMinor.asJson),
+                appVersion)
 
             case RollingDeploymentType   =>
               (
                 appName,
                 Json("app" -> appName.asJson),
-                Json("app" -> appName.asJson))
+                Json("app" -> appName.asJson),
+                appName)
           }
 
         Deployment(
@@ -351,7 +364,7 @@ object Deployment {
                       "name" -> appName.asJson,
                       "image" -> imageName.asJson,
                       "imagePullPolicy" -> imagePullPolicy.asJson,
-                      "env" -> (annotations.environmentVariables ++ RpEnvironmentVariables.envs(annotations, noOfReplicas, externalServices)).asJson,
+                      "env" -> (annotations.environmentVariables ++ RpEnvironmentVariables.envs(annotations, serviceResourceName, noOfReplicas, externalServices)).asJson,
                       "ports" -> annotations.endpoints.asJson)
                       .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
                       .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson)))))
