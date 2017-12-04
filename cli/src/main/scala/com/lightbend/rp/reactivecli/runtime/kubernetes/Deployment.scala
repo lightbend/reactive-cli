@@ -43,15 +43,17 @@ object Deployment {
     /**
      * Generates pod environment variables specific for RP applications.
      */
-    def envs(annotations: Annotations, externalServices: Map[String, Seq[String]]): Map[String, EnvironmentVariable] =
-      PodEnvs ++
-        namespaceEnv(annotations.namespace) ++
-        appNameEnvs(annotations.appName) ++
-        annotations.version.fold(Map.empty[String, EnvironmentVariable])(versionEnvs) ++
-        appTypeEnvs(annotations.appType, annotations.modules) ++
-        endpointEnvs(annotations.endpoints) ++
-        secretEnvs(annotations.secrets) ++
-        externalServicesEnvs(annotations.modules, externalServices)
+    def envs(annotations: Annotations, noOfReplicas: Int, externalServices: Map[String, Seq[String]]): Map[String, EnvironmentVariable] =
+      mergeEnvs(
+        PodEnvs,
+        namespaceEnv(annotations.namespace),
+        appNameEnvs(annotations.appName),
+        annotations.version.fold(Map.empty[String, EnvironmentVariable])(versionEnvs),
+        appTypeEnvs(annotations.appType, annotations.modules),
+        endpointEnvs(annotations.endpoints),
+        secretEnvs(annotations.secrets),
+        akkaClusterEnvs(annotations.modules, noOfReplicas),
+        externalServicesEnvs(annotations.modules, externalServices))
 
     private[kubernetes] def namespaceEnv(namespace: Option[String]): Map[String, EnvironmentVariable] =
       namespace.fold(Map.empty[String, EnvironmentVariable])(v => Map("RP_NAMESPACE" -> LiteralEnvironmentVariable(v)))
@@ -65,6 +67,14 @@ object Deployment {
         .map("RP_APP_TYPE" -> LiteralEnvironmentVariable(_)) ++ (
           if (modules.isEmpty) Seq.empty else Seq("RP_MODULES" -> LiteralEnvironmentVariable(modules.toVector.sorted.mkString(","))))
     }.toMap
+
+    private[kubernetes] def akkaClusterEnvs(modules: Set[String], noOfReplicas: Int): Map[String, EnvironmentVariable] =
+      if (!modules.contains(Module.AkkaClusterBootstrapping))
+        Map.empty
+      else
+        Map(
+          "RP_JAVA_OPTS" -> LiteralEnvironmentVariable(
+            s"-Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas"))
 
     private[kubernetes] def externalServicesEnvs(modules: Set[String], externalServices: Map[String, Seq[String]]): Map[String, EnvironmentVariable] =
       if (!modules.contains(Module.ServiceDiscovery))
@@ -128,6 +138,24 @@ object Deployment {
             s"RP_ENDPOINT_${assigned.endpoint.index}_BIND_PORT" -> assignedPortEnv)
         }
         .toMap
+
+    private[kubernetes] def mergeEnvs(envs: Map[String, EnvironmentVariable]*): Map[String, EnvironmentVariable] = {
+      val concatLiteral = Set("RP_JAVA_OPTS")
+
+      envs.foldLeft(Map.empty[String, EnvironmentVariable]) {
+        case (a1, n) =>
+          n.foldLeft(a1) {
+            case (a2, (key, LiteralEnvironmentVariable(v))) if concatLiteral.contains(key) =>
+              a2.updated(key, a2.get(key) match {
+                case Some(LiteralEnvironmentVariable(ov)) => LiteralEnvironmentVariable(s"$ov $v".trim)
+                case _ => LiteralEnvironmentVariable(v)
+              })
+
+            case (a2, (key, value)) =>
+              a2.updated(key, value)
+          }
+      }
+    }
 
     private[kubernetes] def secretEnvs(secrets: Seq[Secret]): Map[String, EnvironmentVariable] =
       secrets
@@ -323,7 +351,7 @@ object Deployment {
                       "name" -> appName.asJson,
                       "image" -> imageName.asJson,
                       "imagePullPolicy" -> imagePullPolicy.asJson,
-                      "env" -> (annotations.environmentVariables ++ RpEnvironmentVariables.envs(annotations, externalServices)).asJson,
+                      "env" -> (annotations.environmentVariables ++ RpEnvironmentVariables.envs(annotations, noOfReplicas, externalServices)).asJson,
                       "ports" -> annotations.endpoints.asJson)
                       .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
                       .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson)))))

@@ -64,13 +64,13 @@ object DeploymentJsonTest extends TestSuite {
           }
 
           "BlueGreen" - {
-            (Service.generate(annotations, "v1", clusterIp = None, BlueGreenDeploymentType).toOption.get.get.payload.hcursor --\ "metadata" --\ "name")
+            (Deployment.generate(annotations, "v1", imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, BlueGreenDeploymentType).toOption.get.payload.hcursor --\ "metadata" --\ "name")
               .focus
               .contains(jString("friendimpl-v3-2-1-snapshot"))
           }
 
           "Rolling" - {
-            (Service.generate(annotations, "v1", clusterIp = None, RollingDeploymentType).toOption.get.get.payload.hcursor --\ "metadata" --\ "name")
+            (Deployment.generate(annotations, "v1", imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, RollingDeploymentType).toOption.get.payload.hcursor --\ "metadata" --\ "name")
               .focus
               .contains(jString("friendimpl"))
           }
@@ -125,6 +125,10 @@ object DeploymentJsonTest extends TestSuite {
               |            {
               |              "name": "RP_APP_NAME",
               |              "value": "friendimpl"
+              |            },
+              |            {
+              |              "name": "RP_JAVA_OPTS",
+              |              "value": "-Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=1"
               |            },
               |            {
               |              "name": "RP_ENDPOINTS",
@@ -975,6 +979,22 @@ object DeploymentJsonTest extends TestSuite {
 
           assert(result == expectedResult)
         }
+      }
+
+      "mergeEnvs" - {
+        val result =
+          RpEnvironmentVariables.mergeEnvs(
+            Map("PATH" -> LiteralEnvironmentVariable("/bin")),
+            Map("PATH" -> LiteralEnvironmentVariable("/usr/bin")),
+            Map("RP_JAVA_OPTS" -> LiteralEnvironmentVariable("-Dmy.arg=hello")),
+            Map("RP_JAVA_OPTS" -> LiteralEnvironmentVariable("-Dmy.other.arg=hello2"))
+          )
+
+        val expectedResult = Map(
+          "PATH" -> LiteralEnvironmentVariable("/usr/bin"),
+          "RP_JAVA_OPTS" -> LiteralEnvironmentVariable("-Dmy.arg=hello -Dmy.other.arg=hello2"))
+
+        assert(result == expectedResult)
       }
     }
   }
