@@ -24,7 +24,10 @@ import com.lightbend.rp.reactivecli.docker.Config
 import java.io.PrintStream
 import java.nio.file.{ Files, Path }
 import scala.util.{ Failure, Success, Try }
+import scalaz._
 import slogging.LazyLogging
+
+import Scalaz._
 
 package object kubernetes extends LazyLogging {
   /**
@@ -50,41 +53,42 @@ package object kubernetes extends LazyLogging {
   /**
    * This is the main method which generates the Kubernetes resources.
    */
-  def generateResources(config: Config, generateDeploymentArgs: GenerateDeploymentArgs, kubernetesArgs: KubernetesArgs): Try[Seq[GeneratedKubernetesResource]] = {
+  def generateResources(config: Config, generateDeploymentArgs: GenerateDeploymentArgs, kubernetesArgs: KubernetesArgs): ValidationNel[String, Seq[GeneratedKubernetesResource]] = {
+    val annotations = Annotations(
+      config.config.Labels.getOrElse(Map.empty),
+      generateDeploymentArgs)
 
-    def getLabel(config: Config): Try[Map[String, String]] =
-      config.config.Labels match {
-        case Some(v) if v.nonEmpty => Success(v)
-        case _ => Failure(new IllegalArgumentException("Unable to generate Kubernetes resources from empty labels."))
-      }
+    val namespaces = Namespace.generate(
+      annotations,
+      KubernetesArgs.DefaultNamespaceApiVersion)
 
-    for {
-      label <- getLabel(config)
+    val deployments = Deployment.generate(
+      annotations,
+      kubernetesArgs.podControllerArgs.apiVersion,
+      generateDeploymentArgs.dockerImage.get,
+      kubernetesArgs.podControllerArgs.imagePullPolicy,
+      kubernetesArgs.podControllerArgs.numberOfReplicas,
+      generateDeploymentArgs.externalServices,
+      generateDeploymentArgs.deploymentType)
 
-      annotations = Annotations(label, generateDeploymentArgs)
+    val services = Service.generate(
+      annotations,
+      kubernetesArgs.serviceArgs.apiVersion,
+      kubernetesArgs.serviceArgs.clusterIp,
+      generateDeploymentArgs.deploymentType)
 
-      namespace <- Namespace.generate(annotations, KubernetesArgs.DefaultNamespaceApiVersion)
+    val ingress = Ingress.generate(
+      annotations,
+      kubernetesArgs.ingressArgs.apiVersion,
+      kubernetesArgs.ingressArgs.ingressAnnotations,
+      kubernetesArgs.ingressArgs.pathAppend)
 
-      deployment <- Deployment.generate(
-        annotations,
-        kubernetesArgs.podControllerArgs.apiVersion,
-        generateDeploymentArgs.dockerImage.get,
-        kubernetesArgs.podControllerArgs.imagePullPolicy,
-        kubernetesArgs.podControllerArgs.numberOfReplicas,
-        generateDeploymentArgs.externalServices,
-        generateDeploymentArgs.deploymentType)
-
-      service <- Service.generate(annotations, kubernetesArgs.serviceArgs.apiVersion, kubernetesArgs.serviceArgs.clusterIp, generateDeploymentArgs.deploymentType)
-
-      ingress <- Ingress.generate(
-        annotations,
-        kubernetesArgs.ingressArgs.apiVersion,
-        kubernetesArgs.ingressArgs.ingressAnnotations,
-        kubernetesArgs.ingressArgs.pathAppend)
-    } yield namespace.filter(_ => kubernetesArgs.shouldGenerateNamespaces).toSeq ++
-      Seq(deployment).filter(_ => kubernetesArgs.shouldGeneratePodControllers) ++
-      service.toSeq.filter(_ => kubernetesArgs.shouldGenerateServices) ++
-      ingress.toSeq.filter(_ => kubernetesArgs.shouldGenerateIngress)
+    (namespaces |@| deployments |@| services |@| ingress) { (ns, ds, ss, is) =>
+      ns.filter(_ => kubernetesArgs.shouldGenerateNamespaces).toSeq ++
+        Seq(ds).filter(_ => kubernetesArgs.shouldGeneratePodControllers) ++
+        ss.toSeq.filter(_ => kubernetesArgs.shouldGenerateServices) ++
+        is.toSeq.filter(_ => kubernetesArgs.shouldGenerateIngress)
+    }
   }
 
   /**

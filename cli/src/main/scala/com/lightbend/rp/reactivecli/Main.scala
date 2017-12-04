@@ -25,6 +25,7 @@ import libhttpsimple.LibHttpSimple.HttpExchange
 import java.nio.file.{ Files, Path, Paths }
 import scala.annotation.tailrec
 import scala.util.Try
+import scalaz._
 import slogging._
 
 /**
@@ -107,18 +108,34 @@ object Main extends LazyLogging {
                   .orElse(getDockerRegistryConfig(imageName))
               }
 
+              def tryToEither[T](t: Try[T]): Either[Throwable, T] =
+                t
+                  .map(Right.apply)
+                  .recover { case failed => Left(failed) }
+                  .get
+
               val outputHandler = kubernetes.handleGeneratedResources(kubernetesArgs.output)
 
-              val output =
-                for {
-                  config <- getDockerConfig(generateDeploymentArgs.dockerImage.get)
-                  resources <- kubernetes.generateResources(config, generateDeploymentArgs, kubernetesArgs)
-                } yield outputHandler(resources)
+              val output = {
+                import Validation.FlatMap._
 
-              output.recover {
-                case error =>
-                  logger.error(s"Failure generating Kubernetes resources for docker image ${generateDeploymentArgs.dockerImage.get} ({})", error.getMessage)
+                for {
+                  config <- Validation.fromEither(tryToEither(getDockerConfig(generateDeploymentArgs.dockerImage.get)))
+                    .leftMap(t => NonEmptyList(s"Failed to obtain Docker config for ${generateDeploymentArgs.dockerImage.get}, ${t.getMessage}"))
+                  resources <- kubernetes.generateResources(config, generateDeploymentArgs, kubernetesArgs)
+                } yield resources
               }
+
+              output.fold(
+                errors =>
+                  errors
+                    .stream
+                    .toVector
+                    .distinct
+                    .foreach(logger.error(_)),
+                resources =>
+                  outputHandler(resources)
+              )
           }
       }
     } else {

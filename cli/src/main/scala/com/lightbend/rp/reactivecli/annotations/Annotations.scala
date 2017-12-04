@@ -18,10 +18,12 @@ package com.lightbend.rp.reactivecli.annotations
 
 import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
-
 import scala.collection.immutable.Seq
 import scala.util.Try
 import scala.util.matching.Regex
+import scalaz._
+
+import Scalaz._
 
 case class Annotations(
   namespace: Option[String],
@@ -38,7 +40,14 @@ case class Annotations(
   readinessCheck: Option[Check],
   environmentVariables: Map[String, EnvironmentVariable],
   version: Option[Version],
-  modules: Set[String])
+  modules: Set[String]) {
+
+  def appNameValidation: ValidationNel[String, String] =
+    appName.fold[ValidationNel[String, String]]("Docker label \"com.lightbend.rp.app-name\" must be defined".failureNel)(_.successNel)
+
+  def versionValidation: ValidationNel[String, Version] =
+    version.fold[ValidationNel[String, Version]]("Docker label \"com.lightbend.rp.version\" must be defined".failureNel)(_.successNel)
+}
 
 /**
  * Parses annotations in the RP format (typically stored in Docker labels)

@@ -19,13 +19,12 @@ package docker
 
 import argonaut._
 import libhttpsimple._
-
 import scala.util.{ Failure, Success, Try }
 import scalaz._
 import slogging._
-import Argonaut._
 import libhttpsimple.LibHttpSimple.HttpExchange
 
+import Argonaut._
 import Scalaz._
 
 object DockerRegistry extends LazyLogging {

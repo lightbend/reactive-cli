@@ -17,13 +17,15 @@
 package com.lightbend.rp.reactivecli.runtime.kubernetes
 
 import argonaut._
-import Argonaut._
 import com.lightbend.rp.reactivecli.annotations.kubernetes.{ ConfigMapEnvironmentVariable, FieldRefEnvironmentVariable, SecretKeyRefEnvironmentVariable }
 import com.lightbend.rp.reactivecli.annotations._
 import com.lightbend.rp.reactivecli.argparse._
-
 import scala.collection.immutable.Seq
 import scala.util.{ Failure, Success, Try }
+import scalaz._
+
+import Argonaut._
+import Scalaz._
 
 object Deployment {
 
@@ -273,62 +275,58 @@ object Deployment {
     imagePullPolicy: ImagePullPolicy.Value,
     noOfReplicas: Int,
     externalServices: Map[String, Seq[String]],
-    deploymentType: DeploymentType): Try[Deployment] =
-    (annotations.appName, annotations.version) match {
-      case (Some(rawAppName), Some(version)) =>
-        // FIXME there's a bit of code duplicate in Service
-        val appName = serviceName(rawAppName)
-        val appVersionMajor = serviceName(s"$appName$VersionSeparator${version.major}")
-        val appVersionMajorMinor = serviceName(s"$appName$VersionSeparator${version.versionMajorMinor}")
-        val appVersion = serviceName(s"$appName$VersionSeparator${version.version}")
+    deploymentType: DeploymentType): ValidationNel[String, Deployment] =
 
-        val (deploymentName, deploymentLabels, deploymentMatchLabels) =
-            deploymentType match {
-              case CanaryDeploymentType | BlueGreenDeploymentType =>
-                (
-                  appVersion,
-                  Json(
-                    "app" -> appName.asJson,
-                    "appVersionMajor" -> appVersionMajor.asJson,
-                    "appVersionMajorMinor" -> appVersionMajorMinor.asJson,
-                    "appVersion" -> appVersion.asJson),
-                  Json("appVersionMajorMinor" -> appVersionMajorMinor.asJson))
+    (annotations.appNameValidation |@| annotations.versionValidation) { (rawAppName, version) =>
+      val appName = serviceName(rawAppName)
+      val appVersionMajor = serviceName(s"$appName$VersionSeparator${version.major}")
+      val appVersionMajorMinor = serviceName(s"$appName$VersionSeparator${version.versionMajorMinor}")
+      val appVersion = serviceName(s"$appName$VersionSeparator${version.version}")
 
-              case RollingDeploymentType   =>
-                (
-                  appName,
-                  Json("app" -> appName.asJson),
-                  Json("app" -> appName.asJson))
-            }
+      val (deploymentName, deploymentLabels, deploymentMatchLabels) =
+          deploymentType match {
+            case CanaryDeploymentType | BlueGreenDeploymentType =>
+              (
+                appVersion,
+                Json(
+                  "app" -> appName.asJson,
+                  "appVersionMajor" -> appVersionMajor.asJson,
+                  "appVersionMajorMinor" -> appVersionMajorMinor.asJson,
+                  "appVersion" -> appVersion.asJson),
+                Json("appVersionMajorMinor" -> appVersionMajorMinor.asJson))
 
-        Success(
-          Deployment(
-            deploymentName,
-            Json(
-              "apiVersion" -> apiVersion.asJson,
-              "kind" -> "Deployment".asJson,
-              "metadata" -> Json(
-                "name" -> deploymentName.asJson,
-                "labels" -> deploymentLabels)
-                .deepmerge(
-                  annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
-              "spec" -> Json(
-                "replicas" -> noOfReplicas.asJson,
-                "selector" -> Json("matchLabels" -> deploymentMatchLabels),
-                "template" -> Json(
-                  "metadata" -> Json("labels" -> deploymentLabels),
-                  "spec" -> Json(
-                    "containers" -> List(
-                      Json(
-                        "name" -> appName.asJson,
-                        "image" -> imageName.asJson,
-                        "imagePullPolicy" -> imagePullPolicy.asJson,
-                        "env" -> (annotations.environmentVariables ++ RpEnvironmentVariables.envs(annotations, externalServices)).asJson,
-                        "ports" -> annotations.endpoints.asJson)
-                        .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
-                        .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson))))))
-      case _ =>
-        Failure(new IllegalArgumentException("Unable to generate Kubernetes Deployment: both application name and version are required"))
+            case RollingDeploymentType   =>
+              (
+                appName,
+                Json("app" -> appName.asJson),
+                Json("app" -> appName.asJson))
+          }
+
+        Deployment(
+          deploymentName,
+          Json(
+            "apiVersion" -> apiVersion.asJson,
+            "kind" -> "Deployment".asJson,
+            "metadata" -> Json(
+              "name" -> deploymentName.asJson,
+              "labels" -> deploymentLabels)
+              .deepmerge(
+                annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
+            "spec" -> Json(
+              "replicas" -> noOfReplicas.asJson,
+              "selector" -> Json("matchLabels" -> deploymentMatchLabels),
+              "template" -> Json(
+                "metadata" -> Json("labels" -> deploymentLabels),
+                "spec" -> Json(
+                  "containers" -> List(
+                    Json(
+                      "name" -> appName.asJson,
+                      "image" -> imageName.asJson,
+                      "imagePullPolicy" -> imagePullPolicy.asJson,
+                      "env" -> (annotations.environmentVariables ++ RpEnvironmentVariables.envs(annotations, externalServices)).asJson,
+                      "ports" -> annotations.endpoints.asJson)
+                      .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
+                      .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson)))))
     }
 }
 
