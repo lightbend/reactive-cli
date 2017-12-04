@@ -110,7 +110,7 @@ object DockerRegistry extends LazyLogging {
 
     http.apply(request).flatMap {
       case response if response.statusCode == 401 && response.headers.contains("Www-Authenticate") && tryNewToken =>
-        logger.debug("Received 401, attempting to get a token and try again")
+        logger.debug("Received 401 from Registry, attempting to get a token and try again")
 
         val authenticateHeader = response.headers("Www-Authenticate")
 

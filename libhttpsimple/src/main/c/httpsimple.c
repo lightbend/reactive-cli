@@ -32,7 +32,7 @@ void init_http_response(struct http_response *s) {
   s->len = 0;
   s->raw_response = malloc(s->len+1);
   if (s->raw_response == NULL) {
-    s->has_error = 1;
+    s->has_error = -1;
   }
   s->raw_response[0] = '\0';
 }
@@ -42,7 +42,7 @@ size_t writefunc(void *ptr, size_t size, size_t nmemb, struct http_response *s)
   size_t new_len = s->len + size * nmemb;
   s->raw_response = realloc(s->raw_response, new_len + 1);
   if (s->raw_response == NULL) {
-    s->has_error = 2;
+    s->has_error = -2;
   }
   memcpy(s->raw_response + s->len, ptr, size * nmemb);
   s->raw_response[new_len] = '\0';
@@ -118,8 +118,7 @@ struct http_response *do_http(long validate_tls, char *http_method, char *url, c
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_response_code);
         s->http_status = http_response_code;
       } else {
-        s->has_error = 77;
-        fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res_curl_code));
+        s->has_error = res_curl_code;
       }
 
       // Always cleanup the `curl` handle
@@ -135,7 +134,13 @@ long get_error_code(struct http_response *s) {
 }
 
 char *get_error_message(struct http_response *s) {
-  return s->error_message;
+  if (s->has_error == -1) {
+    return "failure to `malloc` when initializing `raw_response`";
+  } else if (s->has_error == -2) {
+    return "failure to `realloc` when writing HTTP response body into to `raw_response`";
+  } else {
+    return (char *)curl_easy_strerror(s->has_error);
+  }
 }
 
 long get_http_status(struct http_response *s) {

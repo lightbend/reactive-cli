@@ -130,6 +130,7 @@ object LibHttpSimple {
         native.toCString(settings.tlsKeyPath.fold("")(_.toString)))
 
       val errorCode = nativebinding.httpsimple.get_error_code(http_response_struct).cast[Long]
+      val errorMessage = nativebinding.httpsimple.get_error_message(http_response_struct)
       val result =
         if (errorCode == 0) {
           val httpStatus = nativebinding.httpsimple.get_http_status(http_response_struct).cast[Long]
@@ -148,7 +149,7 @@ object LibHttpSimple {
             Success(HttpResponse(httpStatus, hs, body))
           }
         } else {
-          Failure(InternalNativeFailure(errorCode, errorMessageFromCode(errorCode)))
+          Failure(InternalNativeFailure(errorCode, fromCString(errorMessage)))
         }
 
       // Always cleanup to free the memory
@@ -186,15 +187,4 @@ object LibHttpSimple {
         Map.empty[String, String] -> Option.empty[String]
     }
   }
-
-  private def errorMessageFromCode(errorCode: Long): String =
-    if (errorCode == 1)
-      "failure to `malloc` when initializing `raw_response`"
-    else if (errorCode == 2)
-      "failure to `realloc` when writing HTTP response body into to `raw_response`"
-    else if (errorCode == 77)
-      "failure to invoke `curl_easy_perform`."
-    else
-      "Unknown failure invoking native code"
-
 }

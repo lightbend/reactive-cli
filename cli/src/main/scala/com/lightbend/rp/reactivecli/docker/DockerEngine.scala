@@ -19,12 +19,12 @@ package com.lightbend.rp.reactivecli.docker
 import argonaut._
 import libhttpsimple._
 import java.nio.file.{ Files, Paths }
+import scala.util.{ Failure, Success, Try }
+import slogging._
 
 import Argonaut._
 
-import scala.util.{ Failure, Success, Try }
-
-object DockerEngine {
+object DockerEngine extends LazyLogging {
   def applyDockerHostSettings(settings: LibHttpSimple.Settings, env: Map[String, String]): LibHttpSimple.Settings = {
     val credentialFiles = for {
       certDir <- env.get("DOCKER_CERT_PATH")
@@ -55,7 +55,11 @@ object DockerEngine {
       protocol = if (verify) "https" else "http"
       url = s"$protocol://${host.replaceFirst("tcp://", "")}/images/$uri/json"
 
+      _ = logger.debug("Attempting to pull config from Engine, {}", url)
+
       response <- http(HttpRequest(url)).toOption
+
+      _ = logger.debug(s"Received {} from Engine", response.statusCode)
 
       config <- getDecoded[SocketConfig](response).toOption
     } yield config

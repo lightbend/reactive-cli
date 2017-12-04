@@ -30,6 +30,8 @@ import slogging.LazyLogging
 import Scalaz._
 
 package object kubernetes extends LazyLogging {
+  private val AkkaClusterMinimumReplicas = 2
+
   /**
    * Valid characters for endpoint environment variable name.
    * The declared endpoint name will be made uppercase, and all characters outside the valid chars range will be
@@ -83,7 +85,13 @@ package object kubernetes extends LazyLogging {
       kubernetesArgs.ingressArgs.ingressAnnotations,
       kubernetesArgs.ingressArgs.pathAppend)
 
-    (namespaces |@| deployments |@| services |@| ingress) { (ns, ds, ss, is) =>
+    val validateAkkaCluster =
+      if (annotations.modules.contains("akka-cluster-bootstrapping") && kubernetesArgs.podControllerArgs.numberOfReplicas < AkkaClusterMinimumReplicas)
+        s"Akka Cluster Bootstrapping is enabled so you must specify `--pod-controller-replicas 2` (or greater)".failureNel
+      else
+        ().successNel[String]
+
+    (namespaces |@| deployments |@| services |@| ingress |@| validateAkkaCluster) { (ns, ds, ss, is, _) =>
       ns.filter(_ => kubernetesArgs.shouldGenerateNamespaces).toSeq ++
         Seq(ds).filter(_ => kubernetesArgs.shouldGeneratePodControllers) ++
         ss.toSeq.filter(_ => kubernetesArgs.shouldGenerateServices) ++
