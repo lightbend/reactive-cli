@@ -30,6 +30,7 @@ object ServiceJsonTest extends TestSuite {
     namespace = Some("chirper"),
     appName = Some("friendimpl"),
     appType = None,
+    configResource = None,
     diskSpace = Some(65536L),
     memory = Some(8192L),
     nrOfCpus = Some(0.5D),

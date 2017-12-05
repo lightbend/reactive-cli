@@ -26,21 +26,22 @@ import scalaz._
 import Scalaz._
 
 case class Annotations(
-  namespace: Option[String],
-  appName: Option[String],
-  appType: Option[String],
-  diskSpace: Option[Long],
-  memory: Option[Long],
-  nrOfCpus: Option[Double],
-  endpoints: Map[String, Endpoint],
-  secrets: Seq[Secret],
-  volumes: Map[String, Volume],
-  privileged: Boolean,
-  healthCheck: Option[Check],
-  readinessCheck: Option[Check],
-  environmentVariables: Map[String, EnvironmentVariable],
-  version: Option[String],
-  modules: Set[String]) {
+                        namespace: Option[String],
+                        appName: Option[String],
+                        appType: Option[String],
+                        configResource: Option[String],
+                        diskSpace: Option[Long],
+                        memory: Option[Long],
+                        nrOfCpus: Option[Double],
+                        endpoints: Map[String, Endpoint],
+                        secrets: Seq[Secret],
+                        volumes: Map[String, Volume],
+                        privileged: Boolean,
+                        healthCheck: Option[Check],
+                        readinessCheck: Option[Check],
+                        environmentVariables: Map[String, EnvironmentVariable],
+                        version: Option[String],
+                        modules: Set[String]) {
 
   def appNameValidation: ValidationNel[String, String] =
     appName.fold[ValidationNel[String, String]]("Docker label \"com.lightbend.rp.app-name\" must be defined".failureNel)(_.successNel)
@@ -77,6 +78,7 @@ object Annotations {
       namespace = namespace(args).orElse(namespace(labels)),
       appName = appName(labels),
       appType = appType(labels),
+      configResource = configFile(labels),
       diskSpace = args.diskSpace.orElse(diskSpace(labels)),
       memory = args.memory.orElse(memory(labels)),
       nrOfCpus = args.nrOfCpus.orElse(nrOfCpus(labels)),
@@ -108,6 +110,10 @@ object Annotations {
   private[annotations] def appType(labels: Map[String, String]): Option[String] =
     labels
       .get(ns("app-type"))
+
+  private[annotations] def configFile(labels: Map[String, String]): Option[String] =
+    labels
+      .get(ns("config-resource"))
 
   private[annotations] def appModules(modules: Map[String, String]): Set[String] = {
     val suffix = ".enabled"

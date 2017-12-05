@@ -28,6 +28,7 @@ object IngressJsonTest extends TestSuite {
     namespace = Some("chirper"),
     appName = Some("friendservice"),
     appType = None,
+    configResource = None,
     diskSpace = Some(65536L),
     memory = Some(8192L),
     nrOfCpus = Some(0.5D),

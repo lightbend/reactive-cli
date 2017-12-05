@@ -56,6 +56,7 @@ object Deployment {
         appNameEnvs(annotations.appName),
         annotations.version.fold(Map.empty[String, EnvironmentVariable])(versionEnvs),
         appTypeEnvs(annotations.appType, annotations.modules),
+        configEnvs(annotations.configResource),
         endpointEnvs(annotations.endpoints),
         secretEnvs(annotations.secrets),
         akkaClusterEnvs(annotations.modules, serviceResourceName, noOfReplicas),
@@ -81,6 +82,11 @@ object Deployment {
         Map(
           "RP_JAVA_OPTS" -> LiteralEnvironmentVariable(
             s"-Dakka.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName -Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas"))
+
+    private[kubernetes] def configEnvs(config: Option[String]): Map[String, EnvironmentVariable] =
+      config
+        .map(c => Map("RP_JAVA_OPTS" -> LiteralEnvironmentVariable(s"-Dconfig.resource=$c")))
+        .getOrElse(Map.empty)
 
     private[kubernetes] def externalServicesEnvs(modules: Set[String], externalServices: Map[String, Seq[String]]): Map[String, EnvironmentVariable] =
       if (!modules.contains(Module.ServiceDiscovery))
@@ -342,7 +348,7 @@ object Deployment {
                       "name" -> appName.asJson,
                       "image" -> imageName.asJson,
                       "imagePullPolicy" -> imagePullPolicy.asJson,
-                      "env" -> (annotations.environmentVariables ++ RpEnvironmentVariables.envs(annotations, serviceResourceName, noOfReplicas, externalServices)).asJson,
+                      "env" -> (RpEnvironmentVariables.mergeEnvs(annotations.environmentVariables ++ RpEnvironmentVariables.envs(annotations, serviceResourceName, noOfReplicas, externalServices))).asJson,
                       "ports" -> annotations.endpoints.asJson)
                       .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
                       .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson)))))

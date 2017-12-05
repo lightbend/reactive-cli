@@ -36,6 +36,7 @@ object DeploymentJsonTest extends TestSuite {
     namespace = Some("chirper"),
     appName = Some("friendimpl"),
     appType = Some("basic"),
+    configResource = Some("my-config.conf"),
     diskSpace = Some(65536L),
     memory = Some(8192L),
     nrOfCpus = Some(0.5D),
@@ -124,7 +125,7 @@ object DeploymentJsonTest extends TestSuite {
               |            },
               |            {
               |              "name": "RP_JAVA_OPTS",
-              |              "value": "-Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=1"
+              |              "value": "-Dconfig.resource=my-config.conf -Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=1"
               |            },
               |            {
               |              "name": "RP_ENDPOINTS",
