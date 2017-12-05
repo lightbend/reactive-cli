@@ -125,20 +125,20 @@ object KubernetesPackageTest extends TestSuite {
               |  "metadata": {
               |    "name": "my-app-v3-2-1-snapshot",
               |    "labels": {
-              |      "app": "my-app",
-              |      "appVersionMajor": "my-app-v3",
-              |      "appVersionMajorMinor": "my-app-v3.2",
-              |      "appVersion": "my-app-v3.2.1-SNAPSHOT"
+              |      "appName": "my-app",
+              |      "appNameVersionMajor": "my-app-v3",
+              |      "appNameVersionMajorMinor": "my-app-v3.2",
+              |      "appNameVersion": "my-app-v3.2.1-SNAPSHOT"
               |    }
               |  },
               |  "spec": {
               |    "replicas": 1,
               |    "serviceName": "my-app",
               |    "template": {
-              |      "app": "my-app",
-              |      "appVersionMajor": "my-app-v3",
-              |      "appVersionMajorMinor": "my-app-v3.2",
-              |      "appVersion": "my-app-v3.2.1-SNAPSHOT"
+              |      "appName": "my-app",
+              |      "appNameVersionMajor": "my-app-v3",
+              |      "appNameVersionMajorMinor": "my-app-v3.2",
+              |      "appNameVersion": "my-app-v3.2.1-SNAPSHOT"
               |    },
               |    "spec": {
               |      "containers": [
@@ -394,7 +394,7 @@ object KubernetesPackageTest extends TestSuite {
               |  "kind": "Service",
               |  "metadata": {
               |    "labels": {
-              |      "app": "my-app"
+              |      "appName": "my-app"
               |    },
               |    "name": "my-app",
               |    "namespace": "chirper"
@@ -422,7 +422,7 @@ object KubernetesPackageTest extends TestSuite {
               |      }
               |    ],
               |    "selector": {
-              |      "app": "my-app"
+              |      "appName": "my-app"
               |    }
               |  }
               |}

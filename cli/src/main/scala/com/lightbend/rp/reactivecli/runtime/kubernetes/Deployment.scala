@@ -31,6 +31,12 @@ object Deployment {
 
   object RpEnvironmentVariables {
     /**
+     * Environment variables in this set will be space-concatenated when the various environment variable
+     * maps are merged.
+     */
+    private val ConcatLiteralEnvs = Set("RP_JAVA_OPTS")
+
+    /**
      * Creates pod related environment variables using the Kubernetes Downward API:
      *
      * https://kubernetes.io/docs/tasks/inject-data-application/environment-variable-expose-pod-information/#use-pod-fields-as-values-for-environment-variables
@@ -140,12 +146,10 @@ object Deployment {
         .toMap
 
     private[kubernetes] def mergeEnvs(envs: Map[String, EnvironmentVariable]*): Map[String, EnvironmentVariable] = {
-      val concatLiteral = Set("RP_JAVA_OPTS")
-
       envs.foldLeft(Map.empty[String, EnvironmentVariable]) {
         case (a1, n) =>
           n.foldLeft(a1) {
-            case (a2, (key, LiteralEnvironmentVariable(v))) if concatLiteral.contains(key) =>
+            case (a2, (key, LiteralEnvironmentVariable(v))) if ConcatLiteralEnvs.contains(key) =>
               a2.updated(key, a2.get(key) match {
                 case Some(LiteralEnvironmentVariable(ov)) => LiteralEnvironmentVariable(s"$ov $v".trim)
                 case _ => LiteralEnvironmentVariable(v)
@@ -307,39 +311,39 @@ object Deployment {
 
     (annotations.appNameValidation |@| annotations.versionValidation) { (rawAppName, version) =>
       val appName = serviceName(rawAppName)
-      val appVersionMajor = serviceName(s"$appName$VersionSeparator${version.major}")
-      val appVersionMajorMinor = serviceName(s"$appName$VersionSeparator${version.versionMajorMinor}")
-      val appVersion = serviceName(s"$appName$VersionSeparator${version.version}")
+      val appNameVersionMajor = serviceName(s"$appName$VersionSeparator${version.major}")
+      val appNameVersionMajorMinor = serviceName(s"$appName$VersionSeparator${version.versionMajorMinor}")
+      val appNameVersion = serviceName(s"$appName$VersionSeparator${version.version}")
 
       val (deploymentName, deploymentLabels, deploymentMatchLabels, serviceResourceName) =
           deploymentType match {
             case CanaryDeploymentType =>
               (
-                appVersion,
+                appNameVersion,
                 Json(
-                  "app" -> appName.asJson,
-                  "appVersionMajor" -> appVersionMajor.asJson,
-                  "appVersionMajorMinor" -> appVersionMajorMinor.asJson,
-                  "appVersion" -> appVersion.asJson),
-                Json("appVersionMajorMinor" -> appVersionMajorMinor.asJson),
+                  "appName" -> appName.asJson,
+                  "appNameVersionMajor" -> appNameVersionMajor.asJson,
+                  "appNameVersionMajorMinor" -> appNameVersionMajorMinor.asJson,
+                  "appNameVersion" -> appNameVersion.asJson),
+                Json("appNameVersionMajorMinor" -> appNameVersionMajorMinor.asJson),
                 appName)
 
             case BlueGreenDeploymentType =>
               (
-                appVersion,
+                appNameVersion,
                 Json(
-                  "app" -> appName.asJson,
-                  "appVersionMajor" -> appVersionMajor.asJson,
-                  "appVersionMajorMinor" -> appVersionMajorMinor.asJson,
-                  "appVersion" -> appVersion.asJson),
-                Json("appVersionMajorMinor" -> appVersionMajorMinor.asJson),
-                appVersion)
+                  "appName" -> appName.asJson,
+                  "appNameVersionMajor" -> appNameVersionMajor.asJson,
+                  "appNameVersionMajorMinor" -> appNameVersionMajorMinor.asJson,
+                  "appNameVersion" -> appNameVersion.asJson),
+                Json("appNameVersionMajorMinor" -> appNameVersionMajorMinor.asJson),
+                appNameVersion)
 
             case RollingDeploymentType   =>
               (
                 appName,
-                Json("app" -> appName.asJson),
-                Json("app" -> appName.asJson),
+                Json("appName" -> appName.asJson),
+                Json("appName" -> appName.asJson),
                 appName)
           }
 

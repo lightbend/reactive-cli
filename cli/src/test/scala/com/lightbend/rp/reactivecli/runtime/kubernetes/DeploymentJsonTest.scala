@@ -84,10 +84,10 @@ object DeploymentJsonTest extends TestSuite {
               |  "kind": "Deployment",
               |  "metadata": {
               |    "labels": {
-              |      "app": "friendimpl",
-              |      "appVersionMajor": "friendimpl-v3",
-              |      "appVersionMajorMinor": "friendimpl-v3.2",
-              |      "appVersion": "friendimpl-v3.2.1-SNAPSHOT"
+              |      "appName": "friendimpl",
+              |      "appNameVersionMajor": "friendimpl-v3",
+              |      "appNameVersionMajorMinor": "friendimpl-v3.2",
+              |      "appNameVersion": "friendimpl-v3.2.1-SNAPSHOT"
               |    },
               |    "name": "friendimpl-v3.2.1-SNAPSHOT",
               |    "namespace": "chirper"
@@ -96,10 +96,10 @@ object DeploymentJsonTest extends TestSuite {
               |    "replicas": 1,
               |    "serviceName": "friendimpl",
               |    "template": {
-              |      "app": "friendimpl",
-              |      "appVersionMajor": "friendimpl-v3",
-              |      "appVersionMajorMinor": "friendimpl-v3.2",
-              |      "appVersion": "friendimpl-v3.2.1-SNAPSHOT"
+              |      "appName": "friendimpl",
+              |      "appNameVersionMajor": "friendimpl-v3",
+              |      "appNameVersionMajorMinor": "friendimpl-v3.2",
+              |      "appNameVersion": "friendimpl-v3.2.1-SNAPSHOT"
               |    },
               |    "spec": {
               |      "containers": [
@@ -363,10 +363,10 @@ object DeploymentJsonTest extends TestSuite {
               |  "kind": "Deployment",
               |  "metadata": {
               |    "labels": {
-              |      "app": "friendimpl",
-              |      "appVersionMajor": "friendimpl-v3",
-              |      "appVersionMajorMinor": "friendimpl-v3.2",
-              |      "appVersion": "friendimpl-v3.2.1-SNAPSHOT"
+              |      "appName": "friendimpl",
+              |      "appNameVersionMajor": "friendimpl-v3",
+              |      "appNameVersionMajorMinor": "friendimpl-v3.2",
+              |      "appNameVersion": "friendimpl-v3.2.1-SNAPSHOT"
               |    },
               |    "name": "friendimpl-v3.2.1-SNAPSHOT",
               |    "namespace": "chirper"
@@ -375,10 +375,10 @@ object DeploymentJsonTest extends TestSuite {
               |    "replicas": 1,
               |    "serviceName": "friendimpl",
               |    "template": {
-              |      "app": "friendimpl",
-              |      "appVersionMajor": "friendimpl-v3",
-              |      "appVersionMajorMinor": "friendimpl-v3.2",
-              |      "appVersion": "friendimpl-v3.2.1-SNAPSHOT"
+              |      "appName": "friendimpl",
+              |      "appNameVersionMajor": "friendimpl-v3",
+              |      "appNameVersionMajorMinor": "friendimpl-v3.2",
+              |      "appNameVersion": "friendimpl-v3.2.1-SNAPSHOT"
               |    },
               |    "spec": {
               |      "containers": [

@@ -84,7 +84,7 @@ object ServiceJsonTest extends TestSuite {
               |  "kind": "Service",
               |  "metadata": {
               |    "labels": {
-              |      "app": "friendimpl"
+              |      "appName": "friendimpl"
               |    },
               |    "name": "friendimpl",
               |    "namespace": "chirper"
@@ -100,7 +100,7 @@ object ServiceJsonTest extends TestSuite {
               |      }
               |    ],
               |    "selector": {
-              |      "app": "friendimpl"
+              |      "appName": "friendimpl"
               |    }
               |  }
               |}
@@ -117,7 +117,7 @@ object ServiceJsonTest extends TestSuite {
               |  "kind": "Service",
               |  "metadata": {
               |    "labels": {
-              |      "app": "friendimpl"
+              |      "appName": "friendimpl"
               |    },
               |    "name": "friendimpl",
               |    "namespace": "chirper"
@@ -133,7 +133,7 @@ object ServiceJsonTest extends TestSuite {
               |      }
               |    ],
               |    "selector": {
-              |      "app": "friendimpl"
+              |      "appName": "friendimpl"
               |    }
               |  }
               |}

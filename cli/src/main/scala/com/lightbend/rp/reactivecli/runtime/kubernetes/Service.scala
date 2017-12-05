@@ -19,7 +19,6 @@ package com.lightbend.rp.reactivecli.runtime.kubernetes
 import argonaut._
 import com.lightbend.rp.reactivecli.annotations._
 import com.lightbend.rp.reactivecli.argparse._
-import scala.util.{ Failure, Success, Try }
 import scalaz._
 
 import Argonaut._
@@ -61,13 +60,13 @@ object Service {
     (annotations.appNameValidation |@| annotations.versionValidation) { (rawAppName, version) =>
       // FIXME there's a bit of code duplicate in Deployment
       val appName = serviceName(rawAppName)
-      val appVersion = serviceName(s"$appName${Deployment.VersionSeparator}${version.version}")
+      val appNameVersion = serviceName(s"$appName${Deployment.VersionSeparator}${version.version}")
 
       val selector =
         deploymentType match {
-          case CanaryDeploymentType    => "app" -> appName.asJson
-          case RollingDeploymentType   => "app" -> appName.asJson
-          case BlueGreenDeploymentType => "appVersion" -> appVersion.asJson
+          case CanaryDeploymentType    => Json("appName" -> appName.asJson)
+          case RollingDeploymentType   => Json("appName" -> appName.asJson)
+          case BlueGreenDeploymentType => Json("appNameVersion" -> appNameVersion.asJson)
         }
 
       if (annotations.endpoints.isEmpty)
@@ -81,14 +80,14 @@ object Service {
               "kind" -> "Service".asJson,
               "metadata" -> Json(
                 "labels" -> Json(
-                  "app" -> appName.asJson),
+                  "appName" -> appName.asJson),
                 "name" -> appName.asJson)
                 .deepmerge(
                   annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
               "spec" -> Json(
                 "clusterIP" -> clusterIp.getOrElse("None").asJson,
                 "ports" -> annotations.endpoints.asJson,
-                "selector" -> Json(selector)))))
+                "selector" -> selector))))
     }
 }
 
