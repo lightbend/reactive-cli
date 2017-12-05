@@ -16,18 +16,16 @@
 
 package com.lightbend.rp.reactivecli.runtime.kubernetes
 
-import java.io.{ ByteArrayOutputStream, PrintStream }
-import java.nio.file.{ Files, Paths }
-import java.util.UUID
-
 import argonaut._
-import Argonaut._
 import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
 import com.lightbend.rp.reactivecli.docker.Config
+import java.io.{ ByteArrayOutputStream, PrintStream }
+import java.nio.file.{ Files, Paths }
+import java.util.UUID
 import utest._
 
-import scala.util.{ Failure, Success, Try }
+import Argonaut._
 
 object KubernetesPackageTest extends TestSuite {
   val tests = this{
@@ -44,7 +42,6 @@ object KubernetesPackageTest extends TestSuite {
           Config.Cfg(
             Image = Some(imageName),
             Labels = Some(Map(
-              "com.lightbend.rp.namespace" -> "chirper",
               "com.lightbend.rp.app-name" -> "my-app",
               "com.lightbend.rp.app-version" -> "3.2.1-SNAPSHOT",
               "com.lightbend.rp.disk-space" -> "65536",
@@ -85,7 +82,10 @@ object KubernetesPackageTest extends TestSuite {
               "com.lightbend.rp.endpoints.2.port" -> "1234"))))
 
         "generates kubernetes deployment + service resource" - {
-          val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs).toOption
+          val k8sArgs = kubernetesArgs.copy(generateNamespaces = true, namespace = Some("chirper"))
+
+          val result: Option[Seq[GeneratedKubernetesResource]] =
+            generateResources(dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs).toOption
 
           assert(result.nonEmpty)
 
@@ -436,29 +436,33 @@ object KubernetesPackageTest extends TestSuite {
         }
 
         "honor generate flags" - {
+          "generateNamespaces" - {
+            val k8sArgs = kubernetesArgs.copy(generateNamespaces = true, namespace = Some("test"))
+            val result = generateResources(dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs).toOption.get
+
+            assert(result.length == 4)
+            assert(result.head.resourceType == "namespace")
+          }
+
           "generateIngress" - {
-            val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs.copy(generateIngress = true)).toOption.get
+            val k8sArgs = kubernetesArgs.copy(generateIngress = true)
+            val result = generateResources(dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs).toOption.get
 
             assert(result.length == 1)
             assert(result.head.resourceType == "ingress")
           }
 
-          "generateNamespaces" - {
-            val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs.copy(generateNamespaces = true)).toOption.get
-
-            assert(result.length == 1)
-            assert(result.head.resourceType == "namespace")
-          }
-
           "generatePodControllers" - {
-            val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs.copy(generatePodControllers = true)).toOption.get
+            val k8sArgs = kubernetesArgs.copy(generatePodControllers = true)
+            val result = generateResources(dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs).toOption.get
 
             assert(result.length == 1)
             assert(result.head.resourceType == "deployment")
           }
 
           "generatePodControllers" - {
-            val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs.copy(generateServices = true)).toOption.get
+            val k8sArgs = kubernetesArgs.copy(generateServices = true)
+            val result = generateResources(dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs).toOption.get
 
             assert(result.length == 1)
             assert(result.head.resourceType == "service")

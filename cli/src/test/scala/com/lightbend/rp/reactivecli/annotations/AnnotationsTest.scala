@@ -135,7 +135,6 @@ object AnnotationsTest extends TestSuite {
               "some.key" -> "test",
               "com.lightbend.rp.some-key" -> "test",
 
-              "com.lightbend.rp.namespace" -> "fonts",
               "com.lightbend.rp.app-name" -> "my-app",
               "com.lightbend.rp.app-type" -> "basic",
               "com.lightbend.rp.app-version" -> "3.2.1-SNAPSHOT",
@@ -182,7 +181,7 @@ object AnnotationsTest extends TestSuite {
               "com.lightbend.rp.modules.common.enabled" -> "true",
               "com.lightbend.rp.modules.another-one.enabled" -> "false"),
             GenerateDeploymentArgs()) == Annotations(
-              namespace = Some("fonts"),
+              namespace = None,
               appName = Some("my-app"),
               appType = Some("basic"),
               configResource = Some("my-app.conf"),
@@ -211,7 +210,6 @@ object AnnotationsTest extends TestSuite {
         assert(
           Annotations(
             Map(
-              "com.lightbend.rp.namespace" -> "tom",
               "com.lightbend.rp.disk-space" -> "65536",
               "com.lightbend.rp.memory" -> "8192",
               "com.lightbend.rp.nr-of-cpus" -> "0.5",

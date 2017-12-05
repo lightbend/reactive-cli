@@ -75,7 +75,7 @@ object Annotations {
   def apply(labels: Map[String, String], args: GenerateDeploymentArgs): Annotations = {
     val appVersion = version(labels)
     Annotations(
-      namespace = namespace(args).orElse(namespace(labels)),
+      namespace = namespace(args),
       appName = appName(labels),
       appType = appType(labels),
       configResource = configFile(labels),
@@ -94,14 +94,10 @@ object Annotations {
       modules = appModules(selectSubset(labels, ns("modules"))))
   }
 
-  private[annotations] def namespace(labels: Map[String, String]): Option[String] =
-    labels
-      .get(ns("namespace"))
-
   private[annotations] def namespace(args: GenerateDeploymentArgs): Option[String] =
     args.targetRuntimeArgs.collect {
       case KubernetesArgs(_, _, _, _, Some(namespace), _, _, _, _) => namespace
-    }
+  }
 
   private[annotations] def appName(labels: Map[String, String]): Option[String] =
     labels

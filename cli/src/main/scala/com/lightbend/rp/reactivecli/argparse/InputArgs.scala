@@ -127,24 +127,23 @@ object InputArgs {
               KubernetesArgs.set((v, args) =>
                 args.copy(
                   generateIngress = false,
-                  generateNamespaces = false,
                   generatePodControllers = false,
                   generateServices = false))),
 
           opt[Unit]("generate-ingress")
-            .text("Generate Ingress resources. When provided, other resource types are not generated unless explicitly requested")
+            .text("Generate Ingress resources. When provided, Ingress and Pod Controller resource types are not generated unless explicitly requested")
             .action(KubernetesArgs.set((_, args) => args.copy(generateIngress = true))),
 
           opt[Unit]("generate-namespaces")
-            .text("Generate Namespace resources. When provided, other resource types are not generated unless explicitly requested")
+            .text("Generate Namespace resources. Does not affect the generation of other resources")
             .action(KubernetesArgs.set((_, args) => args.copy(generateNamespaces = true))),
 
           opt[Unit]("generate-pod-controllers")
-            .text("Generate PodController resources. When provided, other resource types are not generated unless explicitly requested")
+            .text("Generate PodController resources. When provided, Ingress and Pod Controller resource types are not generated unless explicitly requested")
             .action(KubernetesArgs.set((_, args) => args.copy(generatePodControllers = true))),
 
           opt[Unit]("generate-services")
-            .text("Generate Service resources. When provided, other resource types are not generated unless explicitly requested")
+            .text("Generate Service resources. When provided, Ingress and Pod Controller resource types are not generated unless explicitly requested")
             .action(KubernetesArgs.set((_, args) => args.copy(generateServices = true))),
 
           opt[String]("ingress-annotation")
