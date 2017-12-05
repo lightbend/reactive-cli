@@ -43,7 +43,7 @@ object ServiceJsonTest extends TestSuite {
     readinessCheck = None,
     environmentVariables = Map(
       "testing1" -> LiteralEnvironmentVariable("testingvalue1")),
-    version = Some(Version(3, 2, 1, Some("SNAPSHOT"))),
+    version = Some("3.2.1-SNAPSHOT"),
     modules = Set.empty)
 
   val tests = this{

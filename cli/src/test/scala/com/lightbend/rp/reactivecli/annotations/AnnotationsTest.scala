@@ -137,10 +137,7 @@ object AnnotationsTest extends TestSuite {
               "com.lightbend.rp.namespace" -> "fonts",
               "com.lightbend.rp.app-name" -> "my-app",
               "com.lightbend.rp.app-type" -> "basic",
-              "com.lightbend.rp.version-major" -> "3",
-              "com.lightbend.rp.version-minor" -> "2",
-              "com.lightbend.rp.version-patch" -> "1",
-              "com.lightbend.rp.version-patch-label" -> "SNAPSHOT",
+              "com.lightbend.rp.app-version" -> "3.2.1-SNAPSHOT",
               "com.lightbend.rp.disk-space" -> "65536",
               "com.lightbend.rp.memory" -> "8192",
               "com.lightbend.rp.nr-of-cpus" -> "0.5",
@@ -203,7 +200,7 @@ object AnnotationsTest extends TestSuite {
                 "testing1" -> LiteralEnvironmentVariable("testingvalue1"),
                 "testing2" -> kubernetes.ConfigMapEnvironmentVariable("mymap", "mykey"),
                 "testing3" -> kubernetes.FieldRefEnvironmentVariable("metadata.name")),
-              version = Some(Version(3, 2, 1, Some("SNAPSHOT"))),
+              version = Some("3.2.1-SNAPSHOT"),
               modules = Set("common")))
       }
 
@@ -251,9 +248,7 @@ object AnnotationsTest extends TestSuite {
         assert(
           Annotations(
             Map(
-              "com.lightbend.rp.version-major" -> "3",
-              "com.lightbend.rp.version-minor" -> "2",
-              "com.lightbend.rp.version-patch" -> "1"),
+              "com.lightbend.rp.app-version" -> "3.2.1"),
             GenerateDeploymentArgs()) == Annotations(
               namespace = None,
               appName = None,
@@ -268,7 +263,7 @@ object AnnotationsTest extends TestSuite {
               healthCheck = None,
               readinessCheck = None,
               environmentVariables = Map.empty,
-              version = Some(Version(3, 2, 1, None)),
+              version = Some("3.2.1"),
               modules = Set.empty))
       }
 
@@ -276,9 +271,7 @@ object AnnotationsTest extends TestSuite {
         assert(
           Annotations(
             Map(
-              "com.lightbend.rp.version-major" -> "3",
-              "com.lightbend.rp.version-minor" -> "2",
-              "com.lightbend.rp.version-patch" -> "1",
+              "com.lightbend.rp.app-version" -> "3.2.1",
 
               "com.lightbend.rp.endpoints.1.name" -> "ep2",
               "com.lightbend.rp.endpoints.1.protocol" -> "tcp",
@@ -298,7 +291,7 @@ object AnnotationsTest extends TestSuite {
               healthCheck = None,
               readinessCheck = None,
               environmentVariables = Map.empty,
-              version = Some(Version(3, 2, 1, None)),
+              version = Some("3.2.1"),
               modules = Set.empty))
       }
 

@@ -60,7 +60,7 @@ object Service {
     (annotations.appNameValidation |@| annotations.versionValidation) { (rawAppName, version) =>
       // FIXME there's a bit of code duplicate in Deployment
       val appName = serviceName(rawAppName)
-      val appNameVersion = serviceName(s"$appName${Deployment.VersionSeparator}${version.version}")
+      val appNameVersion = serviceName(s"$appName${Deployment.VersionSeparator}$version")
 
       val selector =
         deploymentType match {

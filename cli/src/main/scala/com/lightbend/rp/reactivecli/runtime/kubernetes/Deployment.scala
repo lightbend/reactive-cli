@@ -103,16 +103,9 @@ object Deployment {
               }
               .mkString(" ")))
 
-    private[kubernetes] def versionEnvs(version: Version): Map[String, EnvironmentVariable] = {
+    private[kubernetes] def versionEnvs(version: String): Map[String, EnvironmentVariable] =
       Map(
-        "RP_VERSION" -> LiteralEnvironmentVariable(version.version),
-        "RP_VERSION_MAJOR" -> LiteralEnvironmentVariable(version.major.toString),
-        "RP_VERSION_MINOR" -> LiteralEnvironmentVariable(version.minor.toString),
-        "RP_VERSION_PATCH" -> LiteralEnvironmentVariable(version.patch.toString)) ++
-        version.patchLabel.fold(Map.empty[String, LiteralEnvironmentVariable]) { v =>
-          Map("RP_VERSION_PATCH_LABEL" -> LiteralEnvironmentVariable(v))
-        }
-    }
+        "RP_APP_VERSION" -> LiteralEnvironmentVariable(version))
 
     private[kubernetes] def endpointEnvs(endpoints: Map[String, Endpoint]): Map[String, EnvironmentVariable] =
       if (endpoints.isEmpty)
@@ -311,40 +304,21 @@ object Deployment {
 
     (annotations.appNameValidation |@| annotations.versionValidation) { (rawAppName, version) =>
       val appName = serviceName(rawAppName)
-      val appNameVersionMajor = serviceName(s"$appName$VersionSeparator${version.major}")
-      val appNameVersionMajorMinor = serviceName(s"$appName$VersionSeparator${version.versionMajorMinor}")
-      val appNameVersion = serviceName(s"$appName$VersionSeparator${version.version}")
+      val appNameVersion = serviceName(s"$appName$VersionSeparator$version")
 
-      val (deploymentName, deploymentLabels, deploymentMatchLabels, serviceResourceName) =
+      val deploymentLabels =
+        Json("appName" -> appName.asJson, "appNameVersion" -> appNameVersion.asJson)
+
+      val (deploymentName, deploymentMatchLabels, serviceResourceName) =
           deploymentType match {
             case CanaryDeploymentType =>
-              (
-                appNameVersion,
-                Json(
-                  "appName" -> appName.asJson,
-                  "appNameVersionMajor" -> appNameVersionMajor.asJson,
-                  "appNameVersionMajorMinor" -> appNameVersionMajorMinor.asJson,
-                  "appNameVersion" -> appNameVersion.asJson),
-                Json("appNameVersionMajorMinor" -> appNameVersionMajorMinor.asJson),
-                appName)
+              (appNameVersion, Json("appNameVersion" -> appNameVersion.asJson), appName)
 
             case BlueGreenDeploymentType =>
-              (
-                appNameVersion,
-                Json(
-                  "appName" -> appName.asJson,
-                  "appNameVersionMajor" -> appNameVersionMajor.asJson,
-                  "appNameVersionMajorMinor" -> appNameVersionMajorMinor.asJson,
-                  "appNameVersion" -> appNameVersion.asJson),
-                Json("appNameVersionMajorMinor" -> appNameVersionMajorMinor.asJson),
-                appNameVersion)
+              (appNameVersion, Json("appNameVersion" -> appNameVersion.asJson), appNameVersion)
 
             case RollingDeploymentType   =>
-              (
-                appName,
-                Json("appName" -> appName.asJson),
-                Json("appName" -> appName.asJson),
-                appName)
+              (appName, Json("appName" -> appName.asJson), appName)
           }
 
         Deployment(

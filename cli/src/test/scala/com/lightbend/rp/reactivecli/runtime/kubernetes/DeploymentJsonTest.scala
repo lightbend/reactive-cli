@@ -48,7 +48,7 @@ object DeploymentJsonTest extends TestSuite {
     readinessCheck = None,
     environmentVariables = Map(
       "testing1" -> LiteralEnvironmentVariable("testingvalue1")),
-    version = Some(Version(3, 2, 1, Some("SNAPSHOT"))),
+    version = Some("3.2.1-SNAPSHOT"),
     modules = Set.empty)
 
   val imageName = "my-repo/my-image"
@@ -85,8 +85,6 @@ object DeploymentJsonTest extends TestSuite {
               |  "metadata": {
               |    "labels": {
               |      "appName": "friendimpl",
-              |      "appNameVersionMajor": "friendimpl-v3",
-              |      "appNameVersionMajorMinor": "friendimpl-v3.2",
               |      "appNameVersion": "friendimpl-v3.2.1-SNAPSHOT"
               |    },
               |    "name": "friendimpl-v3.2.1-SNAPSHOT",
@@ -97,8 +95,6 @@ object DeploymentJsonTest extends TestSuite {
               |    "serviceName": "friendimpl",
               |    "template": {
               |      "appName": "friendimpl",
-              |      "appNameVersionMajor": "friendimpl-v3",
-              |      "appNameVersionMajorMinor": "friendimpl-v3.2",
               |      "appNameVersion": "friendimpl-v3.2.1-SNAPSHOT"
               |    },
               |    "spec": {
@@ -316,24 +312,8 @@ object DeploymentJsonTest extends TestSuite {
               |              }
               |            },
               |            {
-              |              "name": "RP_VERSION",
+              |              "name": "RP_APP_VERSION",
               |              "value": "3.2.1-SNAPSHOT"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_MAJOR",
-              |              "value": "3"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_MINOR",
-              |              "value": "2"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_PATCH",
-              |              "value": "1"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_PATCH_LABEL",
-              |              "value": "SNAPSHOT"
               |            },
               |            {
               |              "name": "testing1",
@@ -364,8 +344,6 @@ object DeploymentJsonTest extends TestSuite {
               |  "metadata": {
               |    "labels": {
               |      "appName": "friendimpl",
-              |      "appNameVersionMajor": "friendimpl-v3",
-              |      "appNameVersionMajorMinor": "friendimpl-v3.2",
               |      "appNameVersion": "friendimpl-v3.2.1-SNAPSHOT"
               |    },
               |    "name": "friendimpl-v3.2.1-SNAPSHOT",
@@ -376,8 +354,6 @@ object DeploymentJsonTest extends TestSuite {
               |    "serviceName": "friendimpl",
               |    "template": {
               |      "appName": "friendimpl",
-              |      "appNameVersionMajor": "friendimpl-v3",
-              |      "appNameVersionMajorMinor": "friendimpl-v3.2",
               |      "appNameVersion": "friendimpl-v3.2.1-SNAPSHOT"
               |    },
               |    "spec": {
@@ -591,24 +567,8 @@ object DeploymentJsonTest extends TestSuite {
               |              }
               |            },
               |            {
-              |              "name": "RP_VERSION",
+              |              "name": "RP_APP_VERSION",
               |              "value": "3.2.1-SNAPSHOT"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_MAJOR",
-              |              "value": "3"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_MINOR",
-              |              "value": "2"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_PATCH",
-              |              "value": "1"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_PATCH_LABEL",
-              |              "value": "SNAPSHOT"
               |            },
               |            {
               |              "name": "testing1",
@@ -844,23 +804,16 @@ object DeploymentJsonTest extends TestSuite {
 
       "versions" - {
         "all fields" - {
-          val result = RpEnvironmentVariables.versionEnvs(Version(3, 2, 1, Some("SNAPSHOT")))
+          val result = RpEnvironmentVariables.versionEnvs("3.2.1-SNAPSHOT")
           val expectedResult = Map(
-            "RP_VERSION" -> LiteralEnvironmentVariable("3.2.1-SNAPSHOT"),
-            "RP_VERSION_MAJOR" -> LiteralEnvironmentVariable("3"),
-            "RP_VERSION_MINOR" -> LiteralEnvironmentVariable("2"),
-            "RP_VERSION_PATCH" -> LiteralEnvironmentVariable("1"),
-            "RP_VERSION_PATCH_LABEL" -> LiteralEnvironmentVariable("SNAPSHOT"))
+            "RP_APP_VERSION" -> LiteralEnvironmentVariable("3.2.1-SNAPSHOT"))
           assert(result == expectedResult)
         }
 
         "major + minor + patch" - {
-          val result = RpEnvironmentVariables.versionEnvs(Version(3, 2, 1, None))
+          val result = RpEnvironmentVariables.versionEnvs("3.2.1")
           val expectedResult = Map(
-            "RP_VERSION" -> LiteralEnvironmentVariable("3.2.1"),
-            "RP_VERSION_MAJOR" -> LiteralEnvironmentVariable("3"),
-            "RP_VERSION_MINOR" -> LiteralEnvironmentVariable("2"),
-            "RP_VERSION_PATCH" -> LiteralEnvironmentVariable("1"))
+            "RP_APP_VERSION" -> LiteralEnvironmentVariable("3.2.1"))
           assert(result == expectedResult)
         }
       }

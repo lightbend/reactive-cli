@@ -46,10 +46,7 @@ object KubernetesPackageTest extends TestSuite {
             Labels = Some(Map(
               "com.lightbend.rp.namespace" -> "chirper",
               "com.lightbend.rp.app-name" -> "my-app",
-              "com.lightbend.rp.version-major" -> "3",
-              "com.lightbend.rp.version-minor" -> "2",
-              "com.lightbend.rp.version-patch" -> "1",
-              "com.lightbend.rp.version-patch-label" -> "SNAPSHOT",
+              "com.lightbend.rp.app-version" -> "3.2.1-SNAPSHOT",
               "com.lightbend.rp.disk-space" -> "65536",
               "com.lightbend.rp.memory" -> "8192",
               "com.lightbend.rp.nr-of-cpus" -> "0.5",
@@ -126,8 +123,6 @@ object KubernetesPackageTest extends TestSuite {
               |    "name": "my-app-v3-2-1-snapshot",
               |    "labels": {
               |      "appName": "my-app",
-              |      "appNameVersionMajor": "my-app-v3",
-              |      "appNameVersionMajorMinor": "my-app-v3.2",
               |      "appNameVersion": "my-app-v3.2.1-SNAPSHOT"
               |    }
               |  },
@@ -136,8 +131,6 @@ object KubernetesPackageTest extends TestSuite {
               |    "serviceName": "my-app",
               |    "template": {
               |      "appName": "my-app",
-              |      "appNameVersionMajor": "my-app-v3",
-              |      "appNameVersionMajorMinor": "my-app-v3.2",
               |      "appNameVersion": "my-app-v3.2.1-SNAPSHOT"
               |    },
               |    "spec": {
@@ -320,24 +313,8 @@ object KubernetesPackageTest extends TestSuite {
               |              "value": "kubernetes"
               |            },
               |            {
-              |              "name": "RP_VERSION",
+              |              "name": "RP_APP_VERSION",
               |              "value": "3.2.1-SNAPSHOT"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_MAJOR",
-              |              "value": "3"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_MINOR",
-              |              "value": "2"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_PATCH",
-              |              "value": "1"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_PATCH_LABEL",
-              |              "value": "SNAPSHOT"
               |            },
               |            {
               |              "name": "testing1",
