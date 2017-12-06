@@ -80,13 +80,13 @@ case class KubernetesArgs(
                            ingressArgs: IngressArgs = IngressArgs(),
                            output: KubernetesArgs.Output = KubernetesArgs.Output.PipeToStream(System.out)) extends TargetRuntimeArgs {
   def generateAll: Boolean =
-    !generateIngress && !generateNamespaces && !generatePodControllers && !generateServices
+    !generateIngress && !generatePodControllers && !generateServices
 
   def shouldGenerateIngress: Boolean =
     generateIngress || generateAll
 
   def shouldGenerateNamespaces: Boolean =
-    generateNamespaces || generateAll
+    generateNamespaces
 
   def shouldGeneratePodControllers: Boolean =
     generatePodControllers || generateAll

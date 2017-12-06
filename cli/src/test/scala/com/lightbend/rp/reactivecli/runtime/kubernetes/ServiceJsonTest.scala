@@ -30,6 +30,7 @@ object ServiceJsonTest extends TestSuite {
     namespace = Some("chirper"),
     appName = Some("friendimpl"),
     appType = None,
+    configResource = None,
     diskSpace = Some(65536L),
     memory = Some(8192L),
     nrOfCpus = Some(0.5D),
@@ -43,32 +44,32 @@ object ServiceJsonTest extends TestSuite {
     readinessCheck = None,
     environmentVariables = Map(
       "testing1" -> LiteralEnvironmentVariable("testingvalue1")),
-    version = Some(Version(3, 2, 1, Some("SNAPSHOT"))),
+    version = Some("3.2.1-SNAPSHOT"),
     modules = Set.empty)
 
   val tests = this{
     "json serialization" - {
       "empty" - {
-        val result = Service.generate(annotations.copy(endpoints = Map.empty), "v1", clusterIp = None, CanaryDeploymentType).get.isEmpty
+        val result = Service.generate(annotations.copy(endpoints = Map.empty), "v1", clusterIp = None, CanaryDeploymentType).toOption.get.isEmpty
 
         assert(result)
       }
 
       "deploymentType" - {
         "Canary" - {
-          (Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType).get.get.payload.hcursor --\ "spec" --\ "selector")
+          (Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType).toOption.get.get.payload.hcursor --\ "spec" --\ "selector")
             .focus
             .contains(jString("friendimpl"))
         }
 
         "BlueGreen" - {
-          (Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType).get.get.payload.hcursor --\ "spec" --\ "selector")
+          (Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType).toOption.get.get.payload.hcursor --\ "spec" --\ "selector")
             .focus
             .contains(jString("friendimpl-v3-2-1-snapshot"))
         }
 
         "Rolling" - {
-          (Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType).get.get.payload.hcursor --\ "spec" --\ "selector")
+          (Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType).toOption.get.get.payload.hcursor --\ "spec" --\ "selector")
             .focus
             .contains(jString("friendimpl"))
         }
@@ -76,7 +77,7 @@ object ServiceJsonTest extends TestSuite {
 
       "clusterIp" - {
         "not defined" - {
-          val generatedJson = Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType).get
+          val generatedJson = Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType).toOption.get
           val expectedJson =
             """
               |{
@@ -84,7 +85,7 @@ object ServiceJsonTest extends TestSuite {
               |  "kind": "Service",
               |  "metadata": {
               |    "labels": {
-              |      "app": "friendimpl"
+              |      "appName": "friendimpl"
               |    },
               |    "name": "friendimpl",
               |    "namespace": "chirper"
@@ -100,7 +101,7 @@ object ServiceJsonTest extends TestSuite {
               |      }
               |    ],
               |    "selector": {
-              |      "app": "friendimpl"
+              |      "appName": "friendimpl"
               |    }
               |  }
               |}
@@ -109,7 +110,7 @@ object ServiceJsonTest extends TestSuite {
         }
 
         "defined" - {
-          val generatedJson = Service.generate(annotations, "v1", clusterIp = Some("10.0.0.5"), CanaryDeploymentType).get
+          val generatedJson = Service.generate(annotations, "v1", clusterIp = Some("10.0.0.5"), CanaryDeploymentType).toOption.get
           val expectedJson =
             """
               |{
@@ -117,7 +118,7 @@ object ServiceJsonTest extends TestSuite {
               |  "kind": "Service",
               |  "metadata": {
               |    "labels": {
-              |      "app": "friendimpl"
+              |      "appName": "friendimpl"
               |    },
               |    "name": "friendimpl",
               |    "namespace": "chirper"
@@ -133,7 +134,7 @@ object ServiceJsonTest extends TestSuite {
               |      }
               |    ],
               |    "selector": {
-              |      "app": "friendimpl"
+              |      "appName": "friendimpl"
               |    }
               |  }
               |}

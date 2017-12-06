@@ -18,27 +18,37 @@ package com.lightbend.rp.reactivecli.annotations
 
 import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
-
 import scala.collection.immutable.Seq
 import scala.util.Try
 import scala.util.matching.Regex
+import scalaz._
+
+import Scalaz._
 
 case class Annotations(
-  namespace: Option[String],
-  appName: Option[String],
-  appType: Option[String],
-  diskSpace: Option[Long],
-  memory: Option[Long],
-  nrOfCpus: Option[Double],
-  endpoints: Map[String, Endpoint],
-  secrets: Seq[Secret],
-  volumes: Map[String, Volume],
-  privileged: Boolean,
-  healthCheck: Option[Check],
-  readinessCheck: Option[Check],
-  environmentVariables: Map[String, EnvironmentVariable],
-  version: Option[Version],
-  modules: Set[String])
+                        namespace: Option[String],
+                        appName: Option[String],
+                        appType: Option[String],
+                        configResource: Option[String],
+                        diskSpace: Option[Long],
+                        memory: Option[Long],
+                        nrOfCpus: Option[Double],
+                        endpoints: Map[String, Endpoint],
+                        secrets: Seq[Secret],
+                        volumes: Map[String, Volume],
+                        privileged: Boolean,
+                        healthCheck: Option[Check],
+                        readinessCheck: Option[Check],
+                        environmentVariables: Map[String, EnvironmentVariable],
+                        version: Option[String],
+                        modules: Set[String]) {
+
+  def appNameValidation: ValidationNel[String, String] =
+    appName.fold[ValidationNel[String, String]]("Docker label \"com.lightbend.rp.app-name\" must be defined".failureNel)(_.successNel)
+
+  def versionValidation: ValidationNel[String, String] =
+    version.fold[ValidationNel[String, String]]("Docker label \"com.lightbend.rp.version\" must be defined".failureNel)(_.successNel)
+}
 
 /**
  * Parses annotations in the RP format (typically stored in Docker labels)
@@ -65,9 +75,10 @@ object Annotations {
   def apply(labels: Map[String, String], args: GenerateDeploymentArgs): Annotations = {
     val appVersion = version(labels)
     Annotations(
-      namespace = namespace(args).orElse(namespace(labels)),
+      namespace = namespace(args),
       appName = appName(labels),
       appType = appType(labels),
+      configResource = configFile(labels),
       diskSpace = args.diskSpace.orElse(diskSpace(labels)),
       memory = args.memory.orElse(memory(labels)),
       nrOfCpus = args.nrOfCpus.orElse(nrOfCpus(labels)),
@@ -83,14 +94,10 @@ object Annotations {
       modules = appModules(selectSubset(labels, ns("modules"))))
   }
 
-  private[annotations] def namespace(labels: Map[String, String]): Option[String] =
-    labels
-      .get(ns("namespace"))
-
   private[annotations] def namespace(args: GenerateDeploymentArgs): Option[String] =
     args.targetRuntimeArgs.collect {
       case KubernetesArgs(_, _, _, _, Some(namespace), _, _, _, _) => namespace
-    }
+  }
 
   private[annotations] def appName(labels: Map[String, String]): Option[String] =
     labels
@@ -99,6 +106,10 @@ object Annotations {
   private[annotations] def appType(labels: Map[String, String]): Option[String] =
     labels
       .get(ns("app-type"))
+
+  private[annotations] def configFile(labels: Map[String, String]): Option[String] =
+    labels
+      .get(ns("config-resource"))
 
   private[annotations] def appModules(modules: Map[String, String]): Set[String] = {
     val suffix = ".enabled"
@@ -136,15 +147,9 @@ object Annotations {
       .flatMap(decodeBoolean)
       .getOrElse(false)
 
-  private[annotations] def version(labels: Map[String, String]): Option[Version] =
-    for {
-      majorStr <- labels.get(ns("version-major"))
-      minorStr <- labels.get(ns("version-minor"))
-      patchStr <- labels.get(ns("version-patch"))
-      major <- decodeInt(majorStr)
-      minor <- decodeInt(minorStr)
-      patch <- decodeInt(patchStr)
-    } yield Version(major, minor, patch, labels.get(ns("version-patch-label")))
+  private[annotations] def version(labels: Map[String, String]): Option[String] =
+    labels
+      .get(ns("app-version"))
 
   private[annotations] def check(check: Map[String, String]): Option[Check] = {
     for {
@@ -193,10 +198,10 @@ object Annotations {
       name <- entry.get("name")
     } yield Secret(ns, name)
 
-  private[annotations] def endpoints(endpoints: Seq[(Int, Map[String, String])], version: Option[Version]): Map[String, Endpoint] =
+  private[annotations] def endpoints(endpoints: Seq[(Int, Map[String, String])], version: Option[String]): Map[String, Endpoint] =
     endpoints.flatMap(v => endpoint(v._2, v._1, version)).toMap
 
-  private[annotations] def endpoint(entry: Map[String, String], index: Int, version: Option[Version]): Option[(String, Endpoint)] =
+  private[annotations] def endpoint(entry: Map[String, String], index: Int, version: Option[String]): Option[(String, Endpoint)] =
     entry.get("protocol")
       .collect {
         case "http" => endpointHttp(version, entry, index)
@@ -206,7 +211,7 @@ object Annotations {
       .flatten
       .map(v => v.name -> v)
 
-  private[annotations] def endpointHttp(version: Option[Version], entry: Map[String, String], index: Int): Option[HttpEndpoint] =
+  private[annotations] def endpointHttp(version: Option[String], entry: Map[String, String], index: Int): Option[HttpEndpoint] =
     entry.get("name").map(
       HttpEndpoint(
         index,
@@ -214,14 +219,14 @@ object Annotations {
         entry.get("port").flatMap(decodeInt).getOrElse(0),
         httpIngress(selectArray(entry, "ingress"))))
 
-  private[annotations] def endpointTcp(version: Option[Version], entry: Map[String, String], index: Int): Option[TcpEndpoint] =
+  private[annotations] def endpointTcp(version: Option[String], entry: Map[String, String], index: Int): Option[TcpEndpoint] =
     entry.get("name").map(
       TcpEndpoint(
         index,
         _,
         entry.get("port").flatMap(decodeInt).getOrElse(0)))
 
-  private[annotations] def endpointUdp(version: Option[Version], entry: Map[String, String], index: Int): Option[UdpEndpoint] =
+  private[annotations] def endpointUdp(version: Option[String], entry: Map[String, String], index: Int): Option[UdpEndpoint] =
     entry.get("name").map(
       UdpEndpoint(
         index,

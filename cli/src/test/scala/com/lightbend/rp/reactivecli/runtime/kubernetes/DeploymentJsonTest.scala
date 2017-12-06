@@ -36,6 +36,7 @@ object DeploymentJsonTest extends TestSuite {
     namespace = Some("chirper"),
     appName = Some("friendimpl"),
     appType = Some("basic"),
+    configResource = Some("my-config.conf"),
     diskSpace = Some(65536L),
     memory = Some(8192L),
     nrOfCpus = Some(0.5D),
@@ -48,7 +49,7 @@ object DeploymentJsonTest extends TestSuite {
     readinessCheck = None,
     environmentVariables = Map(
       "testing1" -> LiteralEnvironmentVariable("testingvalue1")),
-    version = Some(Version(3, 2, 1, Some("SNAPSHOT"))),
+    version = Some("3.2.1-SNAPSHOT"),
     modules = Set.empty)
 
   val imageName = "my-repo/my-image"
@@ -58,19 +59,19 @@ object DeploymentJsonTest extends TestSuite {
       "deployment" - {
         "deploymentType" - {
           "Canary" - {
-            (Deployment.generate(annotations, "apps/v1beta2", imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, CanaryDeploymentType).get.payload.hcursor --\ "metadata" --\ "name")
+            (Deployment.generate(annotations, "apps/v1beta2", imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, CanaryDeploymentType).toOption.get.payload.hcursor --\ "metadata" --\ "name")
               .focus
               .contains(jString("friendimpl-v3-2-1-snapshot"))
           }
 
           "BlueGreen" - {
-            (Service.generate(annotations, "v1", clusterIp = None, BlueGreenDeploymentType).get.get.payload.hcursor --\ "metadata" --\ "name")
+            (Deployment.generate(annotations, "v1", imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, BlueGreenDeploymentType).toOption.get.payload.hcursor --\ "metadata" --\ "name")
               .focus
               .contains(jString("friendimpl-v3-2-1-snapshot"))
           }
 
           "Rolling" - {
-            (Service.generate(annotations, "v1", clusterIp = None, RollingDeploymentType).get.get.payload.hcursor --\ "metadata" --\ "name")
+            (Deployment.generate(annotations, "v1", imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, RollingDeploymentType).toOption.get.payload.hcursor --\ "metadata" --\ "name")
               .focus
               .contains(jString("friendimpl"))
           }
@@ -84,10 +85,8 @@ object DeploymentJsonTest extends TestSuite {
               |  "kind": "Deployment",
               |  "metadata": {
               |    "labels": {
-              |      "app": "friendimpl",
-              |      "appVersionMajor": "friendimpl-v3",
-              |      "appVersionMajorMinor": "friendimpl-v3.2",
-              |      "appVersion": "friendimpl-v3.2.1-SNAPSHOT"
+              |      "appName": "friendimpl",
+              |      "appNameVersion": "friendimpl-v3.2.1-SNAPSHOT"
               |    },
               |    "name": "friendimpl-v3.2.1-SNAPSHOT",
               |    "namespace": "chirper"
@@ -96,10 +95,8 @@ object DeploymentJsonTest extends TestSuite {
               |    "replicas": 1,
               |    "serviceName": "friendimpl",
               |    "template": {
-              |      "app": "friendimpl",
-              |      "appVersionMajor": "friendimpl-v3",
-              |      "appVersionMajorMinor": "friendimpl-v3.2",
-              |      "appVersion": "friendimpl-v3.2.1-SNAPSHOT"
+              |      "appName": "friendimpl",
+              |      "appNameVersion": "friendimpl-v3.2.1-SNAPSHOT"
               |    },
               |    "spec": {
               |      "containers": [
@@ -125,6 +122,10 @@ object DeploymentJsonTest extends TestSuite {
               |            {
               |              "name": "RP_APP_NAME",
               |              "value": "friendimpl"
+              |            },
+              |            {
+              |              "name": "RP_JAVA_OPTS",
+              |              "value": "-Dconfig.resource=my-config.conf -Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=1"
               |            },
               |            {
               |              "name": "RP_ENDPOINTS",
@@ -312,24 +313,8 @@ object DeploymentJsonTest extends TestSuite {
               |              }
               |            },
               |            {
-              |              "name": "RP_VERSION",
+              |              "name": "RP_APP_VERSION",
               |              "value": "3.2.1-SNAPSHOT"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_MAJOR",
-              |              "value": "3"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_MINOR",
-              |              "value": "2"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_PATCH",
-              |              "value": "1"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_PATCH_LABEL",
-              |              "value": "SNAPSHOT"
               |            },
               |            {
               |              "name": "testing1",
@@ -344,7 +329,7 @@ object DeploymentJsonTest extends TestSuite {
             """.stripMargin.parse.right.get
 
           val result = Deployment.generate(annotations, "apps/v1beta2", imageName,
-            Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, CanaryDeploymentType).get
+            Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, CanaryDeploymentType).toOption.get
 
           // @TODO uncomment this test when we actually have the right format generated
           // @TODO i am proposing keeping them updated for now is counter-productive
@@ -359,10 +344,8 @@ object DeploymentJsonTest extends TestSuite {
               |  "kind": "Deployment",
               |  "metadata": {
               |    "labels": {
-              |      "app": "friendimpl",
-              |      "appVersionMajor": "friendimpl-v3",
-              |      "appVersionMajorMinor": "friendimpl-v3.2",
-              |      "appVersion": "friendimpl-v3.2.1-SNAPSHOT"
+              |      "appName": "friendimpl",
+              |      "appNameVersion": "friendimpl-v3.2.1-SNAPSHOT"
               |    },
               |    "name": "friendimpl-v3.2.1-SNAPSHOT",
               |    "namespace": "chirper"
@@ -371,10 +354,8 @@ object DeploymentJsonTest extends TestSuite {
               |    "replicas": 1,
               |    "serviceName": "friendimpl",
               |    "template": {
-              |      "app": "friendimpl",
-              |      "appVersionMajor": "friendimpl-v3",
-              |      "appVersionMajorMinor": "friendimpl-v3.2",
-              |      "appVersion": "friendimpl-v3.2.1-SNAPSHOT"
+              |      "appName": "friendimpl",
+              |      "appNameVersion": "friendimpl-v3.2.1-SNAPSHOT"
               |    },
               |    "spec": {
               |      "containers": [
@@ -587,24 +568,8 @@ object DeploymentJsonTest extends TestSuite {
               |              }
               |            },
               |            {
-              |              "name": "RP_VERSION",
+              |              "name": "RP_APP_VERSION",
               |              "value": "3.2.1-SNAPSHOT"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_MAJOR",
-              |              "value": "3"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_MINOR",
-              |              "value": "2"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_PATCH",
-              |              "value": "1"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_PATCH_LABEL",
-              |              "value": "SNAPSHOT"
               |            },
               |            {
               |              "name": "testing1",
@@ -633,7 +598,7 @@ object DeploymentJsonTest extends TestSuite {
             readinessCheck = Some(CommandCheck("ls", "-al")),
             healthCheck = Some(TcpCheck(Check.PortNumber(1234), intervalSeconds = 3)))
           val generatedJson = Deployment.generate(input, "apps/v1beta2", imageName,
-            Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, CanaryDeploymentType).get
+            Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, CanaryDeploymentType).toOption.get
 
           // @TODO uncomment this test when we actually have the right format generated
           // @TODO i am proposing keeping them updated for now is counter-productive
@@ -643,7 +608,7 @@ object DeploymentJsonTest extends TestSuite {
         "should fail if application name is not defined" - {
           val invalid = annotations.copy(appName = None)
           assert(Deployment.generate(invalid, "apps/v1beta2", imageName,
-            Deployment.ImagePullPolicy.Never, 1, Map.empty, CanaryDeploymentType).isFailure)
+            Deployment.ImagePullPolicy.Never, 1, Map.empty, CanaryDeploymentType).toOption.isEmpty)
         }
       }
 
@@ -840,23 +805,16 @@ object DeploymentJsonTest extends TestSuite {
 
       "versions" - {
         "all fields" - {
-          val result = RpEnvironmentVariables.versionEnvs(Version(3, 2, 1, Some("SNAPSHOT")))
+          val result = RpEnvironmentVariables.versionEnvs("3.2.1-SNAPSHOT")
           val expectedResult = Map(
-            "RP_VERSION" -> LiteralEnvironmentVariable("3.2.1-SNAPSHOT"),
-            "RP_VERSION_MAJOR" -> LiteralEnvironmentVariable("3"),
-            "RP_VERSION_MINOR" -> LiteralEnvironmentVariable("2"),
-            "RP_VERSION_PATCH" -> LiteralEnvironmentVariable("1"),
-            "RP_VERSION_PATCH_LABEL" -> LiteralEnvironmentVariable("SNAPSHOT"))
+            "RP_APP_VERSION" -> LiteralEnvironmentVariable("3.2.1-SNAPSHOT"))
           assert(result == expectedResult)
         }
 
         "major + minor + patch" - {
-          val result = RpEnvironmentVariables.versionEnvs(Version(3, 2, 1, None))
+          val result = RpEnvironmentVariables.versionEnvs("3.2.1")
           val expectedResult = Map(
-            "RP_VERSION" -> LiteralEnvironmentVariable("3.2.1"),
-            "RP_VERSION_MAJOR" -> LiteralEnvironmentVariable("3"),
-            "RP_VERSION_MINOR" -> LiteralEnvironmentVariable("2"),
-            "RP_VERSION_PATCH" -> LiteralEnvironmentVariable("1"))
+            "RP_APP_VERSION" -> LiteralEnvironmentVariable("3.2.1"))
           assert(result == expectedResult)
         }
       }
@@ -975,6 +933,22 @@ object DeploymentJsonTest extends TestSuite {
 
           assert(result == expectedResult)
         }
+      }
+
+      "mergeEnvs" - {
+        val result =
+          RpEnvironmentVariables.mergeEnvs(
+            Map("PATH" -> LiteralEnvironmentVariable("/bin")),
+            Map("PATH" -> LiteralEnvironmentVariable("/usr/bin")),
+            Map("RP_JAVA_OPTS" -> LiteralEnvironmentVariable("-Dmy.arg=hello")),
+            Map("RP_JAVA_OPTS" -> LiteralEnvironmentVariable("-Dmy.other.arg=hello2"))
+          )
+
+        val expectedResult = Map(
+          "PATH" -> LiteralEnvironmentVariable("/usr/bin"),
+          "RP_JAVA_OPTS" -> LiteralEnvironmentVariable("-Dmy.arg=hello -Dmy.other.arg=hello2"))
+
+        assert(result == expectedResult)
       }
     }
   }

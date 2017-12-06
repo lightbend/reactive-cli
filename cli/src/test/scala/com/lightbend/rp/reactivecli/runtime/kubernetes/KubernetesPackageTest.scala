@@ -16,18 +16,16 @@
 
 package com.lightbend.rp.reactivecli.runtime.kubernetes
 
-import java.io.{ ByteArrayOutputStream, PrintStream }
-import java.nio.file.{ Files, Paths }
-import java.util.UUID
-
 import argonaut._
-import Argonaut._
 import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
 import com.lightbend.rp.reactivecli.docker.Config
+import java.io.{ ByteArrayOutputStream, PrintStream }
+import java.nio.file.{ Files, Paths }
+import java.util.UUID
 import utest._
 
-import scala.util.{ Failure, Success, Try }
+import Argonaut._
 
 object KubernetesPackageTest extends TestSuite {
   val tests = this{
@@ -44,12 +42,8 @@ object KubernetesPackageTest extends TestSuite {
           Config.Cfg(
             Image = Some(imageName),
             Labels = Some(Map(
-              "com.lightbend.rp.namespace" -> "chirper",
               "com.lightbend.rp.app-name" -> "my-app",
-              "com.lightbend.rp.version-major" -> "3",
-              "com.lightbend.rp.version-minor" -> "2",
-              "com.lightbend.rp.version-patch" -> "1",
-              "com.lightbend.rp.version-patch-label" -> "SNAPSHOT",
+              "com.lightbend.rp.app-version" -> "3.2.1-SNAPSHOT",
               "com.lightbend.rp.disk-space" -> "65536",
               "com.lightbend.rp.memory" -> "8192",
               "com.lightbend.rp.nr-of-cpus" -> "0.5",
@@ -88,9 +82,12 @@ object KubernetesPackageTest extends TestSuite {
               "com.lightbend.rp.endpoints.2.port" -> "1234"))))
 
         "generates kubernetes deployment + service resource" - {
-          val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs)
+          val k8sArgs = kubernetesArgs.copy(generateNamespaces = true, namespace = Some("chirper"))
 
-          assert(result.isSuccess)
+          val result: Option[Seq[GeneratedKubernetesResource]] =
+            generateResources(dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs).toOption
+
+          assert(result.nonEmpty)
 
           val generatedResources = result.get
 
@@ -125,20 +122,16 @@ object KubernetesPackageTest extends TestSuite {
               |  "metadata": {
               |    "name": "my-app-v3-2-1-snapshot",
               |    "labels": {
-              |      "app": "my-app",
-              |      "appVersionMajor": "my-app-v3",
-              |      "appVersionMajorMinor": "my-app-v3.2",
-              |      "appVersion": "my-app-v3.2.1-SNAPSHOT"
+              |      "appName": "my-app",
+              |      "appNameVersion": "my-app-v3.2.1-SNAPSHOT"
               |    }
               |  },
               |  "spec": {
               |    "replicas": 1,
               |    "serviceName": "my-app",
               |    "template": {
-              |      "app": "my-app",
-              |      "appVersionMajor": "my-app-v3",
-              |      "appVersionMajorMinor": "my-app-v3.2",
-              |      "appVersion": "my-app-v3.2.1-SNAPSHOT"
+              |      "appName": "my-app",
+              |      "appNameVersion": "my-app-v3.2.1-SNAPSHOT"
               |    },
               |    "spec": {
               |      "containers": [
@@ -320,24 +313,8 @@ object KubernetesPackageTest extends TestSuite {
               |              "value": "kubernetes"
               |            },
               |            {
-              |              "name": "RP_VERSION",
+              |              "name": "RP_APP_VERSION",
               |              "value": "3.2.1-SNAPSHOT"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_MAJOR",
-              |              "value": "3"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_MINOR",
-              |              "value": "2"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_PATCH",
-              |              "value": "1"
-              |            },
-              |            {
-              |              "name": "RP_VERSION_PATCH_LABEL",
-              |              "value": "SNAPSHOT"
               |            },
               |            {
               |              "name": "testing1",
@@ -394,7 +371,7 @@ object KubernetesPackageTest extends TestSuite {
               |  "kind": "Service",
               |  "metadata": {
               |    "labels": {
-              |      "app": "my-app"
+              |      "appName": "my-app"
               |    },
               |    "name": "my-app",
               |    "namespace": "chirper"
@@ -422,7 +399,7 @@ object KubernetesPackageTest extends TestSuite {
               |      }
               |    ],
               |    "selector": {
-              |      "app": "my-app"
+              |      "appName": "my-app"
               |    }
               |  }
               |}
@@ -459,33 +436,54 @@ object KubernetesPackageTest extends TestSuite {
         }
 
         "honor generate flags" - {
+          "generateNamespaces" - {
+            val k8sArgs = kubernetesArgs.copy(generateNamespaces = true, namespace = Some("test"))
+            val result = generateResources(dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs).toOption.get
+
+            assert(result.length == 4)
+            assert(result.head.resourceType == "namespace")
+          }
+
           "generateIngress" - {
-            val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs.copy(generateIngress = true)).get
+            val k8sArgs = kubernetesArgs.copy(generateIngress = true)
+            val result = generateResources(dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs).toOption.get
 
             assert(result.length == 1)
             assert(result.head.resourceType == "ingress")
           }
 
-          "generateNamespaces" - {
-            val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs.copy(generateNamespaces = true)).get
-
-            assert(result.length == 1)
-            assert(result.head.resourceType == "namespace")
-          }
-
           "generatePodControllers" - {
-            val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs.copy(generatePodControllers = true)).get
+            val k8sArgs = kubernetesArgs.copy(generatePodControllers = true)
+            val result = generateResources(dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs).toOption.get
 
             assert(result.length == 1)
             assert(result.head.resourceType == "deployment")
           }
 
           "generatePodControllers" - {
-            val result = generateResources(dockerConfig, generateDeploymentArgs, kubernetesArgs.copy(generateServices = true)).get
+            val k8sArgs = kubernetesArgs.copy(generateServices = true)
+            val result = generateResources(dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs).toOption.get
 
             assert(result.length == 1)
             assert(result.head.resourceType == "service")
           }
+        }
+
+        "Validate Akka Clustering" - {
+          val result = generateResources(
+            dockerConfig.copy(config = dockerConfig.config.copy(Labels = dockerConfig.config.Labels.map(_ ++ Vector(
+              "com.lightbend.rp.modules.akka-cluster-bootstrapping.enabled" -> "true"
+            )))),
+            generateDeploymentArgs,
+            kubernetesArgs.copy(generateIngress = true))
+
+          val failed = result.swap.toOption.get
+
+          val message = failed.head
+
+          val expected = "Akka Cluster Bootstrapping is enabled so you must specify `--pod-controller-replicas 2` (or greater)"
+
+          assert(message == expected)
         }
       }
     }

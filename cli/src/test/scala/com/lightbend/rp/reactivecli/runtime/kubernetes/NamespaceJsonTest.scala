@@ -26,10 +26,11 @@ object NamespaceJsonTest extends TestSuite {
 
   val tests = this{
     "json serialization" - {
-      val annotations = new Annotations(
+      val annotations = Annotations(
         namespace = None,
         appName = None,
         appType = None,
+        configResource = None,
         diskSpace = None,
         memory = None,
         nrOfCpus = None,
@@ -61,14 +62,14 @@ object NamespaceJsonTest extends TestSuite {
             |  }
             |}
           """.stripMargin.parse.right.get
-        assert(result.get.get == Namespace("chirper", expectedJson))
+        assert(result.toOption.get.get == Namespace("chirper", expectedJson))
       }
 
       "namespace not present" - {
         val result = Namespace.generate(annotations.copy(namespace = None), "v1")
 
         assert(result.isSuccess)
-        assert(result.get.isEmpty)
+        assert(result.toOption.get.isEmpty)
       }
     }
   }

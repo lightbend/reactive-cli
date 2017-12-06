@@ -19,13 +19,12 @@ package docker
 
 import argonaut._
 import libhttpsimple._
-
 import scala.util.{ Failure, Success, Try }
 import scalaz._
 import slogging._
-import Argonaut._
 import libhttpsimple.LibHttpSimple.HttpExchange
 
+import Argonaut._
 import Scalaz._
 
 object DockerRegistry extends LazyLogging {
@@ -106,12 +105,12 @@ object DockerRegistry extends LazyLogging {
   private def getWithToken(http: HttpExchange, credentials: Option[HttpRequest.BasicAuth], validateTls: Boolean)(url: String, headers: HttpHeaders, tryNewToken: Boolean = true, token: Option[HttpRequest.BearerToken] = None): Try[(HttpResponse, Option[HttpRequest.BearerToken])] = {
     val request =
       HttpRequest(url)
-        .headers(token.fold(headers)(t => headers.updated("Authorization", s"Bearer $t")))
+        .headers(token.fold(headers)(t => headers.updated("Authorization", s"Bearer ${t.value}")))
         .copy(tlsValidationEnabled = Some(validateTls))
 
     http.apply(request).flatMap {
       case response if response.statusCode == 401 && response.headers.contains("Www-Authenticate") && tryNewToken =>
-        logger.debug("Received 401, attempting to get a token and try again")
+        logger.debug("Received 401 from Registry, attempting to get a token and try again")
 
         val authenticateHeader = response.headers("Www-Authenticate")
 

@@ -16,11 +16,13 @@
 
 package com.lightbend.rp.reactivecli.runtime.kubernetes
 
-import argonaut.Argonaut._
 import argonaut._
 import com.lightbend.rp.reactivecli.annotations._
 import scala.collection.immutable.Seq
-import scala.util.{ Failure, Success, Try }
+import scalaz._
+
+import Argonaut._
+import Scalaz._
 
 object Ingress {
   def encodeEndpoints(appName: String, endpoints: Map[String, Endpoint], pathAppend: Option[String]): List[Json] = {
@@ -67,29 +69,27 @@ object Ingress {
   /**
    * Generates the [[Ingress]] resources.
    */
-  def generate(annotations: Annotations, apiVersion: String, ingressAnnotations: Map[String, String], pathAppend: Option[String]): Try[Option[Ingress]] =
-    annotations.appName match {
-      case Some(rawAppName) =>
+  def generate(annotations: Annotations, apiVersion: String, ingressAnnotations: Map[String, String], pathAppend: Option[String]): ValidationNel[String, Option[Ingress]] =
+    annotations
+      .appNameValidation
+      .map { rawAppName =>
         val appName = serviceName(rawAppName)
         val encodedEndpoints = encodeEndpoints(appName, annotations.endpoints, pathAppend)
 
         if (encodedEndpoints.isEmpty)
-          Success(None)
+          None
         else
-          Success(
-            Some(
-              Ingress(appName, Json(
-                "apiVersion" -> apiVersion.asJson,
-                "kind" -> "Ingress".asJson,
-                "metadata" -> Json(
-                  "name" -> appName.asJson)
-                  .deepmerge(generateIngressAnnotations(ingressAnnotations))
-                  .deepmerge(generateNamespaceAnnotation(annotations.namespace)),
-                "spec" -> Json(
-                  "rules" -> encodedEndpoints.asJson)))))
-      case _ =>
-        Failure(new IllegalArgumentException("Unable to generate Kubernetes ingress resource: application name is required"))
-    }
+          Some(
+            Ingress(appName, Json(
+              "apiVersion" -> apiVersion.asJson,
+              "kind" -> "Ingress".asJson,
+              "metadata" -> Json(
+                "name" -> appName.asJson)
+                .deepmerge(generateIngressAnnotations(ingressAnnotations))
+                .deepmerge(generateNamespaceAnnotation(annotations.namespace)),
+              "spec" -> Json(
+                "rules" -> encodedEndpoints.asJson))))
+      }
 
   private def generateIngressAnnotations(ingressAnnotations: Map[String, String]): Json =
     if (ingressAnnotations.isEmpty)

@@ -17,17 +17,25 @@
 package com.lightbend.rp.reactivecli.runtime.kubernetes
 
 import argonaut._
-import Argonaut._
 import com.lightbend.rp.reactivecli.annotations.kubernetes.{ ConfigMapEnvironmentVariable, FieldRefEnvironmentVariable, SecretKeyRefEnvironmentVariable }
 import com.lightbend.rp.reactivecli.annotations._
 import com.lightbend.rp.reactivecli.argparse._
-
 import scala.collection.immutable.Seq
 import scala.util.{ Failure, Success, Try }
+import scalaz._
+
+import Argonaut._
+import Scalaz._
 
 object Deployment {
 
   object RpEnvironmentVariables {
+    /**
+     * Environment variables in this set will be space-concatenated when the various environment variable
+     * maps are merged.
+     */
+    private val ConcatLiteralEnvs = Set("RP_JAVA_OPTS")
+
     /**
      * Creates pod related environment variables using the Kubernetes Downward API:
      *
@@ -41,15 +49,18 @@ object Deployment {
     /**
      * Generates pod environment variables specific for RP applications.
      */
-    def envs(annotations: Annotations, externalServices: Map[String, Seq[String]]): Map[String, EnvironmentVariable] =
-      PodEnvs ++
-        namespaceEnv(annotations.namespace) ++
-        appNameEnvs(annotations.appName) ++
-        annotations.version.fold(Map.empty[String, EnvironmentVariable])(versionEnvs) ++
-        appTypeEnvs(annotations.appType, annotations.modules) ++
-        endpointEnvs(annotations.endpoints) ++
-        secretEnvs(annotations.secrets) ++
-        externalServicesEnvs(annotations.modules, externalServices)
+    def envs(annotations: Annotations, serviceResourceName: String, noOfReplicas: Int, externalServices: Map[String, Seq[String]]): Map[String, EnvironmentVariable] =
+      mergeEnvs(
+        PodEnvs,
+        namespaceEnv(annotations.namespace),
+        appNameEnvs(annotations.appName),
+        annotations.version.fold(Map.empty[String, EnvironmentVariable])(versionEnvs),
+        appTypeEnvs(annotations.appType, annotations.modules),
+        configEnvs(annotations.configResource),
+        endpointEnvs(annotations.endpoints),
+        secretEnvs(annotations.secrets),
+        akkaClusterEnvs(annotations.modules, serviceResourceName, noOfReplicas),
+        externalServicesEnvs(annotations.modules, externalServices))
 
     private[kubernetes] def namespaceEnv(namespace: Option[String]): Map[String, EnvironmentVariable] =
       namespace.fold(Map.empty[String, EnvironmentVariable])(v => Map("RP_NAMESPACE" -> LiteralEnvironmentVariable(v)))
@@ -63,6 +74,19 @@ object Deployment {
         .map("RP_APP_TYPE" -> LiteralEnvironmentVariable(_)) ++ (
           if (modules.isEmpty) Seq.empty else Seq("RP_MODULES" -> LiteralEnvironmentVariable(modules.toVector.sorted.mkString(","))))
     }.toMap
+
+    private[kubernetes] def akkaClusterEnvs(modules: Set[String], serviceResourceName: String, noOfReplicas: Int): Map[String, EnvironmentVariable] =
+      if (!modules.contains(Module.AkkaClusterBootstrapping))
+        Map.empty
+      else
+        Map(
+          "RP_JAVA_OPTS" -> LiteralEnvironmentVariable(
+            s"-Dakka.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName -Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas"))
+
+    private[kubernetes] def configEnvs(config: Option[String]): Map[String, EnvironmentVariable] =
+      config
+        .map(c => Map("RP_JAVA_OPTS" -> LiteralEnvironmentVariable(s"-Dconfig.resource=$c")))
+        .getOrElse(Map.empty)
 
     private[kubernetes] def externalServicesEnvs(modules: Set[String], externalServices: Map[String, Seq[String]]): Map[String, EnvironmentVariable] =
       if (!modules.contains(Module.ServiceDiscovery))
@@ -85,16 +109,9 @@ object Deployment {
               }
               .mkString(" ")))
 
-    private[kubernetes] def versionEnvs(version: Version): Map[String, EnvironmentVariable] = {
+    private[kubernetes] def versionEnvs(version: String): Map[String, EnvironmentVariable] =
       Map(
-        "RP_VERSION" -> LiteralEnvironmentVariable(version.version),
-        "RP_VERSION_MAJOR" -> LiteralEnvironmentVariable(version.major.toString),
-        "RP_VERSION_MINOR" -> LiteralEnvironmentVariable(version.minor.toString),
-        "RP_VERSION_PATCH" -> LiteralEnvironmentVariable(version.patch.toString)) ++
-        version.patchLabel.fold(Map.empty[String, LiteralEnvironmentVariable]) { v =>
-          Map("RP_VERSION_PATCH_LABEL" -> LiteralEnvironmentVariable(v))
-        }
-    }
+        "RP_APP_VERSION" -> LiteralEnvironmentVariable(version))
 
     private[kubernetes] def endpointEnvs(endpoints: Map[String, Endpoint]): Map[String, EnvironmentVariable] =
       if (endpoints.isEmpty)
@@ -126,6 +143,22 @@ object Deployment {
             s"RP_ENDPOINT_${assigned.endpoint.index}_BIND_PORT" -> assignedPortEnv)
         }
         .toMap
+
+    private[kubernetes] def mergeEnvs(envs: Map[String, EnvironmentVariable]*): Map[String, EnvironmentVariable] = {
+      envs.foldLeft(Map.empty[String, EnvironmentVariable]) {
+        case (a1, n) =>
+          n.foldLeft(a1) {
+            case (a2, (key, LiteralEnvironmentVariable(v))) if ConcatLiteralEnvs.contains(key) =>
+              a2.updated(key, a2.get(key) match {
+                case Some(LiteralEnvironmentVariable(ov)) => LiteralEnvironmentVariable(s"$ov $v".trim)
+                case _ => LiteralEnvironmentVariable(v)
+              })
+
+            case (a2, (key, value)) =>
+              a2.updated(key, value)
+          }
+      }
+    }
 
     private[kubernetes] def secretEnvs(secrets: Seq[Secret]): Map[String, EnvironmentVariable] =
       secrets
@@ -273,62 +306,52 @@ object Deployment {
     imagePullPolicy: ImagePullPolicy.Value,
     noOfReplicas: Int,
     externalServices: Map[String, Seq[String]],
-    deploymentType: DeploymentType): Try[Deployment] =
-    (annotations.appName, annotations.version) match {
-      case (Some(rawAppName), Some(version)) =>
-        // FIXME there's a bit of code duplicate in Service
-        val appName = serviceName(rawAppName)
-        val appVersionMajor = serviceName(s"$appName$VersionSeparator${version.major}")
-        val appVersionMajorMinor = serviceName(s"$appName$VersionSeparator${version.versionMajorMinor}")
-        val appVersion = serviceName(s"$appName$VersionSeparator${version.version}")
+    deploymentType: DeploymentType): ValidationNel[String, Deployment] =
 
-        val (deploymentName, deploymentLabels, deploymentMatchLabels) =
-            deploymentType match {
-              case CanaryDeploymentType | BlueGreenDeploymentType =>
-                (
-                  appVersion,
-                  Json(
-                    "app" -> appName.asJson,
-                    "appVersionMajor" -> appVersionMajor.asJson,
-                    "appVersionMajorMinor" -> appVersionMajorMinor.asJson,
-                    "appVersion" -> appVersion.asJson),
-                  Json("appVersionMajorMinor" -> appVersionMajorMinor.asJson))
+    (annotations.appNameValidation |@| annotations.versionValidation) { (rawAppName, version) =>
+      val appName = serviceName(rawAppName)
+      val appNameVersion = serviceName(s"$appName$VersionSeparator$version")
 
-              case RollingDeploymentType   =>
-                (
-                  appName,
-                  Json("app" -> appName.asJson),
-                  Json("app" -> appName.asJson))
-            }
+      val deploymentLabels =
+        Json("appName" -> appName.asJson, "appNameVersion" -> appNameVersion.asJson)
 
-        Success(
-          Deployment(
-            deploymentName,
-            Json(
-              "apiVersion" -> apiVersion.asJson,
-              "kind" -> "Deployment".asJson,
-              "metadata" -> Json(
-                "name" -> deploymentName.asJson,
-                "labels" -> deploymentLabels)
-                .deepmerge(
-                  annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
-              "spec" -> Json(
-                "replicas" -> noOfReplicas.asJson,
-                "selector" -> Json("matchLabels" -> deploymentMatchLabels),
-                "template" -> Json(
-                  "metadata" -> Json("labels" -> deploymentLabels),
-                  "spec" -> Json(
-                    "containers" -> List(
-                      Json(
-                        "name" -> appName.asJson,
-                        "image" -> imageName.asJson,
-                        "imagePullPolicy" -> imagePullPolicy.asJson,
-                        "env" -> (annotations.environmentVariables ++ RpEnvironmentVariables.envs(annotations, externalServices)).asJson,
-                        "ports" -> annotations.endpoints.asJson)
-                        .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
-                        .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson))))))
-      case _ =>
-        Failure(new IllegalArgumentException("Unable to generate Kubernetes Deployment: both application name and version are required"))
+      val (deploymentName, deploymentMatchLabels, serviceResourceName) =
+          deploymentType match {
+            case CanaryDeploymentType =>
+              (appNameVersion, Json("appNameVersion" -> appNameVersion.asJson), appName)
+
+            case BlueGreenDeploymentType =>
+              (appNameVersion, Json("appNameVersion" -> appNameVersion.asJson), appNameVersion)
+
+            case RollingDeploymentType   =>
+              (appName, Json("appName" -> appName.asJson), appName)
+          }
+
+        Deployment(
+          deploymentName,
+          Json(
+            "apiVersion" -> apiVersion.asJson,
+            "kind" -> "Deployment".asJson,
+            "metadata" -> Json(
+              "name" -> deploymentName.asJson,
+              "labels" -> deploymentLabels)
+              .deepmerge(
+                annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
+            "spec" -> Json(
+              "replicas" -> noOfReplicas.asJson,
+              "selector" -> Json("matchLabels" -> deploymentMatchLabels),
+              "template" -> Json(
+                "metadata" -> Json("labels" -> deploymentLabels),
+                "spec" -> Json(
+                  "containers" -> List(
+                    Json(
+                      "name" -> appName.asJson,
+                      "image" -> imageName.asJson,
+                      "imagePullPolicy" -> imagePullPolicy.asJson,
+                      "env" -> (RpEnvironmentVariables.mergeEnvs(annotations.environmentVariables ++ RpEnvironmentVariables.envs(annotations, serviceResourceName, noOfReplicas, externalServices))).asJson,
+                      "ports" -> annotations.endpoints.asJson)
+                      .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
+                      .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson)))))
     }
 }
 

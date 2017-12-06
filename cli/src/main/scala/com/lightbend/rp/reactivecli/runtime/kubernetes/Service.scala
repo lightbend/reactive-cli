@@ -17,10 +17,12 @@
 package com.lightbend.rp.reactivecli.runtime.kubernetes
 
 import argonaut._
-import Argonaut._
 import com.lightbend.rp.reactivecli.annotations._
 import com.lightbend.rp.reactivecli.argparse._
-import scala.util.{ Failure, Success, Try }
+import scalaz._
+
+import Argonaut._
+import Scalaz._
 
 object Service {
   def encodeEndpoint(endpoint: Endpoint, port: AssignedPort): Json = {
@@ -41,7 +43,7 @@ object Service {
     val ports = AssignedPort.assignPorts(endpoints)
     val encoded =
       for {
-        (name, endpoint) <- endpoints
+        (_, endpoint) <- endpoints
         port <- ports.find(_.endpoint == endpoint)
       } yield encodeEndpoint(endpoint, port)
 
@@ -54,44 +56,39 @@ object Service {
   def generate(annotations: Annotations,
                apiVersion: String,
                clusterIp: Option[String],
-               deploymentType: DeploymentType): Try[Option[Service]] =
-    if (annotations.endpoints.isEmpty)
-      Success(None)
-    else
-      (annotations.appName, annotations.version) match {
-        case (Some(rawAppName), Some(version)) =>
-          // FIXME there's a bit of code duplicate in Deployment
-          val appName = serviceName(rawAppName)
-          val appVersion = serviceName(s"$appName${Deployment.VersionSeparator}${version.version}")
+               deploymentType: DeploymentType): ValidationNel[String, Option[Service]] =
+    (annotations.appNameValidation |@| annotations.versionValidation) { (rawAppName, version) =>
+      // FIXME there's a bit of code duplicate in Deployment
+      val appName = serviceName(rawAppName)
+      val appNameVersion = serviceName(s"$appName${Deployment.VersionSeparator}$version")
 
-          val selector =
-            deploymentType match {
-              case CanaryDeploymentType    => "app" -> appName.asJson
-              case RollingDeploymentType   => "app" -> appName.asJson
-              case BlueGreenDeploymentType => "appVersion" -> appVersion.asJson
-            }
+      val selector =
+        deploymentType match {
+          case CanaryDeploymentType    => Json("appName" -> appName.asJson)
+          case RollingDeploymentType   => Json("appName" -> appName.asJson)
+          case BlueGreenDeploymentType => Json("appNameVersion" -> appNameVersion.asJson)
+        }
 
-          Success(
-            Some(
-              Service(
-                appName,
-                Json(
-                  "apiVersion" -> apiVersion.asJson,
-                  "kind" -> "Service".asJson,
-                  "metadata" -> Json(
-                    "labels" -> Json(
-                      "app" -> appName.asJson),
-                    "name" -> appName.asJson)
-                    .deepmerge(
-                      annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
-                  "spec" -> Json(
-                    "clusterIP" -> clusterIp.getOrElse("None").asJson,
-                    "ports" -> annotations.endpoints.asJson,
-                    "selector" -> Json(selector))))))
-        case _ =>
-          Failure(new IllegalArgumentException("Unable to generate Service resource: application name is required"))
-      }
-
+      if (annotations.endpoints.isEmpty)
+        None
+      else
+        Some(
+          Service(
+            appName,
+            Json(
+              "apiVersion" -> apiVersion.asJson,
+              "kind" -> "Service".asJson,
+              "metadata" -> Json(
+                "labels" -> Json(
+                  "appName" -> appName.asJson),
+                "name" -> appName.asJson)
+                .deepmerge(
+                  annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
+              "spec" -> Json(
+                "clusterIP" -> clusterIp.getOrElse("None").asJson,
+                "ports" -> annotations.endpoints.asJson,
+                "selector" -> selector))))
+    }
 }
 
 /**

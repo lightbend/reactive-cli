@@ -17,28 +17,31 @@
 package com.lightbend.rp.reactivecli.runtime.kubernetes
 
 import argonaut._
-import Argonaut._
 import com.lightbend.rp.reactivecli.annotations.Annotations
-import scala.util.{ Success, Try }
+import scalaz._
+
+import Argonaut._
+import Scalaz._
 
 object Namespace {
   /**
    * Builds [[Namespace]] resource.
    */
-  def generate(annotations: Annotations, apiVersion: String): Try[Option[Namespace]] =
-    Success(
-      annotations.namespace.map { rawNs =>
-        val ns = serviceName(rawNs)
+  def generate(annotations: Annotations, apiVersion: String): ValidationNel[String, Option[Namespace]] =
+      annotations
+        .namespace
+        .map { rawNs =>
+          val ns = serviceName(rawNs)
 
-        Namespace(ns, Json(
-          "apiVersion" -> apiVersion.asJson,
-          "kind" -> "Namespace".asJson,
-          "metadata" -> Json(
-            "name" -> ns.asJson,
-            "labels" -> Json(
-              "name" -> ns.asJson))))
-      })
-
+          Namespace(ns, Json(
+            "apiVersion" -> apiVersion.asJson,
+            "kind" -> "Namespace".asJson,
+            "metadata" -> Json(
+              "name" -> ns.asJson,
+              "labels" -> Json(
+                "name" -> ns.asJson))))
+        }
+        .successNel
 }
 
 case class Namespace(name: String, payload: Json) extends GeneratedKubernetesResource {

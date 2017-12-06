@@ -12,12 +12,11 @@ struct http_response {
   has_error: error code which indicates internal error within the httpsimple.
   IMPORTANT: This error code has nothing to do with HTTP response.
   - `0`: all ok, no error.
-  - `1`: failure to `malloc` when initializing `raw_response`.
-  - `2`: failure to `realloc` when writing HTTP response body into to `raw_response`.
-  - `77`: failure to invoke `curl_easy_perform`.
+  - `-1`: failure to `malloc` when initializing `raw_response`.
+  - `-2`: failure to `realloc` when writing HTTP response body into to `raw_response`.
+  - other: error code from curl
   */
   long has_error;
-  char *error_message;
   long http_status;
   char *raw_response;
   size_t len;
