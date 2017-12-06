@@ -81,7 +81,7 @@ object Deployment {
       else
         Map(
           "RP_JAVA_OPTS" -> LiteralEnvironmentVariable(
-            s"-Dakka.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName -Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas"))
+            s"-Dakka.cluster.bootstrap.contact-point-discovery.discovery-method=akka.discovery.reactive-lib-kubernetes -Dakka.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName -Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas"))
 
     private[kubernetes] def configEnvs(config: Option[String]): Map[String, EnvironmentVariable] =
       config

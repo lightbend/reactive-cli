@@ -125,7 +125,7 @@ object DeploymentJsonTest extends TestSuite {
               |            },
               |            {
               |              "name": "RP_JAVA_OPTS",
-              |              "value": "-Dconfig.resource=my-config.conf -Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=1"
+              |              "value": "-Dakka.cluster.bootstrap.contact-point-discovery.discovery-method=akka.discovery.reactive-lib-kubernetes -Dconfig.resource=my-config.conf -Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=1"
               |            },
               |            {
               |              "name": "RP_ENDPOINTS",
