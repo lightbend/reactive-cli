@@ -306,7 +306,8 @@ object Deployment {
     imagePullPolicy: ImagePullPolicy.Value,
     noOfReplicas: Int,
     externalServices: Map[String, Seq[String]],
-    deploymentType: DeploymentType): ValidationNel[String, Deployment] =
+    deploymentType: DeploymentType,
+    jqExpression: Option[String]): ValidationNel[String, Deployment] =
 
     (annotations.appNameValidation |@| annotations.versionValidation) { (rawAppName, version) =>
       val appName = serviceName(rawAppName)
@@ -351,13 +352,14 @@ object Deployment {
                       "env" -> (RpEnvironmentVariables.mergeEnvs(annotations.environmentVariables ++ RpEnvironmentVariables.envs(annotations, serviceResourceName, noOfReplicas, externalServices))).asJson,
                       "ports" -> annotations.endpoints.asJson)
                       .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
-                      .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson)))))
+                      .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson)))),
+          jqExpression)
     }
 }
 
 /**
  * Represents the generated Kubernetes deployment resource.
  */
-case class Deployment(name: String, payload: Json) extends GeneratedKubernetesResource {
+case class Deployment(name: String, json: Json, jqExpression: Option[String]) extends GeneratedKubernetesResource {
   val resourceType = "deployment"
 }

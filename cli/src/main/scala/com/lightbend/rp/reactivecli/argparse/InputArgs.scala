@@ -218,7 +218,23 @@ object InputArgs {
 
           opt[String]("service-cluster-ip")
             .text("Sets the cluster IP for Service resources")
-            .action(ServiceArgs.set((v, args) => args.copy(clusterIp = Some(v))))
+            .action(ServiceArgs.set((v, args) => args.copy(clusterIp = Some(v)))),
+
+          opt[String]("transform-ingress")
+            .text("A jq expression that will be applied to Ingress resources. jq must be installed")
+            .action(KubernetesArgs.set((v, args) => args.copy(transformIngress = Some(v)))),
+
+          opt[String]("transform-namespaces")
+            .text("A jq expression that will be applied to Namespace resources. jq must be installed")
+            .action(KubernetesArgs.set((v, args) => args.copy(transformNamespaces = Some(v)))),
+
+          opt[String]("transform-pod-controllers")
+            .text("A jq expression that will be applied to Pod Controller resources. jq must be installed")
+            .action(KubernetesArgs.set((v, args) => args.copy(transformPodControllers = Some(v)))),
+
+          opt[String]("transform-services")
+            .text("A jq expression that will be applied to Service resources. jq must be installed")
+            .action(KubernetesArgs.set((v, args) => args.copy(transformServices = Some(v))))
 
       )
 

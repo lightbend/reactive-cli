@@ -96,7 +96,7 @@ object Annotations {
 
   private[annotations] def namespace(args: GenerateDeploymentArgs): Option[String] =
     args.targetRuntimeArgs.collect {
-      case KubernetesArgs(_, _, _, _, Some(namespace), _, _, _, _) => namespace
+      case KubernetesArgs(_, _, _, _, _, _, _, _, Some(namespace), _, _, _, _) => namespace
   }
 
   private[annotations] def appName(labels: Map[String, String]): Option[String] =

@@ -59,7 +59,8 @@ object IngressJsonTest extends TestSuite {
           annotations,
           "extensions/v1beta1",
           ingressAnnotations = Map.empty,
-          pathAppend = Option.empty).toOption.get
+          pathAppend = Option.empty,
+          None).toOption.get
         val expectedJson =
           """
             |{
@@ -144,7 +145,7 @@ object IngressJsonTest extends TestSuite {
             |}
           """.stripMargin.parse.right.get
 
-        assert(generatedJson.contains(Ingress("friendservice", expectedJson)))
+        assert(generatedJson.contains(Ingress("friendservice", expectedJson, None)))
       }
 
       "with ingress specific input" - {
@@ -152,7 +153,8 @@ object IngressJsonTest extends TestSuite {
           annotations,
           "extensions/v1beta1",
           ingressAnnotations = Map("kubernetes.io/ingress.class" -> "istio"),
-          pathAppend = Some(".*")).toOption.get
+          pathAppend = Some(".*"),
+          None).toOption.get
 
         val expectedJson =
           """
@@ -241,13 +243,18 @@ object IngressJsonTest extends TestSuite {
             |}
           """.stripMargin.parse.right.get
 
-        assert(generatedJson.contains(Ingress("friendservice", expectedJson)))
+        assert(generatedJson.contains(Ingress("friendservice", expectedJson, None)))
       }
 
       "should fail if application name is not defined" - {
-        assert(Ingress.generate(annotations.copy(appName = None), "extensions/v1beta1", Map.empty, Option.empty).toOption.isEmpty)
+        assert(Ingress.generate(annotations.copy(appName = None), "extensions/v1beta1", Map.empty, Option.empty, None).toOption.isEmpty)
       }
 
+      "jq" - {
+        (Ingress.generate(annotations.copy(appName = Some("test")), "extensions/v1beta1", Map.empty, Option.empty, Some(".jqTest = \"test\"")).toOption.get.get.payload.hcursor --\ "jqTest")
+          .focus
+          .contains(jString("test"))
+      }
     }
 
   }

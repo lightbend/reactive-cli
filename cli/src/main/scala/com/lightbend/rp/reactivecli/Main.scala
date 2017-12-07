@@ -57,6 +57,7 @@ object Main extends LazyLogging {
           .collect {
             case VersionArgs =>
               System.out.println(s"rp (Reactive CLI) ${ProgramVersion.current}")
+              System.out.println(s"jq support: ${if (jq.jq.available) "Available" else "Unavailable"}")
 
             case generateDeploymentArgs @ GenerateDeploymentArgs(_, _, _, _, _, _, Some(kubernetesArgs: KubernetesArgs), _, _, _, _, _) =>
               implicit val httpSettings: LibHttpSimple.Settings =

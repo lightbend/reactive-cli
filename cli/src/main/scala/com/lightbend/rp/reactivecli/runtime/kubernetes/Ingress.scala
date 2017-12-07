@@ -69,7 +69,12 @@ object Ingress {
   /**
    * Generates the [[Ingress]] resources.
    */
-  def generate(annotations: Annotations, apiVersion: String, ingressAnnotations: Map[String, String], pathAppend: Option[String]): ValidationNel[String, Option[Ingress]] =
+  def generate(
+    annotations: Annotations,
+    apiVersion: String,
+    ingressAnnotations: Map[String, String],
+    pathAppend: Option[String],
+    jqExpression: Option[String]): ValidationNel[String, Option[Ingress]] =
     annotations
       .appNameValidation
       .map { rawAppName =>
@@ -80,15 +85,18 @@ object Ingress {
           None
         else
           Some(
-            Ingress(appName, Json(
-              "apiVersion" -> apiVersion.asJson,
-              "kind" -> "Ingress".asJson,
-              "metadata" -> Json(
-                "name" -> appName.asJson)
-                .deepmerge(generateIngressAnnotations(ingressAnnotations))
-                .deepmerge(generateNamespaceAnnotation(annotations.namespace)),
-              "spec" -> Json(
-                "rules" -> encodedEndpoints.asJson))))
+            Ingress(
+              appName,
+              Json(
+                "apiVersion" -> apiVersion.asJson,
+                "kind" -> "Ingress".asJson,
+                "metadata" -> Json(
+                  "name" -> appName.asJson)
+                  .deepmerge(generateIngressAnnotations(ingressAnnotations))
+                  .deepmerge(generateNamespaceAnnotation(annotations.namespace)),
+                "spec" -> Json(
+                  "rules" -> encodedEndpoints.asJson)),
+              jqExpression))
       }
 
   private def generateIngressAnnotations(ingressAnnotations: Map[String, String]): Json =
@@ -110,6 +118,6 @@ object Ingress {
 /**
  * Represents the generated ingress resource.
  */
-case class Ingress(name: String, payload: Json) extends GeneratedKubernetesResource {
+case class Ingress(name: String, json: Json, jqExpression: Option[String]) extends GeneratedKubernetesResource {
   val resourceType = "ingress"
 }

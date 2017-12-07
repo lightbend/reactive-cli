@@ -491,8 +491,8 @@ object KubernetesPackageTest extends TestSuite {
     "handleGeneratedResources" - {
       "saves generated resources into filesystem" - {
         val generatedResources = Seq(
-          Deployment("dep1", Json("key1" -> "value1".asJson)),
-          Service("svc1", Json("key2" -> "value2".asJson)))
+          Deployment("dep1", Json("key1" -> "value1".asJson), None),
+          Service("svc1", Json("key2" -> "value2".asJson), None))
 
         val tmpDir = Paths.get(sys.props("java.io.tmpdir"))
         val testDir = tmpDir.resolve(UUID.randomUUID().toString)
@@ -524,8 +524,8 @@ object KubernetesPackageTest extends TestSuite {
 
       "print generated resources as kubectl format into outputstream" - {
         val generatedResources = Seq(
-          Deployment("deployment1", Json("key1" -> "value1".asJson)),
-          Service("service1", Json("key2" -> "value2".asJson)))
+          Deployment("deployment1", Json("key1" -> "value1".asJson), None),
+          Service("service1", Json("key2" -> "value2".asJson), None))
 
         val output = new ByteArrayOutputStream()
         val printStream = new PrintStream(output)

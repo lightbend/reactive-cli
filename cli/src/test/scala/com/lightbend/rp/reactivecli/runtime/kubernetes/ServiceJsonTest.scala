@@ -50,34 +50,40 @@ object ServiceJsonTest extends TestSuite {
   val tests = this{
     "json serialization" - {
       "empty" - {
-        val result = Service.generate(annotations.copy(endpoints = Map.empty), "v1", clusterIp = None, CanaryDeploymentType).toOption.get.isEmpty
+        val result = Service.generate(annotations.copy(endpoints = Map.empty), "v1", clusterIp = None, CanaryDeploymentType, None).toOption.get.isEmpty
 
         assert(result)
       }
 
       "deploymentType" - {
         "Canary" - {
-          (Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType).toOption.get.get.payload.hcursor --\ "spec" --\ "selector")
+          (Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, None).toOption.get.get.payload.hcursor --\ "spec" --\ "selector")
             .focus
             .contains(jString("friendimpl"))
         }
 
         "BlueGreen" - {
-          (Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType).toOption.get.get.payload.hcursor --\ "spec" --\ "selector")
+          (Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, None).toOption.get.get.payload.hcursor --\ "spec" --\ "selector")
             .focus
             .contains(jString("friendimpl-v3-2-1-snapshot"))
         }
 
         "Rolling" - {
-          (Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType).toOption.get.get.payload.hcursor --\ "spec" --\ "selector")
+          (Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, None).toOption.get.get.payload.hcursor --\ "spec" --\ "selector")
             .focus
             .contains(jString("friendimpl"))
         }
       }
 
+      "jq" - {
+        (Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, Some(".jqTest = \"test\"")).toOption.get.get.payload.hcursor --\ "jqTest")
+          .focus
+          .contains(jString("test"))
+      }
+
       "clusterIp" - {
         "not defined" - {
-          val generatedJson = Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType).toOption.get
+          val generatedJson = Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, None).toOption.get
           val expectedJson =
             """
               |{
@@ -106,11 +112,11 @@ object ServiceJsonTest extends TestSuite {
               |  }
               |}
             """.stripMargin.parse.right.get
-          assert(generatedJson.get == Service("friendimpl", expectedJson))
+          assert(generatedJson.get == Service("friendimpl", expectedJson, None))
         }
 
         "defined" - {
-          val generatedJson = Service.generate(annotations, "v1", clusterIp = Some("10.0.0.5"), CanaryDeploymentType).toOption.get
+          val generatedJson = Service.generate(annotations, "v1", clusterIp = Some("10.0.0.5"), CanaryDeploymentType, None).toOption.get
           val expectedJson =
             """
               |{
@@ -139,7 +145,7 @@ object ServiceJsonTest extends TestSuite {
               |  }
               |}
             """.stripMargin.parse.right.get
-          assert(generatedJson.get == Service("friendimpl", expectedJson))
+          assert(generatedJson.get == Service("friendimpl", expectedJson, None))
         }
       }
     }
