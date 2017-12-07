@@ -16,4 +16,4 @@
 
 package com.lightbend.rp.reactivecli.annotations
 
-case class Secret(namespace: String, name: String)
+case class Secret(name: String, key: String)

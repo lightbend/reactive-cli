@@ -58,7 +58,6 @@ object Deployment {
         appTypeEnvs(annotations.appType, annotations.modules),
         configEnvs(annotations.configResource),
         endpointEnvs(annotations.endpoints),
-        secretEnvs(annotations.secrets),
         akkaClusterEnvs(annotations.modules, serviceResourceName, noOfReplicas),
         externalServicesEnvs(annotations.modules, externalServices))
 
@@ -159,21 +158,6 @@ object Deployment {
           }
       }
     }
-
-    private[kubernetes] def secretEnvs(secrets: Seq[Secret]): Map[String, EnvironmentVariable] =
-      secrets
-        .map { secret =>
-          val envName = secretEnvName(secret.namespace, secret.name)
-          val envValue = SecretKeyRefEnvironmentVariable(secret.namespace, secret.name)
-
-          envName -> envValue
-        }
-        .toMap
-
-    private[kubernetes] def secretEnvName(namespace: String, name: String): String =
-      s"RP_SECRETS_${namespace}_$name"
-        .toUpperCase
-        .map(c => if (c.isLetterOrDigit) c else '_')
   }
 
   /**
@@ -328,6 +312,14 @@ object Deployment {
             (appName, Json("appName" -> appName.asJson), appName)
         }
 
+      val secretNames =
+        annotations
+          .secrets
+          .map(_.name)
+          .distinct
+          .map(ns => (ns, serviceName(ns), s"secret-${serviceName(ns)}"))
+          .toList
+
       Deployment(
         deploymentName,
         Json(
@@ -349,10 +341,27 @@ object Deployment {
                     "name" -> appName.asJson,
                     "image" -> imageName.asJson,
                     "imagePullPolicy" -> imagePullPolicy.asJson,
-                    "env" -> (RpEnvironmentVariables.mergeEnvs(annotations.environmentVariables ++ RpEnvironmentVariables.envs(annotations, serviceResourceName, noOfReplicas, externalServices))).asJson,
-                    "ports" -> annotations.endpoints.asJson)
+                    "env" -> RpEnvironmentVariables.mergeEnvs(
+                      annotations.environmentVariables ++
+                        RpEnvironmentVariables.envs(annotations, serviceResourceName, noOfReplicas, externalServices)).asJson,
+                    "ports" -> annotations.endpoints.asJson,
+                    "volumeMounts" -> secretNames
+                      .map {
+                        case (_, secretServiceName, volumeName) =>
+                          Json(
+                            "mountPath" -> s"/rp/secrets/$secretServiceName".asJson,
+                            "name" -> volumeName.asJson)
+                      }
+                      .asJson)
                     .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
-                    .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson)))),
+                    .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson,
+                "volumes" -> secretNames
+                  .map {
+                    case (secretName, _, volumeName) =>
+                      Json(
+                        "name" -> volumeName.asJson,
+                        "secret" -> Json("secretName" -> secretName.asJson))
+                  }.asJson)))),
         jqExpression)
     }
 }

@@ -194,9 +194,9 @@ object Annotations {
   private[annotations] def secrets(secrets: Seq[Map[String, String]]): Seq[Secret] =
     for {
       entry <- secrets
-      ns <- entry.get("namespace")
       name <- entry.get("name")
-    } yield Secret(ns, name)
+      key <- entry.get("key")
+    } yield Secret(name, key)
 
   private[annotations] def endpoints(endpoints: Seq[(Int, Map[String, String])], version: Option[String]): Map[String, Endpoint] =
     endpoints.flatMap(v => endpoint(v._2, v._1, version)).toMap
