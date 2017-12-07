@@ -16,6 +16,7 @@
 
 package com.lightbend.rp.reactivecli.jq
 
+import com.lightbend.rp.reactivecli.process._
 import java.nio.charset.StandardCharsets
 import java.nio.file.{ Files, Path }
 import scalanative.native._
@@ -39,44 +40,4 @@ object jq extends LazyLogging {
 
       output
     }
-
-  private[jq] def exec(args: String*): (Int, String) =
-    withTempFile { outputFile =>
-      Zone { implicit z =>
-        val code = stdlib.system(toCString(s"${command(args)} > $outputFile 2>&1"))
-        val output = new String(Files.readAllBytes(outputFile), StandardCharsets.UTF_8)
-
-        code -> output
-      }
-    }
-
-  /**
-   * Prepares a sequence of arguments to be passed to system(). We assume a POSIX target for now, which means
-   * the command will be processed by `sh` per POSIX specification.
-   *
-   * This means that we can simply enclose each argument in a single quote. However, if a single quote occurs in
-   * an argument, we special case that by enclosing it in double quotes.
-   */
-  private[jq] def command(args: Seq[String]): String = {
-    def escape(s: String): String =
-      "'" + s.replaceAllLiterally("'", "'\"'\"'") + "'"
-
-    args
-      .map(escape)
-      .mkString(" ")
-  }
-
-  private[jq] def withTempFile[T](f: Path => T): T = {
-    val file = Files.createTempFile("reactive-cli", ".temp")
-
-    try {
-      f(file)
-    } finally {
-      try {
-        Files.delete(file)
-      } catch {
-        case t: Throwable => logger.debug(s"Failed to remove $file: ${t.getMessage}")
-      }
-    }
-  }
 }
