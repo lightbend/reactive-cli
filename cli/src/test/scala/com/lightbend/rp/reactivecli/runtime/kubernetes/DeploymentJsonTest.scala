@@ -947,8 +947,7 @@ object DeploymentJsonTest extends TestSuite {
             Map("PATH" -> LiteralEnvironmentVariable("/bin")),
             Map("PATH" -> LiteralEnvironmentVariable("/usr/bin")),
             Map("RP_JAVA_OPTS" -> LiteralEnvironmentVariable("-Dmy.arg=hello")),
-            Map("RP_JAVA_OPTS" -> LiteralEnvironmentVariable("-Dmy.other.arg=hello2"))
-          )
+            Map("RP_JAVA_OPTS" -> LiteralEnvironmentVariable("-Dmy.other.arg=hello2")))
 
         val expectedResult = Map(
           "PATH" -> LiteralEnvironmentVariable("/usr/bin"),

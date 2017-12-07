@@ -19,6 +19,7 @@ package com.lightbend.rp.reactivecli
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
 import com.lightbend.rp.reactivecli.argparse.{ GenerateDeploymentArgs, InputArgs, VersionArgs }
 import com.lightbend.rp.reactivecli.docker.{ Config, DockerCredentials, DockerEngine, DockerRegistry }
+import com.lightbend.rp.reactivecli.process.jq
 import com.lightbend.rp.reactivecli.runtime.kubernetes
 import libhttpsimple.{ HttpRequest, LibHttpSimple }
 import libhttpsimple.LibHttpSimple.HttpExchange
@@ -57,7 +58,7 @@ object Main extends LazyLogging {
           .collect {
             case VersionArgs =>
               System.out.println(s"rp (Reactive CLI) ${ProgramVersion.current}")
-              System.out.println(s"jq support: ${if (jq.jq.available) "Available" else "Unavailable"}")
+              System.out.println(s"jq support: ${if (jq.available) "Available" else "Unavailable"}")
 
             case generateDeploymentArgs @ GenerateDeploymentArgs(_, _, _, _, _, _, Some(kubernetesArgs: KubernetesArgs), _, _, _, _, _) =>
               implicit val httpSettings: LibHttpSimple.Settings =
@@ -135,8 +136,7 @@ object Main extends LazyLogging {
                     .distinct
                     .foreach(logger.error(_)),
                 resources =>
-                  outputHandler(resources)
-              )
+                  outputHandler(resources))
           }
       }
     } else {

@@ -16,11 +16,11 @@
 
 package com.lightbend.rp.reactivecli.argparse.kubernetes
 
+import com.lightbend.rp.reactivecli.argparse.{ GenerateDeploymentArgs, InputArgs, TargetRuntimeArgs }
+import com.lightbend.rp.reactivecli.process.kubectl
+import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment
 import java.io.PrintStream
 import java.nio.file.Path
-
-import com.lightbend.rp.reactivecli.argparse.{ GenerateDeploymentArgs, InputArgs, TargetRuntimeArgs }
-import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment
 
 object KubernetesArgs {
   object Output {
@@ -41,12 +41,12 @@ object KubernetesArgs {
    */
   sealed trait Output
 
-  val DefaultNamespaceApiVersion: String = "v1"
+  val DefaultNamespaceApiVersion: String = kubectl.findApi("v1")
   val DefaultNumberOfReplicas: Int = 1
   val DefaultImagePullPolicy: Deployment.ImagePullPolicy.Value = Deployment.ImagePullPolicy.IfNotPresent
-  val DefaultIngressApiVersion: String = "extensions/v1beta1"
-  val DefaultPodControllerApiVersion: String = "apps/v1beta2"
-  val DefaultServiceApiVersion: String = "v1"
+  val DefaultIngressApiVersion: String = kubectl.findApi("extensions/v1beta1")
+  val DefaultPodControllerApiVersion: String = kubectl.findApi("apps/v1beta2", "apps/v1beta1")
+  val DefaultServiceApiVersion: String = kubectl.findApi("v1")
 
   /**
    * Convenience method to set the [[KubernetesArgs]] values when parsing the complete user input.
@@ -70,19 +70,19 @@ object KubernetesArgs {
  * Represents user input arguments required to build Kubernetes specific resources.
  */
 case class KubernetesArgs(
-                           generateIngress: Boolean = false,
-                           generateNamespaces: Boolean = false,
-                           generatePodControllers: Boolean = false,
-                           generateServices: Boolean = false,
-                           transformIngress: Option[String] = None,
-                           transformNamespaces: Option[String] = None,
-                           transformPodControllers: Option[String] = None,
-                           transformServices: Option[String] = None,
-                           namespace: Option[String] = None,
-                           podControllerArgs: PodControllerArgs = PodControllerArgs(),
-                           serviceArgs: ServiceArgs = ServiceArgs(),
-                           ingressArgs: IngressArgs = IngressArgs(),
-                           output: KubernetesArgs.Output = KubernetesArgs.Output.PipeToStream(System.out)) extends TargetRuntimeArgs {
+  generateIngress: Boolean = false,
+  generateNamespaces: Boolean = false,
+  generatePodControllers: Boolean = false,
+  generateServices: Boolean = false,
+  transformIngress: Option[String] = None,
+  transformNamespaces: Option[String] = None,
+  transformPodControllers: Option[String] = None,
+  transformServices: Option[String] = None,
+  namespace: Option[String] = None,
+  podControllerArgs: PodControllerArgs = PodControllerArgs(),
+  serviceArgs: ServiceArgs = ServiceArgs(),
+  ingressArgs: IngressArgs = IngressArgs(),
+  output: KubernetesArgs.Output = KubernetesArgs.Output.PipeToStream(System.out)) extends TargetRuntimeArgs {
   def generateAll: Boolean =
     !generateIngress && !generatePodControllers && !generateServices
 

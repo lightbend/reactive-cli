@@ -317,43 +317,43 @@ object Deployment {
         Json("appName" -> appName.asJson, "appNameVersion" -> appNameVersion.asJson)
 
       val (deploymentName, deploymentMatchLabels, serviceResourceName) =
-          deploymentType match {
-            case CanaryDeploymentType =>
-              (appNameVersion, Json("appNameVersion" -> appNameVersion.asJson), appName)
+        deploymentType match {
+          case CanaryDeploymentType =>
+            (appNameVersion, Json("appNameVersion" -> appNameVersion.asJson), appName)
 
-            case BlueGreenDeploymentType =>
-              (appNameVersion, Json("appNameVersion" -> appNameVersion.asJson), appNameVersion)
+          case BlueGreenDeploymentType =>
+            (appNameVersion, Json("appNameVersion" -> appNameVersion.asJson), appNameVersion)
 
-            case RollingDeploymentType   =>
-              (appName, Json("appName" -> appName.asJson), appName)
-          }
+          case RollingDeploymentType =>
+            (appName, Json("appName" -> appName.asJson), appName)
+        }
 
-        Deployment(
-          deploymentName,
-          Json(
-            "apiVersion" -> apiVersion.asJson,
-            "kind" -> "Deployment".asJson,
-            "metadata" -> Json(
-              "name" -> deploymentName.asJson,
-              "labels" -> deploymentLabels)
-              .deepmerge(
-                annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
-            "spec" -> Json(
-              "replicas" -> noOfReplicas.asJson,
-              "selector" -> Json("matchLabels" -> deploymentMatchLabels),
-              "template" -> Json(
-                "metadata" -> Json("labels" -> deploymentLabels),
-                "spec" -> Json(
-                  "containers" -> List(
-                    Json(
-                      "name" -> appName.asJson,
-                      "image" -> imageName.asJson,
-                      "imagePullPolicy" -> imagePullPolicy.asJson,
-                      "env" -> (RpEnvironmentVariables.mergeEnvs(annotations.environmentVariables ++ RpEnvironmentVariables.envs(annotations, serviceResourceName, noOfReplicas, externalServices))).asJson,
-                      "ports" -> annotations.endpoints.asJson)
-                      .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
-                      .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson)))),
-          jqExpression)
+      Deployment(
+        deploymentName,
+        Json(
+          "apiVersion" -> apiVersion.asJson,
+          "kind" -> "Deployment".asJson,
+          "metadata" -> Json(
+            "name" -> deploymentName.asJson,
+            "labels" -> deploymentLabels)
+            .deepmerge(
+              annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
+          "spec" -> Json(
+            "replicas" -> noOfReplicas.asJson,
+            "selector" -> Json("matchLabels" -> deploymentMatchLabels),
+            "template" -> Json(
+              "metadata" -> Json("labels" -> deploymentLabels),
+              "spec" -> Json(
+                "containers" -> List(
+                  Json(
+                    "name" -> appName.asJson,
+                    "image" -> imageName.asJson,
+                    "imagePullPolicy" -> imagePullPolicy.asJson,
+                    "env" -> (RpEnvironmentVariables.mergeEnvs(annotations.environmentVariables ++ RpEnvironmentVariables.envs(annotations, serviceResourceName, noOfReplicas, externalServices))).asJson,
+                    "ports" -> annotations.endpoints.asJson)
+                    .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
+                    .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson)))),
+        jqExpression)
     }
 }
 

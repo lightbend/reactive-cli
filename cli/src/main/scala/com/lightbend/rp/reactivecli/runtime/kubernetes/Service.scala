@@ -66,8 +66,8 @@ object Service {
 
       val selector =
         deploymentType match {
-          case CanaryDeploymentType    => Json("appName" -> appName.asJson)
-          case RollingDeploymentType   => Json("appName" -> appName.asJson)
+          case CanaryDeploymentType => Json("appName" -> appName.asJson)
+          case RollingDeploymentType => Json("appName" -> appName.asJson)
           case BlueGreenDeploymentType => Json("appNameVersion" -> appNameVersion.asJson)
         }
 

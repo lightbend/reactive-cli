@@ -17,10 +17,9 @@
 package com.lightbend.rp.reactivecli.runtime.kubernetes
 
 import argonaut._
-import com.lightbend.rp.reactivecli.jq.jq
 import com.lightbend.rp.reactivecli.runtime.GeneratedResource
-
 import Argonaut._
+import com.lightbend.rp.reactivecli.process.jq
 
 /**
  * Base type which represents generated Kubernetes resource.

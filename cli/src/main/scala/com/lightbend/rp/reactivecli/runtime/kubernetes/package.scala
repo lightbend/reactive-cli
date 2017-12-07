@@ -17,11 +17,11 @@
 package com.lightbend.rp.reactivecli.runtime
 
 import argonaut.PrettyParams
-import com.lightbend.rp.reactivecli.annotations.{Annotations, Module}
+import com.lightbend.rp.reactivecli.annotations.{ Annotations, Module }
 import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
 import com.lightbend.rp.reactivecli.docker.Config
-import com.lightbend.rp.reactivecli.jq.jq
+import com.lightbend.rp.reactivecli.process.jq
 import java.io.PrintStream
 import java.nio.file.{ Files, Path }
 import scala.util.{ Failure, Success, Try }
@@ -97,10 +97,9 @@ package object kubernetes extends LazyLogging {
         ().successNel[String]
 
     val validateJq =
-      if (
-        (kubernetesArgs.transformNamespaces.nonEmpty ||
-          kubernetesArgs.transformIngress.nonEmpty ||
-          kubernetesArgs.transformServices.nonEmpty || kubernetesArgs.transformPodControllers.nonEmpty) && !jq.available)
+      if ((kubernetesArgs.transformNamespaces.nonEmpty ||
+        kubernetesArgs.transformIngress.nonEmpty ||
+        kubernetesArgs.transformServices.nonEmpty || kubernetesArgs.transformPodControllers.nonEmpty) && !jq.available)
         "Resources cannot be translated because jq is not installed".failureNel
       else
         ().successNel[String]

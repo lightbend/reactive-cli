@@ -31,23 +31,23 @@ object Namespace {
     annotations: Annotations,
     apiVersion: String,
     jqExpression: Option[String]): ValidationNel[String, Option[Namespace]] =
-      annotations
-        .namespace
-        .map { rawNs =>
-          val ns = serviceName(rawNs)
+    annotations
+      .namespace
+      .map { rawNs =>
+        val ns = serviceName(rawNs)
 
-          Namespace(
-            ns,
-            Json(
-              "apiVersion" -> apiVersion.asJson,
-              "kind" -> "Namespace".asJson,
-              "metadata" -> Json(
-                "name" -> ns.asJson,
-                "labels" -> Json(
-                  "name" -> ns.asJson))),
-            jqExpression)
-        }
-        .successNel
+        Namespace(
+          ns,
+          Json(
+            "apiVersion" -> apiVersion.asJson,
+            "kind" -> "Namespace".asJson,
+            "metadata" -> Json(
+              "name" -> ns.asJson,
+              "labels" -> Json(
+                "name" -> ns.asJson))),
+          jqExpression)
+      }
+      .successNel
 }
 
 case class Namespace(name: String, json: Json, jqExpression: Option[String]) extends GeneratedKubernetesResource {

@@ -472,8 +472,7 @@ object KubernetesPackageTest extends TestSuite {
         "Validate Akka Clustering" - {
           val result = generateResources(
             dockerConfig.copy(config = dockerConfig.config.copy(Labels = dockerConfig.config.Labels.map(_ ++ Vector(
-              "com.lightbend.rp.modules.akka-cluster-bootstrapping.enabled" -> "true"
-            )))),
+              "com.lightbend.rp.modules.akka-cluster-bootstrapping.enabled" -> "true")))),
             generateDeploymentArgs,
             kubernetesArgs.copy(generateIngress = true))
 

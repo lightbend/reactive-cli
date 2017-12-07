@@ -14,12 +14,10 @@
  * limitations under the License.
  */
 
-package com.lightbend.rp.reactivecli.jq
+package com.lightbend.rp.reactivecli.process
 
-import com.lightbend.rp.reactivecli.process._
 import java.nio.charset.StandardCharsets
-import java.nio.file.{ Files, Path }
-import scalanative.native._
+import java.nio.file.Files
 import slogging._
 
 object jq extends LazyLogging {

@@ -36,7 +36,6 @@ object InputArgs {
         throw new IllegalArgumentException(s"Invalid deployment type $v. Available: ${DeploymentType.All.mkString(", ")}")
     }
 
-
   implicit val logLevelsRead: scopt.Read[LogLevel] =
     scopt.Read.reads {
       case v if v.toLowerCase == "error" => LogLevel.ERROR
@@ -234,9 +233,7 @@ object InputArgs {
 
           opt[String]("transform-services")
             .text("A jq expression that will be applied to Service resources. jq must be installed")
-            .action(KubernetesArgs.set((v, args) => args.copy(transformServices = Some(v))))
-
-      )
+            .action(KubernetesArgs.set((v, args) => args.copy(transformServices = Some(v)))))
 
       checkConfig { inputArgs =>
         inputArgs.commandArgs match {

@@ -14,7 +14,8 @@ object BuildInfo {
         install = s"""|RUN \\
                       |  curl -s http://releases.llvm.org/3.8.0/clang+llvm-3.8.0-linux-x86_64-centos6.tar.xz | tar xf - --strip-components=1 -J -C /usr/local/ && \\
                       |  curl -s https://bintray.com/sbt/rpm/rpm > /etc/yum.repos.d/bintray-sbt-rpm.repo && \\
-                      |  yum install -y bc gcc gcc-c++ git java-1.8.0-openjdk-headless libcurl-devel libunwind-devel make openssl-devel rpm-build sbt which && \\
+                      |  yum install -y bc gcc gcc-c++ epel-release git java-1.8.0-openjdk-headless libcurl-devel libunwind-devel make openssl-devel rpm-build sbt which && \\
+                      |  yum install -y jq && \\
                       |  git clone https://code.googlesource.com/re2 /opt/re2 && \\
                       |  pushd /opt/re2 && \\
                       |  git checkout 2017-11-01 && \\
@@ -35,7 +36,7 @@ object BuildInfo {
                       |  echo "deb https://dl.bintray.com/sbt/debian /" > /etc/apt/sources.list.d/sbt.list && \\
                       |  apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823 && \\
                       |  apt-get -y update && \\
-                      |  apt-get -y install -t jessie-backports openjdk-8-jre-headless ca-certificates-java && \\
+                      |  apt-get -y install -t jessie-backports jq openjdk-8-jre-headless ca-certificates-java && \\
                       |  apt-get -y install bc build-essential clang++-3.8 libcurl4-openssl-dev libgc-dev libre2-dev libunwind8-dev sbt
                       |""".stripMargin,
         target = DebBuildTarget(Seq("jessie"), "main", "bash,libcurl3,libre2-1,libunwind8", Seq.empty)),
@@ -49,7 +50,7 @@ object BuildInfo {
                       |  echo "deb https://dl.bintray.com/sbt/debian /" > /etc/apt/sources.list.d/sbt.list && \\
                       |  apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823 && \\
                       |  apt-get -y update && \\
-                      |  apt-get -y install bc build-essential clang++-3.9 libcurl4-openssl-dev libgc-dev libre2-dev libunwind8-dev openjdk-8-jdk-headless sbt
+                      |  apt-get -y install bc build-essential clang++-3.9 jq libcurl4-openssl-dev libgc-dev libre2-dev libunwind8-dev openjdk-8-jdk-headless sbt
                       |""".stripMargin,
         target = DebBuildTarget(Seq("stretch"), "main", "bash,libcurl3,libre2-3,libunwind8", Seq.empty)),
 
@@ -64,7 +65,7 @@ object BuildInfo {
                       |  echo "deb https://dl.bintray.com/sbt/debian /" > /etc/apt/sources.list.d/sbt.list && \\
                       |  apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823 && \\
                       |  apt-get -y update && \\
-                      |  apt-get -y install bc build-essential openjdk-8-jre-headless ca-certificates-java clang++-3.8 libcurl4-openssl-dev libgc-dev libre2-dev libunwind8-dev sbt
+                      |  apt-get -y install bc build-essential jq openjdk-8-jre-headless ca-certificates-java clang++-3.8 libcurl4-openssl-dev libgc-dev libre2-dev libunwind8-dev sbt
                       |""".stripMargin,
         target = DebBuildTarget(Seq("xenial"), "main", "bash,libre2-1v5,libunwind8,libcurl3", Seq.empty)),
 
@@ -77,7 +78,7 @@ object BuildInfo {
                       |  echo "deb https://dl.bintray.com/sbt/debian /" > /etc/apt/sources.list.d/sbt.list && \\
                       |  apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823 && \\
                       |  apt-get -y update && \\
-                      |  apt-get -y install bc build-essential openjdk-8-jre-headless ca-certificates-java clang-3.8 libcurl4-openssl-dev libgc-dev libre2-dev libunwind8-dev sbt
+                      |  apt-get -y install bc build-essential jq openjdk-8-jre-headless ca-certificates-java clang-3.8 libcurl4-openssl-dev libgc-dev libre2-dev libunwind8-dev sbt
                       |""".stripMargin,
         target = DebBuildTarget(Seq("yakkety"), "main", "bash,libre2-2,libunwind8,libcurl3", Seq.empty)),
 
@@ -90,7 +91,7 @@ object BuildInfo {
                       |  echo "deb https://dl.bintray.com/sbt/debian /" > /etc/apt/sources.list.d/sbt.list && \\
                       |  apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823 && \\
                       |  apt-get -y update && \\
-                      |  apt-get -y install bc build-essential openjdk-8-jre-headless ca-certificates-java clang-3.8 libcurl4-openssl-dev libgc-dev libre2-dev libunwind8-dev sbt
+                      |  apt-get -y install bc build-essential jq openjdk-8-jre-headless ca-certificates-java clang-3.8 libcurl4-openssl-dev libgc-dev libre2-dev libunwind8-dev sbt
                       |""".stripMargin,
         target = DebBuildTarget(Seq("zesty", "artful"), "main", "bash,libre2-3,libunwind8,libcurl3", Seq.empty)))
 }
@@ -100,7 +101,7 @@ object MuslBuild {
 
   private val install =
     s"""|RUN \\
-        |  apk --update add bash build-base clang curl-dev dpkg gc-dev git libc-dev musl-dev rpm tar wget && \\
+        |  apk --update add bash build-base clang curl-dev dpkg gc-dev git jq libc-dev musl-dev rpm tar wget && \\
         |  apk add libunwind-dev --update-cache --repository http://nl.alpinelinux.org/alpine/edge/main && \\
         |  git clone https://code.googlesource.com/re2 /opt/re2 && \\
         |  cd /opt/re2 && \\
