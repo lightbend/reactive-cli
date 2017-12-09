@@ -21,6 +21,7 @@ import com.lightbend.rp.reactivecli.annotations.{ Annotations, Module }
 import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
 import com.lightbend.rp.reactivecli.docker.Config
+import com.lightbend.rp.reactivecli.process.jq
 import java.io.PrintStream
 import java.nio.file.{ Files, Path }
 import scala.util.{ Failure, Success, Try }
@@ -62,7 +63,8 @@ package object kubernetes extends LazyLogging {
 
     val namespaces = Namespace.generate(
       annotations,
-      KubernetesArgs.DefaultNamespaceApiVersion)
+      KubernetesArgs.DefaultNamespaceApiVersion,
+      kubernetesArgs.transformNamespaces)
 
     val deployments = Deployment.generate(
       annotations,
@@ -71,19 +73,22 @@ package object kubernetes extends LazyLogging {
       kubernetesArgs.podControllerArgs.imagePullPolicy,
       kubernetesArgs.podControllerArgs.numberOfReplicas,
       generateDeploymentArgs.externalServices,
-      generateDeploymentArgs.deploymentType)
+      generateDeploymentArgs.deploymentType,
+      kubernetesArgs.transformPodControllers)
 
     val services = Service.generate(
       annotations,
       kubernetesArgs.serviceArgs.apiVersion,
       kubernetesArgs.serviceArgs.clusterIp,
-      generateDeploymentArgs.deploymentType)
+      generateDeploymentArgs.deploymentType,
+      kubernetesArgs.transformServices)
 
     val ingress = Ingress.generate(
       annotations,
       kubernetesArgs.ingressArgs.apiVersion,
       kubernetesArgs.ingressArgs.ingressAnnotations,
-      kubernetesArgs.ingressArgs.pathAppend)
+      kubernetesArgs.ingressArgs.pathAppend,
+      kubernetesArgs.transformIngress)
 
     val validateAkkaCluster =
       if (annotations.modules.contains(Module.AkkaClusterBootstrapping) && kubernetesArgs.podControllerArgs.numberOfReplicas < AkkaClusterMinimumReplicas)
@@ -91,7 +96,15 @@ package object kubernetes extends LazyLogging {
       else
         ().successNel[String]
 
-    (namespaces |@| deployments |@| services |@| ingress |@| validateAkkaCluster) { (ns, ds, ss, is, _) =>
+    val validateJq =
+      if ((kubernetesArgs.transformNamespaces.nonEmpty ||
+        kubernetesArgs.transformIngress.nonEmpty ||
+        kubernetesArgs.transformServices.nonEmpty || kubernetesArgs.transformPodControllers.nonEmpty) && !jq.available)
+        "Resources cannot be translated because jq is not installed".failureNel
+      else
+        ().successNel[String]
+
+    (namespaces |@| deployments |@| services |@| ingress |@| validateAkkaCluster |@| validateJq) { (ns, ds, ss, is, _, _) =>
       ns.filter(_ => kubernetesArgs.shouldGenerateNamespaces).toSeq ++
         Seq(ds).filter(_ => kubernetesArgs.shouldGeneratePodControllers) ++
         ss.toSeq.filter(_ => kubernetesArgs.shouldGenerateServices) ++
@@ -118,7 +131,7 @@ package object kubernetes extends LazyLogging {
     generatedResources.foreach { r =>
       val fileName = s"${r.resourceType}-${r.name}.json"
       val file = path.resolve(fileName)
-      val formattedJson = r.payload.pretty(PrettyParams.spaces2.copy(preserveOrder = true))
+      val formattedJson = r.payload.spaces2
 
       logger.debug(fileName)
       Files.deleteIfExists(file)
@@ -130,7 +143,7 @@ package object kubernetes extends LazyLogging {
 
   private[kubernetes] def pipeToStream(out: PrintStream)(generatedResources: Seq[GeneratedKubernetesResource]): Unit =
     generatedResources.foreach { r =>
-      val formattedJson = r.payload.pretty(PrettyParams.spaces2.copy(preserveOrder = true))
+      val formattedJson = r.payload.spaces2
       out.println("---")
       out.println(formattedJson)
     }

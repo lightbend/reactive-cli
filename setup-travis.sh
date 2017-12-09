@@ -15,7 +15,8 @@ echo "Install Boehm GC, libunwind"
 sudo apt-get install -y -qq \
   clang++-3.9 \
   libgc-dev \
-  libunwind8-dev
+  libunwind8-dev \
+  jq
 
 echo "Install re2 from source"
 # Starting from Ubuntu 16.04 LTS, it'll be available as http://packages.ubuntu.com/xenial/libre2-dev

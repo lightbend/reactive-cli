@@ -59,19 +59,19 @@ object DeploymentJsonTest extends TestSuite {
       "deployment" - {
         "deploymentType" - {
           "Canary" - {
-            (Deployment.generate(annotations, "apps/v1beta2", imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, CanaryDeploymentType).toOption.get.payload.hcursor --\ "metadata" --\ "name")
+            (Deployment.generate(annotations, "apps/v1beta2", imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, CanaryDeploymentType, None).toOption.get.payload.hcursor --\ "metadata" --\ "name")
               .focus
               .contains(jString("friendimpl-v3-2-1-snapshot"))
           }
 
           "BlueGreen" - {
-            (Deployment.generate(annotations, "v1", imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, BlueGreenDeploymentType).toOption.get.payload.hcursor --\ "metadata" --\ "name")
+            (Deployment.generate(annotations, "v1", imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, BlueGreenDeploymentType, None).toOption.get.payload.hcursor --\ "metadata" --\ "name")
               .focus
               .contains(jString("friendimpl-v3-2-1-snapshot"))
           }
 
           "Rolling" - {
-            (Deployment.generate(annotations, "v1", imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, RollingDeploymentType).toOption.get.payload.hcursor --\ "metadata" --\ "name")
+            (Deployment.generate(annotations, "v1", imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, RollingDeploymentType, None).toOption.get.payload.hcursor --\ "metadata" --\ "name")
               .focus
               .contains(jString("friendimpl"))
           }
@@ -329,7 +329,7 @@ object DeploymentJsonTest extends TestSuite {
             """.stripMargin.parse.right.get
 
           val result = Deployment.generate(annotations, "apps/v1beta2", imageName,
-            Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, CanaryDeploymentType).toOption.get
+            Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, CanaryDeploymentType, None).toOption.get
 
           // @TODO uncomment this test when we actually have the right format generated
           // @TODO i am proposing keeping them updated for now is counter-productive
@@ -598,7 +598,7 @@ object DeploymentJsonTest extends TestSuite {
             readinessCheck = Some(CommandCheck("ls", "-al")),
             healthCheck = Some(TcpCheck(Check.PortNumber(1234), intervalSeconds = 3)))
           val generatedJson = Deployment.generate(input, "apps/v1beta2", imageName,
-            Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, CanaryDeploymentType).toOption.get
+            Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, CanaryDeploymentType, None).toOption.get
 
           // @TODO uncomment this test when we actually have the right format generated
           // @TODO i am proposing keeping them updated for now is counter-productive
@@ -608,7 +608,13 @@ object DeploymentJsonTest extends TestSuite {
         "should fail if application name is not defined" - {
           val invalid = annotations.copy(appName = None)
           assert(Deployment.generate(invalid, "apps/v1beta2", imageName,
-            Deployment.ImagePullPolicy.Never, 1, Map.empty, CanaryDeploymentType).toOption.isEmpty)
+            Deployment.ImagePullPolicy.Never, 1, Map.empty, CanaryDeploymentType, None).toOption.isEmpty)
+        }
+
+        "jq" - {
+          (Deployment.generate(annotations, "apps/v1beta2", imageName, Deployment.ImagePullPolicy.Never, 1, Map.empty, CanaryDeploymentType, Some(".jqTest = \"test\"")).toOption.get.payload.hcursor --\ "jqTest")
+            .focus
+            .contains(jString("test"))
         }
       }
 
@@ -941,8 +947,7 @@ object DeploymentJsonTest extends TestSuite {
             Map("PATH" -> LiteralEnvironmentVariable("/bin")),
             Map("PATH" -> LiteralEnvironmentVariable("/usr/bin")),
             Map("RP_JAVA_OPTS" -> LiteralEnvironmentVariable("-Dmy.arg=hello")),
-            Map("RP_JAVA_OPTS" -> LiteralEnvironmentVariable("-Dmy.other.arg=hello2"))
-          )
+            Map("RP_JAVA_OPTS" -> LiteralEnvironmentVariable("-Dmy.other.arg=hello2")))
 
         val expectedResult = Map(
           "PATH" -> LiteralEnvironmentVariable("/usr/bin"),

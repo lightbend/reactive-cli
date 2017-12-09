@@ -16,10 +16,22 @@
 
 package com.lightbend.rp.reactivecli.runtime.kubernetes
 
-import argonaut.Json
+import argonaut._
 import com.lightbend.rp.reactivecli.runtime.GeneratedResource
+import Argonaut._
+import com.lightbend.rp.reactivecli.process.jq
 
 /**
  * Base type which represents generated Kubernetes resource.
  */
-private[reactivecli] trait GeneratedKubernetesResource extends GeneratedResource[Json]
+private[reactivecli] trait GeneratedKubernetesResource extends GeneratedResource[Json] {
+  def json: Json
+  def jqExpression: Option[String]
+
+  def payload: Json = jqExpression.fold(json)(
+    jq(_, json.nospaces)
+      .parse
+      .fold(
+        error => throw new RuntimeException(s"Unable to parse output from jq: $error"),
+        identity))
+}

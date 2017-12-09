@@ -53,10 +53,12 @@ object Service {
   /**
    * Generates the [[Service]] resource.
    */
-  def generate(annotations: Annotations,
-               apiVersion: String,
-               clusterIp: Option[String],
-               deploymentType: DeploymentType): ValidationNel[String, Option[Service]] =
+  def generate(
+    annotations: Annotations,
+    apiVersion: String,
+    clusterIp: Option[String],
+    deploymentType: DeploymentType,
+    jqExpression: Option[String]): ValidationNel[String, Option[Service]] =
     (annotations.appNameValidation |@| annotations.versionValidation) { (rawAppName, version) =>
       // FIXME there's a bit of code duplicate in Deployment
       val appName = serviceName(rawAppName)
@@ -64,8 +66,8 @@ object Service {
 
       val selector =
         deploymentType match {
-          case CanaryDeploymentType    => Json("appName" -> appName.asJson)
-          case RollingDeploymentType   => Json("appName" -> appName.asJson)
+          case CanaryDeploymentType => Json("appName" -> appName.asJson)
+          case RollingDeploymentType => Json("appName" -> appName.asJson)
           case BlueGreenDeploymentType => Json("appNameVersion" -> appNameVersion.asJson)
         }
 
@@ -87,13 +89,14 @@ object Service {
               "spec" -> Json(
                 "clusterIP" -> clusterIp.getOrElse("None").asJson,
                 "ports" -> annotations.endpoints.asJson,
-                "selector" -> selector))))
+                "selector" -> selector)),
+            jqExpression))
     }
 }
 
 /**
  * Represents the generated Kubernetes service resource.
  */
-case class Service(name: String, payload: Json) extends GeneratedKubernetesResource {
+case class Service(name: String, json: Json, jqExpression: Option[String]) extends GeneratedKubernetesResource {
   val resourceType = "service"
 }

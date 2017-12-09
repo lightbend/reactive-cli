@@ -3,8 +3,8 @@
 # Fail if command failed, variable is unassigned, also show executed commands
 set -eux
 
-echo "Install Boehm GC, RE2"
-brew install bdw-gc re2
+echo "Install Boehm GC, RE2, jq"
+brew install bdw-gc re2 jq
 
 echo "Install curl (with OpenSSL support)"
 brew install curl --with-openssl

@@ -27,23 +27,29 @@ object Namespace {
   /**
    * Builds [[Namespace]] resource.
    */
-  def generate(annotations: Annotations, apiVersion: String): ValidationNel[String, Option[Namespace]] =
-      annotations
-        .namespace
-        .map { rawNs =>
-          val ns = serviceName(rawNs)
+  def generate(
+    annotations: Annotations,
+    apiVersion: String,
+    jqExpression: Option[String]): ValidationNel[String, Option[Namespace]] =
+    annotations
+      .namespace
+      .map { rawNs =>
+        val ns = serviceName(rawNs)
 
-          Namespace(ns, Json(
+        Namespace(
+          ns,
+          Json(
             "apiVersion" -> apiVersion.asJson,
             "kind" -> "Namespace".asJson,
             "metadata" -> Json(
               "name" -> ns.asJson,
               "labels" -> Json(
-                "name" -> ns.asJson))))
-        }
-        .successNel
+                "name" -> ns.asJson))),
+          jqExpression)
+      }
+      .successNel
 }
 
-case class Namespace(name: String, payload: Json) extends GeneratedKubernetesResource {
+case class Namespace(name: String, json: Json, jqExpression: Option[String]) extends GeneratedKubernetesResource {
   val resourceType = "namespace"
 }

@@ -58,7 +58,6 @@ object Deployment {
         appTypeEnvs(annotations.appType, annotations.modules),
         configEnvs(annotations.configResource),
         endpointEnvs(annotations.endpoints),
-        secretEnvs(annotations.secrets),
         akkaClusterEnvs(annotations.modules, serviceResourceName, noOfReplicas),
         externalServicesEnvs(annotations.modules, externalServices))
 
@@ -159,21 +158,6 @@ object Deployment {
           }
       }
     }
-
-    private[kubernetes] def secretEnvs(secrets: Seq[Secret]): Map[String, EnvironmentVariable] =
-      secrets
-        .map { secret =>
-          val envName = secretEnvName(secret.namespace, secret.name)
-          val envValue = SecretKeyRefEnvironmentVariable(secret.namespace, secret.name)
-
-          envName -> envValue
-        }
-        .toMap
-
-    private[kubernetes] def secretEnvName(namespace: String, name: String): String =
-      s"RP_SECRETS_${namespace}_$name"
-        .toUpperCase
-        .map(c => if (c.isLetterOrDigit) c else '_')
   }
 
   /**
@@ -306,7 +290,8 @@ object Deployment {
     imagePullPolicy: ImagePullPolicy.Value,
     noOfReplicas: Int,
     externalServices: Map[String, Seq[String]],
-    deploymentType: DeploymentType): ValidationNel[String, Deployment] =
+    deploymentType: DeploymentType,
+    jqExpression: Option[String]): ValidationNel[String, Deployment] =
 
     (annotations.appNameValidation |@| annotations.versionValidation) { (rawAppName, version) =>
       val appName = serviceName(rawAppName)
@@ -316,48 +301,74 @@ object Deployment {
         Json("appName" -> appName.asJson, "appNameVersion" -> appNameVersion.asJson)
 
       val (deploymentName, deploymentMatchLabels, serviceResourceName) =
-          deploymentType match {
-            case CanaryDeploymentType =>
-              (appNameVersion, Json("appNameVersion" -> appNameVersion.asJson), appName)
+        deploymentType match {
+          case CanaryDeploymentType =>
+            (appNameVersion, Json("appNameVersion" -> appNameVersion.asJson), appName)
 
-            case BlueGreenDeploymentType =>
-              (appNameVersion, Json("appNameVersion" -> appNameVersion.asJson), appNameVersion)
+          case BlueGreenDeploymentType =>
+            (appNameVersion, Json("appNameVersion" -> appNameVersion.asJson), appNameVersion)
 
-            case RollingDeploymentType   =>
-              (appName, Json("appName" -> appName.asJson), appName)
-          }
+          case RollingDeploymentType =>
+            (appName, Json("appName" -> appName.asJson), appName)
+        }
 
-        Deployment(
-          deploymentName,
-          Json(
-            "apiVersion" -> apiVersion.asJson,
-            "kind" -> "Deployment".asJson,
-            "metadata" -> Json(
-              "name" -> deploymentName.asJson,
-              "labels" -> deploymentLabels)
-              .deepmerge(
-                annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
-            "spec" -> Json(
-              "replicas" -> noOfReplicas.asJson,
-              "selector" -> Json("matchLabels" -> deploymentMatchLabels),
-              "template" -> Json(
-                "metadata" -> Json("labels" -> deploymentLabels),
-                "spec" -> Json(
-                  "containers" -> List(
-                    Json(
-                      "name" -> appName.asJson,
-                      "image" -> imageName.asJson,
-                      "imagePullPolicy" -> imagePullPolicy.asJson,
-                      "env" -> (RpEnvironmentVariables.mergeEnvs(annotations.environmentVariables ++ RpEnvironmentVariables.envs(annotations, serviceResourceName, noOfReplicas, externalServices))).asJson,
-                      "ports" -> annotations.endpoints.asJson)
-                      .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
-                      .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson)))))
+      val secretNames =
+        annotations
+          .secrets
+          .map(_.name)
+          .distinct
+          .map(ns => (ns, serviceName(ns), s"secret-${serviceName(ns)}"))
+          .toList
+
+      Deployment(
+        deploymentName,
+        Json(
+          "apiVersion" -> apiVersion.asJson,
+          "kind" -> "Deployment".asJson,
+          "metadata" -> Json(
+            "name" -> deploymentName.asJson,
+            "labels" -> deploymentLabels)
+            .deepmerge(
+              annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
+          "spec" -> Json(
+            "replicas" -> noOfReplicas.asJson,
+            "selector" -> Json("matchLabels" -> deploymentMatchLabels),
+            "template" -> Json(
+              "metadata" -> Json("labels" -> deploymentLabels),
+              "spec" -> Json(
+                "containers" -> List(
+                  Json(
+                    "name" -> appName.asJson,
+                    "image" -> imageName.asJson,
+                    "imagePullPolicy" -> imagePullPolicy.asJson,
+                    "env" -> RpEnvironmentVariables.mergeEnvs(
+                      annotations.environmentVariables ++
+                        RpEnvironmentVariables.envs(annotations, serviceResourceName, noOfReplicas, externalServices)).asJson,
+                    "ports" -> annotations.endpoints.asJson,
+                    "volumeMounts" -> secretNames
+                      .map {
+                        case (_, secretServiceName, volumeName) =>
+                          Json(
+                            "mountPath" -> s"/rp/secrets/$secretServiceName".asJson,
+                            "name" -> volumeName.asJson)
+                      }
+                      .asJson)
+                    .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
+                    .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson,
+                "volumes" -> secretNames
+                  .map {
+                    case (secretName, _, volumeName) =>
+                      Json(
+                        "name" -> volumeName.asJson,
+                        "secret" -> Json("secretName" -> secretName.asJson))
+                  }.asJson)))),
+        jqExpression)
     }
 }
 
 /**
  * Represents the generated Kubernetes deployment resource.
  */
-case class Deployment(name: String, payload: Json) extends GeneratedKubernetesResource {
+case class Deployment(name: String, json: Json, jqExpression: Option[String]) extends GeneratedKubernetesResource {
   val resourceType = "deployment"
 }

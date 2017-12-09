@@ -26,22 +26,22 @@ import scalaz._
 import Scalaz._
 
 case class Annotations(
-                        namespace: Option[String],
-                        appName: Option[String],
-                        appType: Option[String],
-                        configResource: Option[String],
-                        diskSpace: Option[Long],
-                        memory: Option[Long],
-                        nrOfCpus: Option[Double],
-                        endpoints: Map[String, Endpoint],
-                        secrets: Seq[Secret],
-                        volumes: Map[String, Volume],
-                        privileged: Boolean,
-                        healthCheck: Option[Check],
-                        readinessCheck: Option[Check],
-                        environmentVariables: Map[String, EnvironmentVariable],
-                        version: Option[String],
-                        modules: Set[String]) {
+  namespace: Option[String],
+  appName: Option[String],
+  appType: Option[String],
+  configResource: Option[String],
+  diskSpace: Option[Long],
+  memory: Option[Long],
+  nrOfCpus: Option[Double],
+  endpoints: Map[String, Endpoint],
+  secrets: Seq[Secret],
+  volumes: Map[String, Volume],
+  privileged: Boolean,
+  healthCheck: Option[Check],
+  readinessCheck: Option[Check],
+  environmentVariables: Map[String, EnvironmentVariable],
+  version: Option[String],
+  modules: Set[String]) {
 
   def appNameValidation: ValidationNel[String, String] =
     appName.fold[ValidationNel[String, String]]("Docker label \"com.lightbend.rp.app-name\" must be defined".failureNel)(_.successNel)
@@ -96,8 +96,8 @@ object Annotations {
 
   private[annotations] def namespace(args: GenerateDeploymentArgs): Option[String] =
     args.targetRuntimeArgs.collect {
-      case KubernetesArgs(_, _, _, _, Some(namespace), _, _, _, _) => namespace
-  }
+      case KubernetesArgs(_, _, _, _, _, _, _, _, Some(namespace), _, _, _, _) => namespace
+    }
 
   private[annotations] def appName(labels: Map[String, String]): Option[String] =
     labels
@@ -194,9 +194,9 @@ object Annotations {
   private[annotations] def secrets(secrets: Seq[Map[String, String]]): Seq[Secret] =
     for {
       entry <- secrets
-      ns <- entry.get("namespace")
       name <- entry.get("name")
-    } yield Secret(ns, name)
+      key <- entry.get("key")
+    } yield Secret(name, key)
 
   private[annotations] def endpoints(endpoints: Seq[(Int, Map[String, String])], version: Option[String]): Map[String, Endpoint] =
     endpoints.flatMap(v => endpoint(v._2, v._1, version)).toMap

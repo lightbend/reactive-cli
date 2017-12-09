@@ -10,7 +10,8 @@ sudo apt-get install -y -qq \
   clang++-3.9 \
   libgc-dev \
   libunwind8-dev \
-  libre2-dev
+  libre2-dev \
+  jq
 
 echo "Install argonaut from source"
 rm -rf argonaut

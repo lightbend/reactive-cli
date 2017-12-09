@@ -45,7 +45,7 @@ object NamespaceJsonTest extends TestSuite {
         modules = Set.empty)
 
       "namespace present" - {
-        val result = Namespace.generate(annotations.copy(namespace = Some("chirper")), "v1")
+        val result = Namespace.generate(annotations.copy(namespace = Some("chirper")), "v1", None)
 
         assert(result.isSuccess)
 
@@ -62,14 +62,39 @@ object NamespaceJsonTest extends TestSuite {
             |  }
             |}
           """.stripMargin.parse.right.get
-        assert(result.toOption.get.get == Namespace("chirper", expectedJson))
+        assert(result.toOption.get.get == Namespace("chirper", expectedJson, None))
       }
 
       "namespace not present" - {
-        val result = Namespace.generate(annotations.copy(namespace = None), "v1")
+        val result = Namespace.generate(annotations.copy(namespace = None), "v1", None)
 
         assert(result.isSuccess)
         assert(result.toOption.get.isEmpty)
+      }
+
+      "jq works" - {
+        val result = Namespace.generate(annotations.copy(namespace = Some("chirper")), "v1", Some(".jq=\"testing\""))
+
+        assert(result.isSuccess)
+
+        val expectedJson =
+          """
+            |{
+            |  "apiVersion": "v1",
+            |  "kind": "Namespace",
+            |  "metadata": {
+            |    "name": "chirper",
+            |    "labels": {
+            |      "name": "chirper"
+            |    }
+            |  },
+            |  "jq": "testing"
+            |}
+          """.stripMargin.parse.right.get
+
+        val generatedJson = result.toOption.get.get.payload
+
+        assert(expectedJson == generatedJson)
       }
     }
   }
