@@ -4,6 +4,8 @@ import scala.collection.immutable.Seq
 import AdditionalIO._
 
 object BuildInfo {
+  private val ArgonautCommit = "2c719f155744881d30fc932dcbbf597a9ce8084c"
+
   val Builds =
     Seq(
       MuslBuild.rpm("centos-6", "el6", "bash"),
@@ -94,6 +96,39 @@ object BuildInfo {
                       |  apt-get -y install bc build-essential jq openjdk-8-jre-headless ca-certificates-java clang-3.8 libcurl4-openssl-dev libgc-dev libre2-dev libunwind8-dev sbt
                       |""".stripMargin,
         target = DebBuildTarget(Seq("zesty", "artful"), "main", "bash,libre2-3,libunwind8,libcurl3", Seq.empty)))
+
+  def initialize(root: File): Unit = {
+    val argonautDir = root / "target" / "argonaut" / ArgonautCommit
+    val ivyDir = root / "target" / ".ivy2" / "cache"
+
+    if (!argonautDir.isDirectory) {
+      val argonautTempDir = root / "target" / "argonaut" / "temporary" / ArgonautCommit
+
+      IO.createDirectory(argonautTempDir)
+
+      AdditionalIO.runProcess("git", "clone", "https://github.com/argonaut-io/argonaut.git", argonautTempDir.getAbsolutePath)
+
+      AdditionalIO.runProcessCwd(argonautTempDir, "git", "checkout", ArgonautCommit)
+
+      // Remove coursier so we use the ivy cache
+
+      IO.writeLines(
+        argonautTempDir / "project" / "plugins.sbt",
+        IO.readLines(argonautTempDir / "project" / "plugins.sbt").filterNot(_.contains("sbt-coursier")))
+
+      IO.move(argonautTempDir, argonautDir)
+    }
+
+    if (!ivyDir.isDirectory && (Path.userHome / ".ivy2" / "cache").isDirectory) {
+      IO.createDirectory(root / "target" / ".ivy2")
+
+      val ivyTempDir = root / "target" / ".ivy2" / "temporary"
+
+      IO.copyDirectory(Path.userHome / ".ivy2" / "cache", ivyTempDir)
+
+      IO.move(ivyTempDir, ivyDir)
+    }
+  }
 }
 
 object MuslBuild {
@@ -168,7 +203,8 @@ object MuslBuild {
 }
 
 case class BuildInfo(name: String, baseImage: String, install: String, target: BuildTarget) {
-  val argonautCommit = "2c719f155744881d30fc932dcbbf597a9ce8084c"
+  import BuildInfo.ArgonautCommit
+
   val dockerBuildImage = s"reactive-cli-build-$name"
 
   def run(root: File, stage: File, version: String, log: Logger): Seq[File] = {
@@ -178,44 +214,13 @@ case class BuildInfo(name: String, baseImage: String, install: String, target: B
     }
 
     def copyArgonaut(): Unit = {
-      val argonautDir = root / "target" / "argonaut" / argonautCommit
+      val argonautDir = root / "target" / "argonaut" / ArgonautCommit
 
-      if (!argonautDir.isDirectory) {
-        BuildInfo.synchronized {
-          // builds are done in parallel but we ensure that only one of them does the git clone on argonaut
-
-          if (!argonautDir.isDirectory) {
-            log.info(s"[$name] cloning argonaut")
-
-            val argonautTempDir = root / "target" / "argonaut" / "temporary" / argonautCommit
-
-            IO.createDirectory(argonautTempDir)
-
-            AdditionalIO.runProcess("git", "clone", "https://github.com/argonaut-io/argonaut.git", argonautTempDir.getAbsolutePath)
-
-            AdditionalIO.runProcessCwd(argonautTempDir, "git", "checkout", argonautCommit)
-
-            // Remove coursier so we use the ivy cache
-
-            IO.writeLines(
-              argonautTempDir / "project" / "plugins.sbt",
-              IO.readLines(argonautTempDir / "project" / "plugins.sbt").filterNot(_.contains("sbt-coursier")))
-
-            IO.move(argonautTempDir, argonautDir)
-          }
-        }
-      }
+      assert(argonautDir.isDirectory, s"Argonaut directory missing: $argonautDir")
 
       log.info(s"[$name] copying argonaut")
 
       IO.copyDirectory(argonautDir, stage / "argonaut")
-    }
-
-    def copyIvyCache(): Unit = {
-      if ((Path.userHome / ".ivy2" / "cache").isDirectory) {
-        log.info(s"[$name] copying ivy cache")
-        IO.copyDirectory(Path.userHome / ".ivy2" / "cache", stage / ".ivy2" / "cache")
-      }
     }
 
     def copyProject(): Unit = {
@@ -260,7 +265,7 @@ case class BuildInfo(name: String, baseImage: String, install: String, target: B
         "--env", "BINTRAY_PASS=none",
 
         "-v", s"$stage:/root/stage",
-        "-v", s"${stage / ".ivy2"}:/root/.ivy2",
+        "-v", s"${root / "target" / ".ivy2" / "cache"}:/root/.ivy2/cache",
         s"$dockerBuildImage:latest")
 
       IO.listFiles(stage / "output").toVector
@@ -271,8 +276,6 @@ case class BuildInfo(name: String, baseImage: String, install: String, target: B
     clearStage()
 
     copyProject()
-
-    copyIvyCache()
 
     copyArgonaut()
 
