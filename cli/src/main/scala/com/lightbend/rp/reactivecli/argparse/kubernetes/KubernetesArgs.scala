@@ -80,6 +80,7 @@ case class KubernetesArgs(
   transformPodControllers: Option[String] = None,
   transformServices: Option[String] = None,
   namespace: Option[String] = None,
+  overrideVersion: Option[String] = None,
   podControllerArgs: PodControllerArgs = PodControllerArgs(),
   serviceArgs: ServiceArgs = ServiceArgs(),
   ingressArgs: IngressArgs = IngressArgs(),

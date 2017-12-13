@@ -73,7 +73,7 @@ case class Annotations(
  */
 object Annotations {
   def apply(labels: Map[String, String], args: GenerateDeploymentArgs): Annotations = {
-    val appVersion = version(labels)
+    val appVersion = version(labels, args)
     Annotations(
       namespace = namespace(args),
       appName = appName(labels),
@@ -96,7 +96,7 @@ object Annotations {
 
   private[annotations] def namespace(args: GenerateDeploymentArgs): Option[String] =
     args.targetRuntimeArgs.collect {
-      case KubernetesArgs(_, _, _, _, _, _, _, _, Some(namespace), _, _, _, _) => namespace
+      case KubernetesArgs(_, _, _, _, _, _, _, _, Some(namespace), _, _, _, _, _) => namespace
     }
 
   private[annotations] def appName(labels: Map[String, String]): Option[String] =
@@ -147,9 +147,12 @@ object Annotations {
       .flatMap(decodeBoolean)
       .getOrElse(false)
 
-  private[annotations] def version(labels: Map[String, String]): Option[String] =
-    labels
-      .get(ns("app-version"))
+  private[annotations] def version(labels: Map[String, String], args: GenerateDeploymentArgs): Option[String] = {
+    args.targetRuntimeArgs.get match {
+      case KubernetesArgs(_, _, _, _, _, _, _, _, _, Some(version), _, _, _, _) => Some(version)
+      case _ => labels.get(ns("app-version"))
+    }
+  }
 
   private[annotations] def check(check: Map[String, String]): Option[Check] = {
     for {
