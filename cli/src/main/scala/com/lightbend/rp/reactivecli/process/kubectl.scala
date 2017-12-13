@@ -21,7 +21,7 @@ import slogging._
 
 object kubectl extends LazyLogging {
   lazy val apiVersions: Seq[String] = {
-    val (code, output) = exec("kubectl", "api-versions")
+    val (code, output) = exec("kubectl", "api-versions", "--request-timeout=1s")
 
     if (code == 0) {
       output

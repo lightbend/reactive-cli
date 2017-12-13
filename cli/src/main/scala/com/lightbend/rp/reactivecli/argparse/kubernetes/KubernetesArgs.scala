@@ -41,12 +41,13 @@ object KubernetesArgs {
    */
   sealed trait Output
 
-  val DefaultNamespaceApiVersion: String = kubectl.findApi("v1")
   val DefaultNumberOfReplicas: Int = 1
   val DefaultImagePullPolicy: Deployment.ImagePullPolicy.Value = Deployment.ImagePullPolicy.IfNotPresent
-  val DefaultIngressApiVersion: String = kubectl.findApi("extensions/v1beta1")
-  val DefaultPodControllerApiVersion: String = kubectl.findApi("apps/v1beta2", "apps/v1beta1")
-  val DefaultServiceApiVersion: String = kubectl.findApi("v1")
+
+  lazy val DefaultNamespaceApiVersion: String = kubectl.findApi("v1")
+  lazy val DefaultIngressApiVersion: String = kubectl.findApi("extensions/v1beta1")
+  lazy val DefaultPodControllerApiVersion: String = kubectl.findApi("apps/v1beta2", "apps/v1beta1")
+  lazy val DefaultServiceApiVersion: String = kubectl.findApi("v1")
 
   /**
    * Convenience method to set the [[KubernetesArgs]] values when parsing the complete user input.
