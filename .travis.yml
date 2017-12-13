@@ -10,13 +10,19 @@ cache:
   directories:
     - $HOME/.ivy2/cache
     - $HOME/.sbt/launchers
+    - $HOME/.docker
 before_cache:
   # Ensure changes to the cache aren't persisted
-  - rm -rf $HOME/.ivy2/cache/com/lightbend/rp/reactivecli
+  - rm -rf "$HOME/.ivy2/cache/com/lightbend/rp/reactivecli"
   # Delete all ivydata files since ivy touches them on each build
-  - find $HOME/.ivy2/cache -name "ivydata-*.properties" | xargs rm
+  - find "$HOME/.ivy2/cache" -name "ivydata-*.properties" -delete
+  # Prepare docker cache
+  - mkdir -p "$HOME/.docker"
+  - docker save $(docker images -q -a --filter=dangling=false) -o "$HOME/.docker/images"
 before_install:
   - bash setup-travis.sh
+  # Load docker cache
+  - if [ -f "$HOME/.docker/images" ]; then docker load -i "$HOME/.docker/images"; fi
 script:
   - sbt clean test package buildAll
   - LD_LIBRARY_PATH=libhttpsimple/target cli/target/scala-2.11/reactive-cli-out --help
