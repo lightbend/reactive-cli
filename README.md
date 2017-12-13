@@ -71,7 +71,7 @@ the ones already created.
 
 ```sbt "build ubuntu-16-04"```
 
-#### Building every distribution in parallel
+#### Building every distribution
 
 ```sbt buildAll```
 

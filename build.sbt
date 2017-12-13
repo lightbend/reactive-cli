@@ -78,6 +78,8 @@ lazy val root = project
     ),
 
     build in Compile := {
+      BuildInfo.initialize(baseDirectory.value)
+
       for {
         name <- spaceDelimited("<arg>").parsed.toVector
         result <- BuildInfo.Builds.find(_.name == name) match {
@@ -94,9 +96,10 @@ lazy val root = project
     },
 
     buildAll in Compile := {
+      BuildInfo.initialize(baseDirectory.value)
+
       for {
-        g <- BuildInfo.Builds.grouped(Properties.concurrentBuilds)
-        b <- g.par
+        b <- BuildInfo.Builds
       } yield {
         val stage = target.value / "stage" / b.name
 
