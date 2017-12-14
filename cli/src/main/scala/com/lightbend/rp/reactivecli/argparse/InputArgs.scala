@@ -219,10 +219,10 @@ object InputArgs {
             .text("Sets the cluster IP for Service resources")
             .action(ServiceArgs.set((v, args) => args.copy(clusterIp = Some(v)))),
 
-          opt[String]("override-version")
+          opt[String]("version")
             .text("Uses specified version tag for generated resources instead of version in the docker image")
             .optional()
-            .action(KubernetesArgs.set((v, args) => args.copy(overrideVersion = Some(v)))),
+            .action(GenerateDeploymentArgs.set((v, args) => args.copy(version = Some(v)))),
 
           opt[String]("transform-ingress")
             .text("A jq expression that will be applied to Ingress resources. jq must be installed")

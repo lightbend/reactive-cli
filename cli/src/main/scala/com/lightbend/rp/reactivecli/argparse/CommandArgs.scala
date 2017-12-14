@@ -65,6 +65,7 @@ case object RollingDeploymentType extends DeploymentType
 case class GenerateDeploymentArgs(
   deploymentType: DeploymentType = CanaryDeploymentType,
   dockerImage: Option[String] = None,
+  version: Option[String] = None,
   environmentVariables: Map[String, String] = Map.empty,
   nrOfCpus: Option[Double] = None,
   memory: Option[Long] = None,
