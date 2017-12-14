@@ -73,7 +73,7 @@ case class Annotations(
  */
 object Annotations {
   def apply(labels: Map[String, String], args: GenerateDeploymentArgs): Annotations = {
-    val appVersion = version(labels)
+    val appVersion = args.version.orElse(version(labels))
     Annotations(
       namespace = namespace(args),
       appName = appName(labels),

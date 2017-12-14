@@ -270,6 +270,29 @@ object AnnotationsTest extends TestSuite {
               modules = Set.empty))
       }
 
+      "version (argument override)" - {
+        assert(
+          Annotations(
+            Map("com.lightbend.rp.app-version" -> "3.2.1"),
+            GenerateDeploymentArgs(version = Some("2.1.3"))) == Annotations(
+              namespace = None,
+              appName = None,
+              appType = None,
+              configResource = None,
+              diskSpace = None,
+              memory = None,
+              nrOfCpus = None,
+              endpoints = Map.empty,
+              secrets = Seq.empty,
+              volumes = Map.empty,
+              privileged = false,
+              healthCheck = None,
+              readinessCheck = None,
+              environmentVariables = Map.empty,
+              version = Some("2.1.3"),
+              modules = Set.empty))
+      }
+
       "endpoint (no version)" - {
         assert(
           Annotations(
