@@ -39,7 +39,7 @@ object DeploymentJsonTest extends TestSuite {
     configResource = Some("my-config.conf"),
     diskSpace = Some(65536L),
     memory = Some(8192L),
-    nrOfCpus = Some(0.5D),
+    cpu = Some(0.5D),
     endpoints = endpoints,
     volumes = Map(
       "/my/guest/path/1" -> HostPathVolume("/my/host/path")),
@@ -616,6 +616,32 @@ object DeploymentJsonTest extends TestSuite {
             .focus
             .contains(jString("test"))
         }
+
+        "resources" - {
+          val generatedJson = (Deployment.generate(annotations, "apps/v1beta2", imageName, Deployment.ImagePullPolicy.Never, 1, Map.empty, CanaryDeploymentType, None)
+            .toOption.get.payload.hcursor --\ "spec" --\ "template" --\ "spec" --\ "containers")
+            .downArray
+            .first
+            .downField("resources")
+            .focus
+            .get
+
+          val expectedJson =
+            """
+              |{
+              |  "limits": {
+              |    "cpu": 0.500000,
+              |    "memory": 8192
+              |  },
+              |  "request": {
+              |    "cpu": 0.500000,
+              |    "memory": 8192
+              |  }
+              |}
+            """.stripMargin.parse.right.get
+
+          assert(expectedJson == generatedJson)
+        }
       }
 
       "check" - {
@@ -773,6 +799,83 @@ object DeploymentJsonTest extends TestSuite {
               |}
             """.stripMargin.parse.right.get
           val generatedJson = assigned.asJson
+
+          assert(expectedJson == generatedJson)
+        }
+
+      }
+
+      "resource limits" - {
+        "all" - {
+          val limits = ResourceLimits(Some(0.1), Some(200L))
+          val expectedJson =
+            """
+              |{
+              |  "resources": {
+              |    "limits": {
+              |      "cpu":0.100000,
+              |      "memory":200
+              |    },
+              |    "request": {
+              |      "cpu":0.100000,
+              |      "memory":200
+              |    }
+              |   }
+              |}
+            """.stripMargin.parse.right.get
+
+          val generatedJson = limits.asJson
+
+          assert(expectedJson == generatedJson)
+        }
+
+        "memory only" - {
+          val limits = ResourceLimits(None, Some(200L))
+          val expectedJson =
+            """
+              |{
+              |  "resources": {
+              |    "limits": {
+              |      "memory":200
+              |    },
+              |    "request": {
+              |      "memory":200
+              |    }
+              |   }
+              |}
+            """.stripMargin.parse.right.get
+
+          val generatedJson = limits.asJson
+
+          assert(expectedJson == generatedJson)
+        }
+
+        "cpu only" - {
+          val limits = ResourceLimits(Some(2.5), None)
+          val expectedJson =
+            """
+              |{
+              |  "resources": {
+              |    "limits": {
+              |      "cpu":2.50000
+              |    },
+              |    "request": {
+              |      "cpu":2.50000
+              |    }
+              |   }
+              |}
+            """.stripMargin.parse.right.get
+
+          val generatedJson = limits.asJson
+
+          assert(expectedJson == generatedJson)
+        }
+
+        "none" - {
+          val limits = ResourceLimits(None, None)
+          val expectedJson = "{}".parse.right.get
+
+          val generatedJson = limits.asJson
 
           assert(expectedJson == generatedJson)
         }

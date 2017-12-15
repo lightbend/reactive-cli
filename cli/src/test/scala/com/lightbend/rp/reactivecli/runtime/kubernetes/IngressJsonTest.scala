@@ -31,7 +31,7 @@ object IngressJsonTest extends TestSuite {
     configResource = None,
     diskSpace = Some(65536L),
     memory = Some(8192L),
-    nrOfCpus = Some(0.5D),
+    cpu = Some(0.5D),
     endpoints = Map(
       "ep1" -> HttpEndpoint(
         index = 0,

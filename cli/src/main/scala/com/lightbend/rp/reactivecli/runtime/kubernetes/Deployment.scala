@@ -167,6 +167,8 @@ object Deployment {
     val Never, IfNotPresent, Always = Value
   }
 
+  case class ResourceLimits(cpu: Option[Double], memory: Option[Long])
+
   private[kubernetes] val VersionSeparator = "-v"
 
   implicit def imagePullPolicyEncode = EncodeJson[ImagePullPolicy.Value] {
@@ -280,6 +282,20 @@ object Deployment {
       .asJson
   }
 
+  implicit def resourceLimitsEncode = EncodeJson[ResourceLimits] {
+    case ResourceLimits(cpu, memory) =>
+      val memoryJson = memory.map({ v => Json("memory" -> v.asJson) }).getOrElse(jEmptyObject)
+      val cpuJson = cpu.map({ v => Json("cpu" -> v.asJson) }).getOrElse(jEmptyObject)
+      if (cpu.isEmpty && memory.isEmpty) {
+        jEmptyObject
+      } else {
+        Json(
+          "resources" -> Json(
+            "limits" -> cpuJson.deepmerge(memoryJson),
+            "request" -> cpuJson.deepmerge(memoryJson)))
+      }
+  }
+
   /**
    * Builds [[Deployment]] resource.
    */
@@ -320,6 +336,8 @@ object Deployment {
           .map(ns => (ns, serviceName(ns), s"secret-${serviceName(ns)}"))
           .toList
 
+      val resourceLimits = ResourceLimits(annotations.cpu, annotations.memory)
+
       Deployment(
         deploymentName,
         Json(
@@ -354,7 +372,8 @@ object Deployment {
                       }
                       .asJson)
                     .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
-                    .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson,
+                    .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))
+                    .deepmerge(resourceLimits.asJson)).asJson,
                 "volumes" -> secretNames
                   .map {
                     case (secretName, _, volumeName) =>
