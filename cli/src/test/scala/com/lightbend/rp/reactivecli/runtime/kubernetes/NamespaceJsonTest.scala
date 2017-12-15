@@ -33,7 +33,7 @@ object NamespaceJsonTest extends TestSuite {
         configResource = None,
         diskSpace = None,
         memory = None,
-        nrOfCpus = None,
+        cpu = None,
         endpoints = Map.empty,
         secrets = Seq.empty,
         volumes = Map.empty,

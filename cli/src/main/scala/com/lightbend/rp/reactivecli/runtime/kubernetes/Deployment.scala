@@ -336,7 +336,7 @@ object Deployment {
           .map(ns => (ns, serviceName(ns), s"secret-${serviceName(ns)}"))
           .toList
 
-      val resourceLimits = ResourceLimits(annotations.nrOfCpus, annotations.memory)
+      val resourceLimits = ResourceLimits(annotations.cpu, annotations.memory)
 
       Deployment(
         deploymentName,

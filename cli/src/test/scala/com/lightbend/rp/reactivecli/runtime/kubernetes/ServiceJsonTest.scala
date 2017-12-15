@@ -33,7 +33,7 @@ object ServiceJsonTest extends TestSuite {
     configResource = None,
     diskSpace = Some(65536L),
     memory = Some(8192L),
-    nrOfCpus = Some(0.5D),
+    cpu = Some(0.5D),
     endpoints = Map(
       "ep1" -> TcpEndpoint(0, "ep1", 1234)),
     secrets = Seq.empty,

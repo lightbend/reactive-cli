@@ -46,7 +46,7 @@ object KubernetesPackageTest extends TestSuite {
               "com.lightbend.rp.app-version" -> "3.2.1-SNAPSHOT",
               "com.lightbend.rp.disk-space" -> "65536",
               "com.lightbend.rp.memory" -> "8192",
-              "com.lightbend.rp.nr-of-cpus" -> "0.5",
+              "com.lightbend.rp.cpu" -> "0.5",
               "com.lightbend.rp.privileged" -> "true",
               "com.lightbend.rp.environment-variables.0.type" -> "literal",
               "com.lightbend.rp.environment-variables.0.name" -> "testing1",

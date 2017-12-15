@@ -39,7 +39,7 @@ object DeploymentJsonTest extends TestSuite {
     configResource = Some("my-config.conf"),
     diskSpace = Some(65536L),
     memory = Some(8192L),
-    nrOfCpus = Some(0.5D),
+    cpu = Some(0.5D),
     endpoints = endpoints,
     volumes = Map(
       "/my/guest/path/1" -> HostPathVolume("/my/host/path")),

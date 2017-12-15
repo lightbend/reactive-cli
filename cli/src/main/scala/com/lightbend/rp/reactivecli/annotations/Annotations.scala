@@ -32,7 +32,7 @@ case class Annotations(
   configResource: Option[String],
   diskSpace: Option[Long],
   memory: Option[Long],
-  nrOfCpus: Option[Double],
+  cpu: Option[Double],
   endpoints: Map[String, Endpoint],
   secrets: Seq[Secret],
   volumes: Map[String, Volume],
@@ -81,7 +81,7 @@ object Annotations {
       configResource = configFile(labels),
       diskSpace = args.diskSpace.orElse(diskSpace(labels)),
       memory = args.memory.orElse(memory(labels)),
-      nrOfCpus = args.nrOfCpus.orElse(nrOfCpus(labels)),
+      cpu = args.cpu.orElse(cpu(labels)),
       endpoints = endpoints(selectArrayWithIndex(labels, ns("endpoints")), appVersion),
       secrets = secrets(selectArray(labels, ns("secrets"))),
       volumes = volumes(selectArray(labels, ns("volumes"))),
@@ -136,9 +136,9 @@ object Annotations {
       .get(ns("memory"))
       .flatMap(decodeLong)
 
-  private[annotations] def nrOfCpus(labels: Map[String, String]): Option[Double] =
+  private[annotations] def cpu(labels: Map[String, String]): Option[Double] =
     labels
-      .get(ns("nr-of-cpus"))
+      .get(ns("cpu"))
       .flatMap(decodeDouble)
 
   private[annotations] def privileged(labels: Map[String, String]): Boolean =

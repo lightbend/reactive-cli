@@ -67,7 +67,7 @@ case class GenerateDeploymentArgs(
   dockerImage: Option[String] = None,
   version: Option[String] = None,
   environmentVariables: Map[String, String] = Map.empty,
-  nrOfCpus: Option[Double] = None,
+  cpu: Option[Double] = None,
   memory: Option[Long] = None,
   diskSpace: Option[Long] = None,
   targetRuntimeArgs: Option[TargetRuntimeArgs] = None,
