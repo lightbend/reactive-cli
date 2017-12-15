@@ -336,6 +336,8 @@ object Deployment {
           .map(ns => (ns, serviceName(ns), s"secret-${serviceName(ns)}"))
           .toList
 
+      val resourceLimits = ResourceLimits(annotations.nrOfCpus, annotations.memory)
+
       Deployment(
         deploymentName,
         Json(
@@ -370,7 +372,8 @@ object Deployment {
                       }
                       .asJson)
                     .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
-                    .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))).asJson,
+                    .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))
+                    .deepmerge(resourceLimits.asJson)).asJson,
                 "volumes" -> secretNames
                   .map {
                     case (secretName, _, volumeName) =>
