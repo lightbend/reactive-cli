@@ -776,6 +776,82 @@ object DeploymentJsonTest extends TestSuite {
 
           assert(expectedJson == generatedJson)
         }
+
+        "resource limits" - {
+          "all" - {
+            val limits = ResourceLimits(Some(0.1), Some(200L))
+            val expectedJson =
+              """
+                |{
+                |  "resources": {
+                |    "limits": {
+                |      "cpu":0.100000,
+                |      "memory":200
+                |    },
+                |    "request": {
+                |      "cpu":0.100000,
+                |      "memory":200
+                |    }
+                |   }
+                |}
+              """.stripMargin.parse.right.get
+
+            val generatedJson = limits.asJson
+
+            assert(expectedJson == generatedJson)
+          }
+
+          "memory only" - {
+            val limits = ResourceLimits(None, Some(200L))
+            val expectedJson =
+              """
+                |{
+                |  "resources": {
+                |    "limits": {
+                |      "memory":200
+                |    },
+                |    "request": {
+                |      "memory":200
+                |    }
+                |   }
+                |}
+              """.stripMargin.parse.right.get
+
+            val generatedJson = limits.asJson
+
+            assert(expectedJson == generatedJson)
+          }
+
+          "cpu only" - {
+            val limits = ResourceLimits(Some(2.5), None)
+            val expectedJson =
+              """
+                |{
+                |  "resources": {
+                |    "limits": {
+                |      "cpu":2.50000
+                |    },
+                |    "request": {
+                |      "cpu":2.50000
+                |    }
+                |   }
+                |}
+              """.stripMargin.parse.right.get
+
+            val generatedJson = limits.asJson
+
+            assert(expectedJson == generatedJson)
+          }
+
+          "none" - {
+            val limits = ResourceLimits(None, None)
+            val expectedJson = "{}".parse.right.get
+
+            val generatedJson = limits.asJson
+
+            assert(expectedJson == generatedJson)
+          }
+        }
       }
     }
 
