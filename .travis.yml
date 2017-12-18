@@ -18,7 +18,7 @@ before_cache:
   - find "$HOME/.ivy2/cache" -name "ivydata-*.properties" -delete
   # Prepare docker cache
   - mkdir -p "$HOME/.docker"
-  - docker save $(docker images -q -a --filter=dangling=false) -o "$HOME/.docker/images"
+  - docker save $(docker images -q -a --filter dangling=false --filter 'reference=reactive-cli*') -o "$HOME/.docker/images"
 before_install:
   - bash setup-travis.sh
   # Load docker cache
