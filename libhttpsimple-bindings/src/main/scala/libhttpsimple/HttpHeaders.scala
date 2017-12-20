@@ -25,17 +25,17 @@ case class HttpHeaders(headers: Map[String, String]) {
   private val lowerCaseHeaders =
     headers
       .keys
-      .map(h => toLowerCase(h) -> h)
+      .map(h => h.toLowerCase -> h)
       .toMap
 
-  def apply(name: String): String = headers(lowerCaseHeaders(toLowerCase(name)))
+  def apply(name: String): String = headers(lowerCaseHeaders(name.toLowerCase))
 
   def contains(name: String): Boolean =
-    lowerCaseHeaders.contains(toLowerCase(name))
+    lowerCaseHeaders.contains(name.toLowerCase)
 
   def header(name: String): Option[String] =
     for {
-      h <- lowerCaseHeaders.get(toLowerCase(name))
+      h <- lowerCaseHeaders.get(name.toLowerCase)
       v <- headers.get(h)
     } yield v
 
@@ -46,11 +46,5 @@ case class HttpHeaders(headers: Map[String, String]) {
     copy(headers = headers - headerName(name))
 
   private def headerName(name: String): String =
-    lowerCaseHeaders.getOrElse(toLowerCase(name), name)
-
-  private def toLowerCase(s: String): String = {
-    // FIXME replace with inlined .toLowerCase once https://github.com/scala-native/scala-native/pull/1037 merged
-
-    ("" + s).toLowerCase
-  }
+    lowerCaseHeaders.getOrElse(name.toLowerCase, name)
 }
