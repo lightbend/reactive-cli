@@ -13,9 +13,6 @@ lazy val buildAll = TaskKey[Seq[(BuildInfo, Seq[File])]]("buildAll")
 lazy val publishToBintray = TaskKey[Unit]("publishToBintray")
 
 lazy val Names = new {
-  val `httpsimple.c`     = "httpsimple.c"
-  val `httpsimple.o`     = "httpsimple.o"
-  val `libhttpsimple.so` = "libhttpsimple.so"
   val rp                 = "rp"
 }
 
@@ -136,7 +133,6 @@ lazy val root = project
 
     Keys.`package` in Compile := {
       val cliOut = (Keys.`package` in (cli, Compile)).value
-      val libHttpSimpleOut = (Keys.`package` in (libhttpsimple, Compile)).value
       val outputDirectory = target.value / "output"
 
       IO.deleteFilesEmptyDirs(Seq(outputDirectory))
@@ -145,7 +141,6 @@ lazy val root = project
 
       IO.copyFile(cliOut, outputDirectory / "bin" / Names.rp)
       AdditionalIO.setExecutable(outputDirectory / "bin" / Names.rp)
-      IO.copyFile(libHttpSimpleOut, outputDirectory / "lib" / Names.`libhttpsimple.so`)
 
       (outputDirectory / Names.rp).setExecutable(true)
 
@@ -155,41 +150,9 @@ lazy val root = project
     }
   )
 
-lazy val libhttpsimple = project
-  .in(file("libhttpsimple"))
-  .settings(commonSettings)
-  .settings(
-    Keys.`package` in Compile := {
-      (compile in Compile).value
-
-      target.value / Names.`libhttpsimple.so`
-    },
-
-    compile in Compile := {
-      val result = (compile in Compile).value
-      val sources = (cSource in Compile).value
-      val output = (target in Compile).value
-
-      streams.value.log.info("Compiling C sources")
-
-      val gccCode1 =
-        Seq("gcc", "-c", "-fPIC", "-o", (output / Names.`httpsimple.o`).toString, (sources / Names.`httpsimple.c`).toString).!
-
-      assert(gccCode1 == 0, s"gcc exited with $gccCode1")
-
-      val gccCode2 =
-        Seq("gcc", "-shared", "-fPIC", "-lcurl", "-o", (output / Names.`libhttpsimple.so`).toString, (output / Names.`httpsimple.o`).toString).!
-
-      assert(gccCode2 == 0, s"gcc exited with $gccCode2")
-
-      result
-    }
-  )
-
 lazy val `libhttpsimple-bindings` = project
   .in(file("libhttpsimple-bindings"))
   .enablePlugins(ScalaNativePlugin, AutomateHeaderPlugin)
-  .dependsOn(libhttpsimple)
   .settings(commonSettings)
   .settings(test in Compile := ())
 
