@@ -12,8 +12,7 @@ nativeLinkingOptions := {
       .map(dl => s"-Wl,--dynamic-linker=$dl")
 
   dynamicLinkerOptions ++ Seq(
-    "-lcurl",
-    "-L"
+    "-lcurl"
   ) ++ sys.props.get("nativeLinkingOptions").fold(Seq.empty[String])(_.split(" ").toVector)
 }
 
