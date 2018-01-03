@@ -39,9 +39,7 @@ object Main extends LazyLogging {
 
   private def credentialsFile: Option[Path] =
     for {
-      // @FIXME when scala native has release with property user.home
-      // https://github.com/scala-native/scala-native/issues/1025
-      home <- sys.env.get("HOME")
+      home <- sys.props.get("user.home")
       path = Paths.get(home, ".lightbend", "docker.credentials")
       if Files.exists(path)
     } yield path

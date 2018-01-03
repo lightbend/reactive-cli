@@ -312,15 +312,8 @@ object Annotations {
     else
       None
 
-  private[annotations] def decodeDouble(s: String) = {
-    // @FIXME Once https://github.com/scala-native/scala-native/pull/1047 is merged we can remove the regex guard
-
-    if (!s.matches("^-?[0-9]+([.][0-9]*)?$"))
-      None
-    else
-      Try(s.toDouble)
-        .toOption
-  }
+  private[annotations] def decodeDouble(s: String) =
+    Try(s.toDouble).toOption
 
   private[annotations] def decodeInt(s: String) =
     Try(s.toInt).toOption

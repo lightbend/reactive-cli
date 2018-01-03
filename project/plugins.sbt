@@ -3,7 +3,7 @@ val Versions = new {
   val sbtHeader          = "3.0.1"
   val sbtNativePackager  = "1.2.0"
   val sbtRelease         = "1.0.6"
-  val sbtScalaNative     = "0.3.3"
+  val sbtScalaNative     = "0.3.6"
   val sbtScalariform     = "1.8.0"
 }
 
