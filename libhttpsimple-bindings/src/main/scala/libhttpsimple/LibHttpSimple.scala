@@ -134,7 +134,7 @@ object LibHttpSimple {
       val result =
         if (errorCode == 0) {
           val httpStatus = nativebinding.httpsimple.get_http_status(http_response_struct).cast[Long]
-          val rawHttpResponse = native.fromCString(nativebinding.httpsimple.get_raw_http_response(http_response_struct))
+          val rawHttpResponse = nativebinding.httpsimple.get_raw_http_response(http_response_struct)
           val (headers, body) = rawHttpResponseToHttpHeadersAndBody(rawHttpResponse)
           val hs = HttpHeaders(headers)
 

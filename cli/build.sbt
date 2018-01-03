@@ -13,7 +13,7 @@ nativeLinkingOptions := {
 
   dynamicLinkerOptions ++ Seq(
     "-lcurl",
-    "-L",
+    "-L"
   ) ++ sys.props.get("nativeLinkingOptions").fold(Seq.empty[String])(_.split(" ").toVector)
 }
 
