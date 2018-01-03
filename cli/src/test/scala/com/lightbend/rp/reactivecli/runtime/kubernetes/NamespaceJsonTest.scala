@@ -42,7 +42,8 @@ object NamespaceJsonTest extends TestSuite {
         readinessCheck = None,
         environmentVariables = Map.empty,
         version = None,
-        modules = Set.empty)
+        modules = Set.empty,
+        akkaClusterBootstrapSystemName = None)
 
       "namespace present" - {
         val result = Namespace.generate(annotations.copy(namespace = Some("chirper")), "v1", None)

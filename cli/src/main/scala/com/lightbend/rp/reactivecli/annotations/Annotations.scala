@@ -41,7 +41,8 @@ case class Annotations(
   readinessCheck: Option[Check],
   environmentVariables: Map[String, EnvironmentVariable],
   version: Option[String],
-  modules: Set[String]) {
+  modules: Set[String],
+  akkaClusterBootstrapSystemName: Option[String]) {
 
   def appNameValidation: ValidationNel[String, String] =
     appName.fold[ValidationNel[String, String]]("Docker label \"com.lightbend.rp.app-name\" must be defined".failureNel)(_.successNel)
@@ -91,7 +92,8 @@ object Annotations {
       environmentVariables = environmentVariables(selectArray(labels, ns("environment-variables"))) ++
         args.environmentVariables.mapValues(LiteralEnvironmentVariable.apply),
       version = appVersion,
-      modules = appModules(selectSubset(labels, ns("modules"))))
+      modules = appModules(selectSubset(labels, ns("modules"))),
+      akkaClusterBootstrapSystemName = akkaClusterBootstrapSystemName(labels))
   }
 
   private[annotations] def namespace(args: GenerateDeploymentArgs): Option[String] =
@@ -125,6 +127,10 @@ object Annotations {
 
     parsed.toSet
   }
+
+  private[annotations] def akkaClusterBootstrapSystemName(labels: Map[String, String]): Option[String] =
+    labels
+      .get(ns("akka-cluster-bootstrap", "system-name"))
 
   private[annotations] def diskSpace(labels: Map[String, String]): Option[Long] =
     labels
