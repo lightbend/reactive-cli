@@ -126,7 +126,8 @@ object AnnotationsTest extends TestSuite {
           readinessCheck = None,
           environmentVariables = Map.empty,
           version = None,
-          modules = Set.empty))
+          modules = Set.empty,
+          akkaClusterBootstrapSystemName = None))
 
       "all options (except checks)" - {
         assert(
@@ -179,7 +180,8 @@ object AnnotationsTest extends TestSuite {
               "com.lightbend.rp.endpoints.2.protocol" -> "udp",
               "com.lightbend.rp.endpoints.2.port" -> "1234",
               "com.lightbend.rp.modules.common.enabled" -> "true",
-              "com.lightbend.rp.modules.another-one.enabled" -> "false"),
+              "com.lightbend.rp.modules.another-one.enabled" -> "false",
+              "com.lightbend.rp.akka-cluster-bootstrap.system-name" -> "test"),
             GenerateDeploymentArgs()) == Annotations(
               namespace = None,
               appName = Some("my-app"),
@@ -203,7 +205,8 @@ object AnnotationsTest extends TestSuite {
                 "testing2" -> kubernetes.ConfigMapEnvironmentVariable("mymap", "mykey"),
                 "testing3" -> kubernetes.FieldRefEnvironmentVariable("metadata.name")),
               version = Some("3.2.1-SNAPSHOT"),
-              modules = Set("common")))
+              modules = Set("common"),
+              akkaClusterBootstrapSystemName = Some("test")))
       }
 
       "argument overrides" - {
@@ -242,7 +245,8 @@ object AnnotationsTest extends TestSuite {
                 "foo" -> LiteralEnvironmentVariable("foo"),
                 "hey" -> LiteralEnvironmentVariable("there")),
               version = None,
-              modules = Set.empty))
+              modules = Set.empty,
+              akkaClusterBootstrapSystemName = None))
 
       }
 
@@ -267,7 +271,8 @@ object AnnotationsTest extends TestSuite {
               readinessCheck = None,
               environmentVariables = Map.empty,
               version = Some("3.2.1"),
-              modules = Set.empty))
+              modules = Set.empty,
+              akkaClusterBootstrapSystemName = None))
       }
 
       "version (argument override)" - {
@@ -290,7 +295,8 @@ object AnnotationsTest extends TestSuite {
               readinessCheck = None,
               environmentVariables = Map.empty,
               version = Some("2.1.3"),
-              modules = Set.empty))
+              modules = Set.empty,
+              akkaClusterBootstrapSystemName = None))
       }
 
       "endpoint (no version)" - {
@@ -319,7 +325,8 @@ object AnnotationsTest extends TestSuite {
               readinessCheck = None,
               environmentVariables = Map.empty,
               version = Some("3.2.1"),
-              modules = Set.empty))
+              modules = Set.empty,
+              akkaClusterBootstrapSystemName = None))
       }
 
       "endpoint (no version and no app version)" - {
@@ -346,7 +353,8 @@ object AnnotationsTest extends TestSuite {
               readinessCheck = None,
               environmentVariables = Map.empty,
               version = None,
-              modules = Set.empty))
+              modules = Set.empty,
+              akkaClusterBootstrapSystemName = None))
       }
 
       "CommandCheck" - {
@@ -375,7 +383,8 @@ object AnnotationsTest extends TestSuite {
               readinessCheck = Some(CommandCheck("/usr/bin/env", "bash")),
               environmentVariables = Map.empty,
               version = None,
-              modules = Set.empty))
+              modules = Set.empty,
+              akkaClusterBootstrapSystemName = None))
       }
 
       "HttpCheck" - {
@@ -406,7 +415,8 @@ object AnnotationsTest extends TestSuite {
               readinessCheck = Some(HttpCheck(Check.PortNumber(1234), 5, "/hello")),
               environmentVariables = Map.empty,
               version = None,
-              modules = Set.empty))
+              modules = Set.empty,
+              akkaClusterBootstrapSystemName = None))
       }
 
       "TcpCheck" - {
@@ -435,7 +445,8 @@ object AnnotationsTest extends TestSuite {
               readinessCheck = Some(TcpCheck(Check.PortNumber(1234), 5)),
               environmentVariables = Map.empty,
               version = None,
-              modules = Set.empty))
+              modules = Set.empty,
+              akkaClusterBootstrapSystemName = None))
       }
     }
   }

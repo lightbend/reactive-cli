@@ -50,7 +50,8 @@ object IngressJsonTest extends TestSuite {
     environmentVariables = Map(
       "testing1" -> LiteralEnvironmentVariable("testingvalue1")),
     version = Some("3.2.1-SNAPSHOT"),
-    modules = Set.empty)
+    modules = Set.empty,
+    akkaClusterBootstrapSystemName = None)
 
   val tests = this{
     "json serialization" - {

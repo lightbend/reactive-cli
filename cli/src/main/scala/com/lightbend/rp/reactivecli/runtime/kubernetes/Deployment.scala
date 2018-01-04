@@ -58,7 +58,7 @@ object Deployment {
         appTypeEnvs(annotations.appType, annotations.modules),
         configEnvs(annotations.configResource),
         endpointEnvs(annotations.endpoints),
-        akkaClusterEnvs(annotations.modules, serviceResourceName, noOfReplicas),
+        akkaClusterEnvs(annotations.modules, serviceResourceName, noOfReplicas, annotations.akkaClusterBootstrapSystemName),
         externalServicesEnvs(annotations.modules, externalServices))
 
     private[kubernetes] def namespaceEnv(namespace: Option[String]): Map[String, EnvironmentVariable] =
@@ -74,13 +74,19 @@ object Deployment {
           if (modules.isEmpty) Seq.empty else Seq("RP_MODULES" -> LiteralEnvironmentVariable(modules.toVector.sorted.mkString(","))))
     }.toMap
 
-    private[kubernetes] def akkaClusterEnvs(modules: Set[String], serviceResourceName: String, noOfReplicas: Int): Map[String, EnvironmentVariable] =
+    private[kubernetes] def akkaClusterEnvs(modules: Set[String], serviceResourceName: String, noOfReplicas: Int, akkaClusterBootstrapSystemName: Option[String]): Map[String, EnvironmentVariable] =
       if (!modules.contains(Module.AkkaClusterBootstrapping))
         Map.empty
       else
         Map(
           "RP_JAVA_OPTS" -> LiteralEnvironmentVariable(
-            s"-Dakka.cluster.bootstrap.contact-point-discovery.discovery-method=akka.discovery.reactive-lib-kubernetes -Dakka.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName -Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas"))
+            Seq(
+              s"-Dakka.cluster.bootstrap.contact-point-discovery.discovery-method=akka.discovery.reactive-lib-kubernetes",
+              s"-Dakka.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName",
+              s"-Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas",
+              akkaClusterBootstrapSystemName.fold("")(systemName => s"-Drp.akka-cluster-bootstrap.pod-label-selector=actorSystemName=$systemName"))
+              .filter(_.nonEmpty)
+              .mkString(" ")))
 
     private[kubernetes] def configEnvs(config: Option[String]): Map[String, EnvironmentVariable] =
       config
@@ -315,6 +321,7 @@ object Deployment {
 
       val deploymentLabels =
         Json("appName" -> appName.asJson, "appNameVersion" -> appNameVersion.asJson)
+          .deepmerge(annotations.akkaClusterBootstrapSystemName.fold(jEmptyObject)(systemName => Json("actorSystemName" -> systemName.asJson)))
 
       val (deploymentName, deploymentMatchLabels, serviceResourceName) =
         deploymentType match {
