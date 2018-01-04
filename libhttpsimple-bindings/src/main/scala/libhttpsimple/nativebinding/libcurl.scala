@@ -23,7 +23,7 @@ import scala.scalanative.native._
 @native.extern
 object curl {
   type CURL = native.Ptr[_]
-  type curl_slist = native.CStruct2[native.CString, native.Ptr[_]]
+  type curl_slist = native.CStruct2[native.CString, native.Ptr[Byte]]
 
   // Following enums were generated automatically by gen-curl-bindings
   class CURLINFO(val value: CInt) extends AnyVal

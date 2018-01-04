@@ -121,13 +121,13 @@ object LibHttpSimple {
 
       val http_response_struct = nativebinding.httpsimple.do_http(
         validate_tls = if (isTlsValidationEnabled) 1 else 0,
-        native.toCString(method),
-        native.toCString(url),
-        native.toCString(httpHeadersToDelimitedString(headersWithAuth)),
-        native.toCString(requestBody.getOrElse("")),
-        native.toCString(settings.tlsCacertsPath.fold("")(_.toString)),
-        native.toCString(settings.tlsCertPath.fold("")(_.toString)),
-        native.toCString(settings.tlsKeyPath.fold("")(_.toString)))
+        method,
+        url,
+        httpHeadersToDelimitedString(headersWithAuth),
+        requestBody.getOrElse(""),
+        settings.tlsCacertsPath.fold("")(_.toString),
+        settings.tlsCertPath.fold("")(_.toString),
+        settings.tlsKeyPath.fold("")(_.toString))
 
       val errorCode = nativebinding.httpsimple.get_error_code(http_response_struct).cast[Long]
       val errorMessage = nativebinding.httpsimple.get_error_message(http_response_struct)
@@ -158,12 +158,11 @@ object LibHttpSimple {
       result
     }
 
-  private def httpHeadersToDelimitedString(headers: Map[String, String]): String =
+  private def httpHeadersToDelimitedString(headers: Map[String, String]): Seq[String] =
     headers
       .map {
         case (headerName, headerValue) => s"$headerName$HttpHeaderNameAndValueSeparator $headerValue"
-      }
-      .mkString(CRLF)
+      }.toList
 
   private def rawHttpResponseToHttpHeadersAndBody(input: String): (Map[String, String], Option[String]) = {
     def splitBySeparator(v: String, separator: String): (String, String) = {

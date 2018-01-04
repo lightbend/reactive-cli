@@ -37,56 +37,86 @@ object httpsimple {
     curl.global_cleanup()
   }
 
-  def do_http(validate_tls: CLong, http_method: CString,
-              url: CString, request_headers_raw: CString,
-              request_body: CString, tls_cacerts_path: CString,
-              ssl_cert: CString, ssl_key: CString): HttpResponse = {
+  def do_http(validate_tls: CLong, http_method: String,
+              url: String, request_headers: Seq[String],
+              request_body: String, tls_cacerts_path: String,
+              ssl_cert: String, ssl_key: String)(implicit z: Zone): HttpResponse = {
 
-    var result = HttpResponse(-100, 404, None)
+    var result = HttpResponse(0, 0, None)
     val req = curl.easy_init()
-    if(req != 0) {
-      curl.easy_setopt(req, curl.CURLoption.CURLOPT_URL, url)
-      curl.easy_setopt(req, curl.CURLoption.CURLOPT_CUSTOMREQUEST, http_method)
-      curl.easy_setopt(req, curl.CURLoption.CURLOPT_HEADER, 1L)
-      if(validate_tls == 0)
-        curl.easy_setopt(req, curl.CURLoption.CURLOPT_SSL_VERIFYPEER, 0L)
-      if(tls_cacerts_path != 0 && fromCString(tls_cacerts_path).length > 0)
-        curl.easy_setopt(req, curl.CURLoption.CURLOPT_CAINFO, tls_cacerts_path)
-      if(ssl_cert != 0 && fromCString(ssl_cert).length > 0)
-        curl.easy_setopt(req, curl.CURLoption.CURLOPT_SSLCERT, ssl_cert)
-      if(ssl_key != 0 && fromCString(ssl_key).length > 0)
-        curl.easy_setopt(req, curl.CURLoption.CURLOPT_SSLKEY, ssl_key)
 
-      if(request_headers_raw != 0 && fromCString(request_headers_raw).length > 0) {
-        // TODO(mitkus): Request headers
-        System.out.println("Request headers: " + fromCString(request_headers_raw))
+    // For debugging
+    //curl.easy_setopt(req, curl.CURLoption.CURLOPT_VERBOSE, 1L)
+
+    // Set up options
+    curl.easy_setopt(req, curl.CURLoption.CURLOPT_URL, toCString(url))
+    curl.easy_setopt(req, curl.CURLoption.CURLOPT_CUSTOMREQUEST, toCString(http_method))
+    curl.easy_setopt(req, curl.CURLoption.CURLOPT_HEADER, 1L)
+    if(validate_tls == 0)
+      curl.easy_setopt(req, curl.CURLoption.CURLOPT_SSL_VERIFYPEER, 0L)
+    if(tls_cacerts_path.length > 0)
+      curl.easy_setopt(req, curl.CURLoption.CURLOPT_CAINFO, toCString(tls_cacerts_path))
+    if(ssl_cert.length > 0)
+      curl.easy_setopt(req, curl.CURLoption.CURLOPT_SSLCERT, toCString(ssl_cert))
+    if(ssl_key.length > 0)
+      curl.easy_setopt(req, curl.CURLoption.CURLOPT_SSLKEY, toCString(ssl_key))
+    if(request_body.length > 0)
+      curl.easy_setopt(req, curl.CURLoption.CURLOPT_POSTFIELDS, toCString(request_body))
+
+    // Set up http headers
+    if(request_headers.length > 0) {
+      if(request_headers.length != 1) {
+        System.out.println("Too many request headers, at most one is supported now")
       }
 
-      if(request_body != 0 && fromCString(request_body).length > 0)
-        curl.easy_setopt(req, curl.CURLoption.CURLOPT_POSTFIELDS, request_body)
+      val list = stackalloc[curl.curl_slist]
+      !list._1 = toCString(request_headers.head)
+      !list._2 = 0.cast[Ptr[Byte]]
 
-      def writefunc(ptr: Ptr[Byte], size: CSize, nmemb: CSize, userdata: CString): Unit = {
-        // TODO(mitkus): Handle response
+      curl.easy_setopt(req, curl.CURLoption.CURLOPT_HTTPHEADER, list)
+    }
+
+    // Set up text buffer and content write callback
+    val response_buffer_size = 32 * 1024
+    val data = alloc[CChar](response_buffer_size)
+    def writefunc(ptr: Ptr[Byte], size: CSize, nmemb: CSize, data: CString): CSize = {
+      // Scala native cannot retrieve function pointer of a closure which
+      // captures environment, so repeat our constant here
+      val response_buffer_size = 32 * 1024
+      val realsize : CSize = size * nmemb
+      if(realsize >= response_buffer_size) {
+        System.err.println(s"libcurl writefunc buffer too small - need $realsize, have $response_buffer_size")
+        0
       }
+      else {
+        var i = 0
+        while(i < realsize) {
+          data(i) = ptr(i).cast[CChar]
 
-      curl.easy_setopt(req, curl.CURLoption.CURLOPT_WRITEFUNCTION, CFunctionPtr.fromFunction4(writefunc))
-      //curl.easy_setopt(req, curl.CURLoption.CURLOPT_WRITEDATA, ...)
-
-      val res = curl.easy_perform(req)
-
-      try {
-        if (res == curl.CURLcode.CURLE_OK) {
-          Zone { implicit z => {
-            val response_code = alloc[CLong]
-            curl.easy_getinfo(req, curl.CURLINFO.RESPONSE_CODE, response_code)
-            result = HttpResponse(0, !response_code, Some("Fake http response!"))
-          }}
+          i += 1
         }
-      }
-      finally {
-        curl.easy_cleanup(req)
+        data(i) = 0.toByte.cast[CChar]
+        realsize
       }
     }
+
+    curl.easy_setopt(req, curl.CURLoption.CURLOPT_WRITEFUNCTION, CFunctionPtr.fromFunction4(writefunc))
+    curl.easy_setopt(req, curl.CURLoption.CURLOPT_WRITEDATA, data)
+
+    // Perform request
+    val res = curl.easy_perform(req)
+    if (res == curl.CURLcode.CURLE_OK) {
+      Zone { implicit z =>
+        val response_code = stackalloc[CLong]
+        curl.easy_getinfo(req, curl.CURLINFO.RESPONSE_CODE, response_code)
+        result = HttpResponse(0, !response_code, Some(fromCString(data)))
+      }
+    }
+    else {
+      System.out.println(s"HTTP failed: $res")
+    }
+
+    curl.easy_cleanup(req)
 
     result
   }
