@@ -21,10 +21,10 @@ import scala.scalanative.native
 import scala.scalanative.native._
 
 object httpsimple {
-  case class HttpResponse(error: Int, status: Long, body: Option[String])
+
+  case class HttpResponse(error: Long, status: Long, header: Option[String], body: Option[String])
 
   def global_init(): CInt = {
-    // curl_easy_init calls global init implicitly, no need to do anything here
     val res = curl.global_init(curl.CURLGlobals.CURL_GLOBAL_DEFAULT)
     if (res == curl.CURLcode.CURLE_OK) 0
     else {
@@ -42,7 +42,7 @@ object httpsimple {
               request_body: String, tls_cacerts_path: String,
               ssl_cert: String, ssl_key: String)(implicit z: Zone): HttpResponse = {
 
-    var result = HttpResponse(0, 0, None)
+    var result = HttpResponse(-1L, 0L, None, None)
     val req = curl.easy_init()
 
     // For debugging
@@ -51,21 +51,20 @@ object httpsimple {
     // Set up options
     curl.easy_setopt(req, curl.CURLoption.CURLOPT_URL, toCString(url))
     curl.easy_setopt(req, curl.CURLoption.CURLOPT_CUSTOMREQUEST, toCString(http_method))
-    curl.easy_setopt(req, curl.CURLoption.CURLOPT_HEADER, 1L)
-    if(validate_tls == 0)
+    if (validate_tls == 0)
       curl.easy_setopt(req, curl.CURLoption.CURLOPT_SSL_VERIFYPEER, 0L)
-    if(tls_cacerts_path.length > 0)
+    if (tls_cacerts_path.length > 0)
       curl.easy_setopt(req, curl.CURLoption.CURLOPT_CAINFO, toCString(tls_cacerts_path))
-    if(ssl_cert.length > 0)
+    if (ssl_cert.length > 0)
       curl.easy_setopt(req, curl.CURLoption.CURLOPT_SSLCERT, toCString(ssl_cert))
-    if(ssl_key.length > 0)
+    if (ssl_key.length > 0)
       curl.easy_setopt(req, curl.CURLoption.CURLOPT_SSLKEY, toCString(ssl_key))
-    if(request_body.length > 0)
+    if (request_body.length > 0)
       curl.easy_setopt(req, curl.CURLoption.CURLOPT_POSTFIELDS, toCString(request_body))
 
     // Set up http headers
-    if(request_headers.length > 0) {
-      if(request_headers.length != 1) {
+    if (request_headers.length > 0) {
+      if (request_headers.length != 1) {
         System.out.println("Too many request headers, at most one is supported now")
       }
 
@@ -76,44 +75,41 @@ object httpsimple {
       curl.easy_setopt(req, curl.CURLoption.CURLOPT_HTTPHEADER, list)
     }
 
-    // Set up text buffer and content write callback
-    val response_buffer_size = 32 * 1024
-    val data = alloc[CChar](response_buffer_size)
-    def writefunc(ptr: Ptr[Byte], size: CSize, nmemb: CSize, data: CString): CSize = {
-      // Scala native cannot retrieve function pointer of a closure which
-      // captures environment, so repeat our constant here
-      val response_buffer_size = 32 * 1024
-      val realsize : CSize = size * nmemb
-      if(realsize >= response_buffer_size) {
-        System.err.println(s"libcurl writefunc buffer too small - need $realsize, have $response_buffer_size")
-        0
-      }
-      else {
-        var i = 0
-        while(i < realsize) {
-          data(i) = ptr(i).cast[CChar]
+    val body = new StringBuilder()
+    val header = new StringBuilder()
 
-          i += 1
-        }
-        data(i) = 0.toByte.cast[CChar]
-        realsize
+    def writefunc(ptr: Ptr[Byte], size: CSize, nmemb: CSize, builder: StringBuilder): CSize = {
+      val realsize: CSize = size * nmemb
+      var i = 0
+      while (i < realsize) {
+        builder.append(ptr(i).toChar)
+        i += 1
       }
+      realsize
     }
 
-    curl.easy_setopt(req, curl.CURLoption.CURLOPT_WRITEFUNCTION, CFunctionPtr.fromFunction4(writefunc))
-    curl.easy_setopt(req, curl.CURLoption.CURLOPT_WRITEDATA, data)
+    val writecallback = CFunctionPtr.fromFunction4(writefunc)
+    curl.easy_setopt(req, curl.CURLoption.CURLOPT_WRITEFUNCTION, writecallback)
+    curl.easy_setopt(req, curl.CURLoption.CURLOPT_HEADERFUNCTION, writecallback)
+    curl.easy_setopt(req, curl.CURLoption.CURLOPT_WRITEDATA, body)
+    curl.easy_setopt(req, curl.CURLoption.CURLOPT_HEADERDATA, header)
+
+    def buildString(b: StringBuilder): Option[String] = {
+      if (b.length > 0) Some(b.toString)
+      else None
+    }
 
     // Perform request
     val res = curl.easy_perform(req)
     if (res == curl.CURLcode.CURLE_OK) {
+      // Zone here shouldn't be needed but it functions as a workaround for scala-native bug.
+      // Without zone here, compiler crashes:
+      // [error] (cli/compile:nativeOptimizeNIR) java.util.NoSuchElementException: key not found: Local(167)
       Zone { implicit z =>
         val response_code = stackalloc[CLong]
         curl.easy_getinfo(req, curl.CURLINFO.RESPONSE_CODE, response_code)
-        result = HttpResponse(0, !response_code, Some(fromCString(data)))
+        result = HttpResponse(0L, !response_code, buildString(header), buildString(body))
       }
-    }
-    else {
-      System.out.println(s"HTTP failed: $res")
     }
 
     curl.easy_cleanup(req)
@@ -121,29 +117,7 @@ object httpsimple {
     result
   }
 
-  def get_error_code(http_response: HttpResponse): CLong = {
-    http_response match {
-      case HttpResponse(error, _, _) => error
-    }
+  def error_message(error_code: Long): String = {
+    fromCString(curl.easy_strerror(new curl.CURLcode(error_code.toInt)))
   }
-
-  def get_error_message(http_response: HttpResponse): CString = {
-    http_response match {
-      case HttpResponse(error, _, _) => curl.easy_strerror(new curl.CURLcode(error))
-    }
-  }
-
-  def get_http_status(http_response: HttpResponse): CLong = {
-    http_response match {
-      case HttpResponse(_, status, _) => status
-    }
-  }
-
-  def get_raw_http_response(http_response: HttpResponse): String = {
-    http_response match {
-      case HttpResponse(_, _, Some(response)) => response
-    }
-  }
-
-  def cleanup_http_response(http_response: HttpResponse): Unit = {}
 }
