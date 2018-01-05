@@ -81,10 +81,10 @@ object Deployment {
         Map(
           "RP_JAVA_OPTS" -> LiteralEnvironmentVariable(
             Seq(
-              s"-Dakka.cluster.bootstrap.contact-point-discovery.discovery-method=akka.discovery.reactive-lib-kubernetes",
+              s"-Dakka.discovery.method=kubernetes-api",
               s"-Dakka.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName",
               s"-Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas",
-              akkaClusterBootstrapSystemName.fold("")(systemName => s"-Drp.akka-cluster-bootstrap.pod-label-selector=actorSystemName=$systemName"))
+              akkaClusterBootstrapSystemName.fold("")(systemName => s"-Dakka.discovery.kubernetes-api.pod-label-selector=actorSystemName=$systemName"))
               .filter(_.nonEmpty)
               .mkString(" ")))
 
@@ -103,12 +103,12 @@ object Deployment {
               .flatMap {
                 case (name, addresses) =>
                   // We allow '/' as that's the convention used: $serviceName/$endpoint
-                  // We allow '_' as its currently used for Lagom defaults, i.e. "cas_native"
+                  // We allow '_' as it's currently used for Lagom defaults, i.e. "cas_native"
 
                   val arguments =
                     for {
                       (address, i) <- addresses.zipWithIndex
-                    } yield s"-Drp.service-discovery.external-service-addresses.${serviceName(name, Set('/', '_'))}.$i=$address"
+                    } yield s"-Dcom.lightbend.platform-tooling.service-discovery.external-service-addresses.${serviceName(name, Set('/', '_'))}.$i=$address"
 
                   arguments
               }
