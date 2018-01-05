@@ -41,8 +41,6 @@ object DeploymentJsonTest extends TestSuite {
     memory = Some(8192L),
     cpu = Some(0.5D),
     endpoints = endpoints,
-    volumes = Map(
-      "/my/guest/path/1" -> HostPathVolume("/my/host/path")),
     secrets = Seq(Secret("acme.co", "my-secret")),
     privileged = true,
     environmentVariables = Map(

@@ -35,7 +35,6 @@ case class Annotations(
   cpu: Option[Double],
   endpoints: Map[String, Endpoint],
   secrets: Seq[Secret],
-  volumes: Map[String, Volume],
   privileged: Boolean,
   environmentVariables: Map[String, EnvironmentVariable],
   version: Option[String],
@@ -83,7 +82,6 @@ object Annotations {
       cpu = args.cpu.orElse(cpu(labels)),
       endpoints = endpoints(selectArrayWithIndex(labels, ns("endpoints")), appVersion),
       secrets = secrets(selectArray(labels, ns("secrets"))),
-      volumes = volumes(selectArray(labels, ns("volumes"))),
       privileged = privileged(labels),
       environmentVariables = environmentVariables(selectArray(labels, ns("environment-variables"))) ++
         args.environmentVariables.mapValues(LiteralEnvironmentVariable.apply),
@@ -248,22 +246,6 @@ object Annotations {
               None
           }
         } yield name -> value)
-      .toMap
-
-  private[annotations] def volumes(volumes: Seq[Map[String, String]]): Map[String, Volume] =
-    volumes
-      .flatMap(entry =>
-        for {
-          typ <- entry.get("type")
-          guestPath <- entry.get("guest-path")
-          value <- typ match {
-            case "host-path" =>
-              entry.get("path").map(HostPathVolume.apply)
-
-            case _ =>
-              None
-          }
-        } yield guestPath -> value)
       .toMap
 
   private[annotations] def decodeBoolean(s: String) =

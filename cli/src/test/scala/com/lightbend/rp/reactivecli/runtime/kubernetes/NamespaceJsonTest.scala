@@ -36,7 +36,6 @@ object NamespaceJsonTest extends TestSuite {
         cpu = None,
         endpoints = Map.empty,
         secrets = Seq.empty,
-        volumes = Map.empty,
         privileged = false,
         environmentVariables = Map.empty,
         version = None,

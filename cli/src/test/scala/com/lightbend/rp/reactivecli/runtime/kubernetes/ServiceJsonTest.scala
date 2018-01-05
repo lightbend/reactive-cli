@@ -37,8 +37,6 @@ object ServiceJsonTest extends TestSuite {
     endpoints = Map(
       "ep1" -> TcpEndpoint(0, "ep1", 1234)),
     secrets = Seq.empty,
-    volumes = Map(
-      "/my/guest/path/1" -> HostPathVolume("/my/host/path")),
     privileged = true,
     environmentVariables = Map(
       "testing1" -> LiteralEnvironmentVariable("testingvalue1")),
