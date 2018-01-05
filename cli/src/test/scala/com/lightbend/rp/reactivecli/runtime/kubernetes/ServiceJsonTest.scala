@@ -40,8 +40,6 @@ object ServiceJsonTest extends TestSuite {
     volumes = Map(
       "/my/guest/path/1" -> HostPathVolume("/my/host/path")),
     privileged = true,
-    healthCheck = None,
-    readinessCheck = None,
     environmentVariables = Map(
       "testing1" -> LiteralEnvironmentVariable("testingvalue1")),
     version = Some("3.2.1-SNAPSHOT"),

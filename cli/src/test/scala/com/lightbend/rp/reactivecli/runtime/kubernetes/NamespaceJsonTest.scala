@@ -38,8 +38,6 @@ object NamespaceJsonTest extends TestSuite {
         secrets = Seq.empty,
         volumes = Map.empty,
         privileged = false,
-        healthCheck = None,
-        readinessCheck = None,
         environmentVariables = Map.empty,
         version = None,
         modules = Set.empty,

@@ -82,9 +82,9 @@ object Deployment {
           "RP_JAVA_OPTS" -> LiteralEnvironmentVariable(
             Seq(
               s"-Dakka.discovery.method=kubernetes-api",
-              s"-Dakka.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName",
+              s"-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName",
               s"-Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas",
-              akkaClusterBootstrapSystemName.fold("")(systemName => s"-Dakka.discovery.kubernetes-api.pod-label-selector=actorSystemName=$systemName"))
+              akkaClusterBootstrapSystemName.fold("-Dakka.discovery.kubernetes-api.pod-label-selector=appName=%s")(systemName => s"-Dakka.discovery.kubernetes-api.pod-label-selector=actorSystemName=$systemName"))
               .filter(_.nonEmpty)
               .mkString(" ")))
 
@@ -378,8 +378,6 @@ object Deployment {
                             "name" -> volumeName.asJson)
                       }
                       .asJson)
-                    .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
-                    .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))
                     .deepmerge(resourceLimits.asJson)).asJson,
                 "volumes" -> secretNames
                   .map {
