@@ -14,14 +14,8 @@
  * limitations under the License.
  */
 
-package com.lightbend.rp.reactivecli.annotations
+package com.lightbend.rp.reactivecli
 
-object Module {
-  val AkkaClusterBootstrapping = "akka-cluster-bootstrapping"
-  val AkkaManagement = "akka-management"
-  val Common = "common"
-  val PlayHttpBinding = "play-http-binding"
-  val Secrets = "secrets"
-  val ServiceDiscovery = "service-discovery"
-  val Status = "status"
+package object annotations {
+  val AkkaManagementPortName = "akka-mgmt-http"
 }

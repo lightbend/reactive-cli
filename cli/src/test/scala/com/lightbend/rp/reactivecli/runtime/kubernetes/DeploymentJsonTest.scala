@@ -372,62 +372,6 @@ object DeploymentJsonTest extends TestSuite {
         }
       }
 
-      "check" - {
-        "command" - {
-          val check = CommandCheck("ls", "-la")
-          val expectedJson =
-            """
-              |{"exec": {"command": ["ls", "-la"]}}
-            """.stripMargin.parse.right.get
-          val generatedJson = check.asJson
-          assert(generatedJson == expectedJson)
-        }
-
-        "tcp" - {
-          "port number" - {
-            val check = TcpCheck(Check.PortNumber(1234), intervalSeconds = 5)
-            val expectedJson =
-              """
-                |{"tcpSocket": {"port": 1234}, "periodSeconds": 5}
-              """.stripMargin.parse.right.get
-            val generatedJson = check.asJson
-            assert(generatedJson == expectedJson)
-          }
-
-          "service name" - {
-            val check = TcpCheck(Check.ServiceName("service-ref"), intervalSeconds = 5)
-            val expectedJson =
-              """
-                |{"tcpSocket": {"port": "service-ref"}, "periodSeconds": 5}
-              """.stripMargin.parse.right.get
-            val generatedJson = check.asJson
-            assert(generatedJson == expectedJson)
-          }
-        }
-
-        "http" - {
-          "port number" - {
-            val check = HttpCheck(Check.PortNumber(1234), intervalSeconds = 5, path = "/test")
-            val expectedJson =
-              """
-                |{"httpGet": {"path": "/test","port": 1234}, "periodSeconds": 5}
-              """.stripMargin.parse.right.get
-            val generatedJson = check.asJson
-            assert(generatedJson == expectedJson)
-          }
-
-          "service name" - {
-            val check = HttpCheck(Check.ServiceName("service-ref"), intervalSeconds = 5, path = "/test")
-            val expectedJson =
-              """
-                |{"httpGet": {"path": "/test", "port": "service-ref"}, "periodSeconds": 5}
-              """.stripMargin.parse.right.get
-            val generatedJson = check.asJson
-            assert(generatedJson == expectedJson)
-          }
-        }
-      }
-
       "environment" - {
         "literal" - {
           val env = LiteralEnvironmentVariable("hey")
