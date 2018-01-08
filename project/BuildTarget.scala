@@ -49,7 +49,6 @@ trait BuildTarget {
 
     IO.createDirectory(stage / "package" / "usr" / "bin")
     IO.createDirectory(stage / "package" / "usr" / "share" / "reactive-cli" / "bin")
-    IO.createDirectory(stage / "package" / "usr" / "share" / "reactive-cli" / "lib")
     IO.write(stage / "package" / "usr" / "share" / "reactive-cli" / "bin" / "rp-launcher", launcher)
     AdditionalIO.setExecutable(stage / "package" / "usr" / "share" / "reactive-cli" / "bin" / "rp-launcher")
 
@@ -84,7 +83,6 @@ trait BuildTarget {
           |$postBuildHook
           |
           |mv target/output/bin/* ../package/usr/share/reactive-cli/bin/
-          |mv target/output/lib/* ../package/usr/share/reactive-cli/lib/
           |chmod 755 -R ../package/usr/share/reactive-cli/bin
           |ln -s /usr/share/reactive-cli/bin/rp-launcher ../package/usr/bin/rp
           |popd
