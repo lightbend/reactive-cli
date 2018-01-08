@@ -64,15 +64,40 @@ object httpsimple {
 
     // Set up http headers
     if (request_headers.length > 0) {
-      if (request_headers.length != 1) {
-        System.out.println("Too many request headers, at most one is supported now")
+      // The following code should work here when scala-native Ptr[T] context escape bug is fixed:
+      // https://github.com/scala-native/scala-native/issues/367
+
+      /*
+      var head = 0.cast[Ptr[curl.curl_slist]]
+      request_headers.foreach(header => {
+        val next = alloc[curl.curl_slist]
+        !next._1 = toCString(header)
+        !next._2 = head.cast[Ptr[Byte]]
+        head = next
+
+      })
+      curl.easy_setopt(req, curl.CURLoption.CURLOPT_HTTPHEADER, head)
+      */
+
+      // FIXME: Hand-unrolled code as a workaround for Ptr[T] bug, at most 2 header are used in client code.
+      if(request_headers.length == 1) {
+        val list = stackalloc[curl.curl_slist]
+        !list._1 = toCString(request_headers.head)
+        !list._2 = 0.cast[Ptr[Byte]]
+        curl.easy_setopt(req, curl.CURLoption.CURLOPT_HTTPHEADER, list)
       }
-
-      val list = stackalloc[curl.curl_slist]
-      !list._1 = toCString(request_headers.head)
-      !list._2 = 0.cast[Ptr[Byte]]
-
-      curl.easy_setopt(req, curl.CURLoption.CURLOPT_HTTPHEADER, list)
+      else if(request_headers.length == 2) {
+        val list = stackalloc[curl.curl_slist]
+        val list_next = stackalloc[curl.curl_slist]
+        !list._1 = toCString(request_headers.head)
+        !list._2 = list_next.cast[Ptr[Byte]]
+        !list_next._1 = toCString(request_headers.tail.head)
+        !list_next._2 = 0.cast[Ptr[Byte]]
+        curl.easy_setopt(req, curl.CURLoption.CURLOPT_HTTPHEADER, list)
+      }
+      else {
+        System.err.println("Unable to put more than 2 http request headers at this time")
+      }
     }
 
     val body = new StringBuilder()
