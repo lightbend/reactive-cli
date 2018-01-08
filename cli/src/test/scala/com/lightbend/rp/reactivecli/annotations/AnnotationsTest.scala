@@ -120,16 +120,13 @@ object AnnotationsTest extends TestSuite {
           cpu = None,
           endpoints = Map.empty,
           secrets = Seq.empty,
-          volumes = Map.empty,
           privileged = false,
-          healthCheck = None,
-          readinessCheck = None,
           environmentVariables = Map.empty,
           version = None,
           modules = Set.empty,
           akkaClusterBootstrapSystemName = None))
 
-      "all options (except checks)" - {
+      "all options" - {
         assert(
           Annotations(
             Map(
@@ -155,13 +152,6 @@ object AnnotationsTest extends TestSuite {
               "com.lightbend.rp.environment-variables.2.type" -> "kubernetes.fieldRef",
               "com.lightbend.rp.environment-variables.2.name" -> "testing3",
               "com.lightbend.rp.environment-variables.2.field-path" -> "metadata.name",
-              "com.lightbend.rp.volumes.0.type" -> "host-path",
-              "com.lightbend.rp.volumes.0.path" -> "/my/host/path",
-              "com.lightbend.rp.volumes.0.guest-path" -> "/my/guest/path/1",
-              "com.lightbend.rp.volumes.0.some-key" -> "test",
-              "com.lightbend.rp.volumes.1.type" -> "secret",
-              "com.lightbend.rp.volumes.1.secret" -> "mysecret",
-              "com.lightbend.rp.volumes.1.guest-path" -> "/my/guest/path/2",
               "com.lightbend.rp.endpoints.0.name" -> "ep1",
               "com.lightbend.rp.endpoints.0.protocol" -> "http",
               "com.lightbend.rp.endpoints.0.version" -> "9",
@@ -195,11 +185,7 @@ object AnnotationsTest extends TestSuite {
                 "ep2" -> TcpEndpoint(1, "ep2", 1234),
                 "ep3" -> UdpEndpoint(2, "ep3", 1234)),
               secrets = Seq.empty,
-              volumes = Map(
-                "/my/guest/path/1" -> HostPathVolume("/my/host/path")),
               privileged = true,
-              healthCheck = None,
-              readinessCheck = None,
               environmentVariables = Map(
                 "testing1" -> LiteralEnvironmentVariable("testingvalue1"),
                 "testing2" -> kubernetes.ConfigMapEnvironmentVariable("mymap", "mykey"),
@@ -237,10 +223,7 @@ object AnnotationsTest extends TestSuite {
               cpu = Some(0.5),
               endpoints = Map.empty,
               secrets = Seq.empty,
-              volumes = Map.empty,
               privileged = false,
-              healthCheck = None,
-              readinessCheck = None,
               environmentVariables = Map(
                 "foo" -> LiteralEnvironmentVariable("foo"),
                 "hey" -> LiteralEnvironmentVariable("there")),
@@ -265,10 +248,7 @@ object AnnotationsTest extends TestSuite {
               cpu = None,
               endpoints = Map.empty,
               secrets = Seq.empty,
-              volumes = Map.empty,
               privileged = false,
-              healthCheck = None,
-              readinessCheck = None,
               environmentVariables = Map.empty,
               version = Some("3.2.1"),
               modules = Set.empty,
@@ -289,10 +269,7 @@ object AnnotationsTest extends TestSuite {
               cpu = None,
               endpoints = Map.empty,
               secrets = Seq.empty,
-              volumes = Map.empty,
               privileged = false,
-              healthCheck = None,
-              readinessCheck = None,
               environmentVariables = Map.empty,
               version = Some("2.1.3"),
               modules = Set.empty,
@@ -319,10 +296,7 @@ object AnnotationsTest extends TestSuite {
               endpoints = Map(
                 "ep2" -> TcpEndpoint(1, "ep2", 1234)),
               secrets = Seq.empty,
-              volumes = Map.empty,
               privileged = false,
-              healthCheck = None,
-              readinessCheck = None,
               environmentVariables = Map.empty,
               version = Some("3.2.1"),
               modules = Set.empty,
@@ -347,102 +321,7 @@ object AnnotationsTest extends TestSuite {
               endpoints = Map(
                 "ep2" -> TcpEndpoint(1, "ep2", 1234)),
               secrets = Seq.empty,
-              volumes = Map.empty,
               privileged = false,
-              healthCheck = None,
-              readinessCheck = None,
-              environmentVariables = Map.empty,
-              version = None,
-              modules = Set.empty,
-              akkaClusterBootstrapSystemName = None))
-      }
-
-      "CommandCheck" - {
-        assert(
-          Annotations(
-            Map(
-              "com.lightbend.rp.health-check.type" -> "command",
-              "com.lightbend.rp.health-check.args.0" -> "/usr/bin/env",
-              "com.lightbend.rp.health-check.args.1" -> "bash",
-              "com.lightbend.rp.readiness-check.type" -> "command",
-              "com.lightbend.rp.readiness-check.args.0" -> "/usr/bin/env",
-              "com.lightbend.rp.readiness-check.args.1" -> "bash"),
-            GenerateDeploymentArgs()) == Annotations(
-              namespace = None,
-              appName = None,
-              appType = None,
-              configResource = None,
-              diskSpace = None,
-              memory = None,
-              cpu = None,
-              endpoints = Map.empty,
-              secrets = Seq.empty,
-              volumes = Map.empty,
-              privileged = false,
-              healthCheck = Some(CommandCheck("/usr/bin/env", "bash")),
-              readinessCheck = Some(CommandCheck("/usr/bin/env", "bash")),
-              environmentVariables = Map.empty,
-              version = None,
-              modules = Set.empty,
-              akkaClusterBootstrapSystemName = None))
-      }
-
-      "HttpCheck" - {
-        assert(
-          Annotations(
-            Map(
-              "com.lightbend.rp.health-check.type" -> "http",
-              "com.lightbend.rp.health-check.service-name" -> "my-service",
-              "com.lightbend.rp.health-check.interval" -> "5",
-              "com.lightbend.rp.health-check.path" -> "/hello",
-              "com.lightbend.rp.readiness-check.type" -> "http",
-              "com.lightbend.rp.readiness-check.port" -> "1234",
-              "com.lightbend.rp.readiness-check.interval" -> "5",
-              "com.lightbend.rp.readiness-check.path" -> "/hello"),
-            GenerateDeploymentArgs()) == Annotations(
-              namespace = None,
-              appName = None,
-              appType = None,
-              configResource = None,
-              diskSpace = None,
-              memory = None,
-              cpu = None,
-              endpoints = Map.empty,
-              secrets = Seq.empty,
-              volumes = Map.empty,
-              privileged = false,
-              healthCheck = Some(HttpCheck(Check.ServiceName("my-service"), 5, "/hello")),
-              readinessCheck = Some(HttpCheck(Check.PortNumber(1234), 5, "/hello")),
-              environmentVariables = Map.empty,
-              version = None,
-              modules = Set.empty,
-              akkaClusterBootstrapSystemName = None))
-      }
-
-      "TcpCheck" - {
-        assert(
-          Annotations(
-            Map(
-              "com.lightbend.rp.health-check.type" -> "tcp",
-              "com.lightbend.rp.health-check.service-name" -> "my-service",
-              "com.lightbend.rp.health-check.interval" -> "5",
-              "com.lightbend.rp.readiness-check.type" -> "tcp",
-              "com.lightbend.rp.readiness-check.port" -> "1234",
-              "com.lightbend.rp.readiness-check.interval" -> "5"),
-            GenerateDeploymentArgs()) == Annotations(
-              namespace = None,
-              appName = None,
-              appType = None,
-              configResource = None,
-              diskSpace = None,
-              memory = None,
-              cpu = None,
-              endpoints = Map.empty,
-              secrets = Seq.empty,
-              volumes = Map.empty,
-              privileged = false,
-              healthCheck = Some(TcpCheck(Check.ServiceName("my-service"), 5)),
-              readinessCheck = Some(TcpCheck(Check.PortNumber(1234), 5)),
               environmentVariables = Map.empty,
               version = None,
               modules = Set.empty,

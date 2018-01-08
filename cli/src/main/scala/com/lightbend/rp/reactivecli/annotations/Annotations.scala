@@ -35,10 +35,7 @@ case class Annotations(
   cpu: Option[Double],
   endpoints: Map[String, Endpoint],
   secrets: Seq[Secret],
-  volumes: Map[String, Volume],
   privileged: Boolean,
-  healthCheck: Option[Check],
-  readinessCheck: Option[Check],
   environmentVariables: Map[String, EnvironmentVariable],
   version: Option[String],
   modules: Set[String],
@@ -85,10 +82,7 @@ object Annotations {
       cpu = args.cpu.orElse(cpu(labels)),
       endpoints = endpoints(selectArrayWithIndex(labels, ns("endpoints")), appVersion),
       secrets = secrets(selectArray(labels, ns("secrets"))),
-      volumes = volumes(selectArray(labels, ns("volumes"))),
       privileged = privileged(labels),
-      healthCheck = check(selectSubset(labels, ns("health-check"))),
-      readinessCheck = check(selectSubset(labels, ns("readiness-check"))),
       environmentVariables = environmentVariables(selectArray(labels, ns("environment-variables"))) ++
         args.environmentVariables.mapValues(LiteralEnvironmentVariable.apply),
       version = appVersion,
@@ -156,46 +150,6 @@ object Annotations {
   private[annotations] def version(labels: Map[String, String]): Option[String] =
     labels
       .get(ns("app-version"))
-
-  private[annotations] def check(check: Map[String, String]): Option[Check] = {
-    for {
-      typ <- check.get("type")
-      value <- typ match {
-        case "command" =>
-          val args = selectArray(check, "args").flatMap(_.values)
-
-          if (args.isEmpty)
-            None
-          else
-            Some(CommandCheck(args))
-
-        case "http" =>
-          for {
-            intervalSeconds <- check.get("interval").flatMap(decodeInt)
-            path <- check.get("path")
-            port = check.get("port").flatMap(decodeInt).getOrElse(0)
-            serviceName = check.getOrElse("service-name", "")
-
-            if port != 0 || serviceName != ""
-          } yield {
-            val checkPort = if (port != 0) Check.PortNumber(port) else Check.ServiceName(serviceName)
-            HttpCheck(checkPort, intervalSeconds, path)
-          }
-
-        case "tcp" =>
-          for {
-            intervalSeconds <- check.get("interval").flatMap(decodeInt)
-            port = check.get("port").flatMap(decodeInt).getOrElse(0)
-            serviceName = check.getOrElse("service-name", "")
-
-            if port != 0 || serviceName != ""
-          } yield {
-            val checkPort = if (port != 0) Check.PortNumber(port) else Check.ServiceName(serviceName)
-            TcpCheck(checkPort, intervalSeconds)
-          }
-      }
-    } yield value
-  }
 
   private[annotations] def secrets(secrets: Seq[Map[String, String]]): Seq[Secret] =
     for {
@@ -292,22 +246,6 @@ object Annotations {
               None
           }
         } yield name -> value)
-      .toMap
-
-  private[annotations] def volumes(volumes: Seq[Map[String, String]]): Map[String, Volume] =
-    volumes
-      .flatMap(entry =>
-        for {
-          typ <- entry.get("type")
-          guestPath <- entry.get("guest-path")
-          value <- typ match {
-            case "host-path" =>
-              entry.get("path").map(HostPathVolume.apply)
-
-            case _ =>
-              None
-          }
-        } yield guestPath -> value)
       .toMap
 
   private[annotations] def decodeBoolean(s: String) =

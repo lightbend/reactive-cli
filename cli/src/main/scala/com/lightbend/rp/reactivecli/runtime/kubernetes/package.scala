@@ -31,7 +31,8 @@ import slogging.LazyLogging
 import Scalaz._
 
 package object kubernetes extends LazyLogging {
-  private val AkkaClusterMinimumReplicas = 2
+  private[reactivecli] val AkkaClusterMinimumReplicas = 2
+  private[reactivecli] val StatusPeriodSeconds = 10
 
   /**
    * Valid characters for endpoint environment variable name.

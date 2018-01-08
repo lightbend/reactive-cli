@@ -81,10 +81,10 @@ object Deployment {
         Map(
           "RP_JAVA_OPTS" -> LiteralEnvironmentVariable(
             Seq(
-              s"-Dakka.cluster.bootstrap.contact-point-discovery.discovery-method=akka.discovery.reactive-lib-kubernetes",
-              s"-Dakka.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName",
+              s"-Dakka.discovery.method=kubernetes-api",
+              s"-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName",
               s"-Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas",
-              akkaClusterBootstrapSystemName.fold("")(systemName => s"-Drp.akka-cluster-bootstrap.pod-label-selector=actorSystemName=$systemName"))
+              akkaClusterBootstrapSystemName.fold("-Dakka.discovery.kubernetes-api.pod-label-selector=appName=%s")(systemName => s"-Dakka.discovery.kubernetes-api.pod-label-selector=actorSystemName=$systemName"))
               .filter(_.nonEmpty)
               .mkString(" ")))
 
@@ -103,12 +103,12 @@ object Deployment {
               .flatMap {
                 case (name, addresses) =>
                   // We allow '/' as that's the convention used: $serviceName/$endpoint
-                  // We allow '_' as its currently used for Lagom defaults, i.e. "cas_native"
+                  // We allow '_' as it's currently used for Lagom defaults, i.e. "cas_native"
 
                   val arguments =
                     for {
                       (address, i) <- addresses.zipWithIndex
-                    } yield s"-Drp.service-discovery.external-service-addresses.${serviceName(name, Set('/', '_'))}.$i=$address"
+                    } yield s"-Dcom.lightbend.platform-tooling.service-discovery.external-service-addresses.${serviceName(name, Set('/', '_'))}.$i=$address"
 
                   arguments
               }
@@ -181,52 +181,6 @@ object Deployment {
     case ImagePullPolicy.Never => "Never".asJson
     case ImagePullPolicy.IfNotPresent => "IfNotPresent".asJson
     case ImagePullPolicy.Always => "Always".asJson
-  }
-
-  implicit def checkPortNumberEncode = EncodeJson[Check.PortNumber](_.value.asJson)
-
-  implicit def checkServiceNumberEncode = EncodeJson[Check.ServiceName](_.value.asJson)
-
-  implicit def checkPortEncode = EncodeJson[Check.Port] {
-    case v: Check.PortNumber => v.asJson
-    case v: Check.ServiceName => v.asJson
-  }
-
-  implicit def commandCheckEncode = EncodeJson[CommandCheck] { check =>
-    Json(
-      "exec" -> Json(
-        "command" -> check.command.toList.asJson))
-  }
-
-  implicit def tcpCheckEncode = EncodeJson[TcpCheck] { check =>
-    Json(
-      "tcpSocket" -> Json(
-        "port" -> check.port.asJson),
-      "periodSeconds" -> check.intervalSeconds.asJson)
-  }
-
-  implicit def httpCheckEncode = EncodeJson[HttpCheck] { check =>
-    Json(
-      "httpGet" -> Json(
-        "path" -> check.path.asJson,
-        "port" -> check.port.asJson),
-      "periodSeconds" -> check.intervalSeconds.asJson)
-  }
-
-  implicit def checkEncode = EncodeJson[Check] {
-    case v: CommandCheck => v.asJson
-    case v: TcpCheck => v.asJson
-    case v: HttpCheck => v.asJson
-  }
-
-  def readinessProbeEncode = EncodeJson[Option[Check]] {
-    case Some(check) => Json("readinessProbe" -> check.asJson)
-    case _ => jEmptyObject
-  }
-
-  def livenessProbeEncode = EncodeJson[Option[Check]] {
-    case Some(check) => Json("livenessProbe" -> check.asJson)
-    case _ => jEmptyObject
   }
 
   implicit def literalEnvironmentVariableEncode = EncodeJson[LiteralEnvironmentVariable] { env =>
@@ -345,6 +299,31 @@ object Deployment {
 
       val resourceLimits = ResourceLimits(annotations.cpu, annotations.memory)
 
+      val enableChecks =
+        annotations.modules.contains(Module.Status) && annotations.modules.contains(Module.AkkaManagement)
+
+      val livenessProbe =
+        if (enableChecks)
+          Json("livenessProbe" ->
+            Json(
+              "httpGet" -> Json(
+                "path" -> jString("/platform-tooling/healthy"),
+                "port" -> jString(AkkaManagementPortName)),
+              "periodSeconds" -> jNumber(StatusPeriodSeconds)))
+        else
+          jEmptyObject
+
+      val readinessProbe =
+        if (enableChecks)
+          Json("readinessProbe" ->
+            Json(
+              "httpGet" -> Json(
+                "path" -> jString("/platform-tooling/ready"),
+                "port" -> jString(AkkaManagementPortName)),
+              "periodSeconds" -> jNumber(StatusPeriodSeconds)))
+        else
+          jEmptyObject
+
       Deployment(
         deploymentName,
         Json(
@@ -378,8 +357,8 @@ object Deployment {
                             "name" -> volumeName.asJson)
                       }
                       .asJson)
-                    .deepmerge(annotations.readinessCheck.asJson(readinessProbeEncode))
-                    .deepmerge(annotations.healthCheck.asJson(livenessProbeEncode))
+                    .deepmerge(readinessProbe)
+                    .deepmerge(livenessProbe)
                     .deepmerge(resourceLimits.asJson)).asJson,
                 "volumes" -> secretNames
                   .map {

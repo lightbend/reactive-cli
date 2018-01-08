@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-package com.lightbend.rp.reactivecli.annotations
+package com.lightbend.rp.reactivecli
 
-sealed trait Volume
-
-case class HostPathVolume(path: String) extends Volume
+package object annotations {
+  val AkkaManagementPortName = "akka-mgmt-http"
+}

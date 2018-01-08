@@ -18,8 +18,10 @@ package com.lightbend.rp.reactivecli.annotations
 
 object Module {
   val AkkaClusterBootstrapping = "akka-cluster-bootstrapping"
+  val AkkaManagement = "akka-management"
   val Common = "common"
   val PlayHttpBinding = "play-http-binding"
   val Secrets = "secrets"
   val ServiceDiscovery = "service-discovery"
+  val Status = "status"
 }
