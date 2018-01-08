@@ -144,7 +144,6 @@ case class RpmBuildTarget(release: String, requires: String, libs: Seq[String]) 
           |/usr/bin/rp
           |/usr/share/reactive-cli/bin/rp
           |/usr/share/reactive-cli/bin/rp-launcher
-          |/usr/share/reactive-cli/lib/libhttpsimple.so
           |${libPathToName.map(e => s"/usr/share/reactive-cli/lib/${e._2}").mkString("\n")}
           |""".stripMargin
 

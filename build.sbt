@@ -55,7 +55,6 @@ lazy val commonSettings = Seq(
 lazy val root = project
   .in(file("."))
   .aggregate(
-    `libhttpsimple-bindings`,
     `cli`
   )
   .settings(
@@ -150,16 +149,9 @@ lazy val root = project
     }
   )
 
-lazy val `libhttpsimple-bindings` = project
-  .in(file("libhttpsimple-bindings"))
-  .enablePlugins(ScalaNativePlugin, AutomateHeaderPlugin)
-  .settings(commonSettings)
-  .settings(test in Compile := ())
-
 lazy val cli = project
   .in(file("cli"))
   .enablePlugins(ScalaNativePlugin, AutomateHeaderPlugin)
-  .dependsOn(`libhttpsimple-bindings`)
   .settings(commonSettings)
   .settings(Seq(
     libraryDependencies ++= Seq(

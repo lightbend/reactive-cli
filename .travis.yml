@@ -19,4 +19,4 @@ before_install:
   - bash setup-travis.sh
 script:
   - sbt clean test package buildAll
-  - LD_LIBRARY_PATH=cli/target/scala-2.11/reactive-cli-out --help
+  - cli/target/scala-2.11/reactive-cli-out --help

@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-package libhttpsimple
+package com.lightbend.rp.reactivecli.http
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import java.util.Base64
-
 import scala.scalanative.native
 import scala.scalanative.native._
 import scala.util.{ Failure, Success, Try }
+import scala.collection.immutable.Seq
 
-object LibHttpSimple {
+object Http {
   type HttpExchange = HttpRequest => Try[HttpResponse]
 
   private val CRLF = "\r\n"
@@ -36,7 +36,7 @@ object LibHttpSimple {
   case class InfiniteRedirect(visited: List[String]) extends RuntimeException(s"Infinte redirect detected: $visited")
 
   /**
-   * Common settings for [[LibHttpSimple]].
+   * Common settings for [[Http]].
    *
    * @param followRedirect If true, follow redirect up to the number of hops specified by [[maxRedirects]].
    *                       Else, doesn't follow redirect, i.e. returns the response with `Location` header.
@@ -69,7 +69,7 @@ object LibHttpSimple {
    */
   def globalInit(): Try[Unit] =
     native.Zone { implicit z =>
-      val errorCode = nativebinding.httpsimple.global_init()
+      val errorCode = nativebinding.http.global_init()
       if (errorCode.toInt == 0)
         Success(Unit)
       else
@@ -82,7 +82,7 @@ object LibHttpSimple {
    */
   def globalCleanup(): Unit =
     native.Zone { implicit z =>
-      nativebinding.httpsimple.global_cleanup()
+      nativebinding.http.global_cleanup()
     }
 
   def apply(request: HttpRequest)(implicit settings: Settings): Try[HttpResponse] =
@@ -119,7 +119,7 @@ object LibHttpSimple {
           hs.updated("Authorization", s"Bearer $bearer")
       }
 
-      val response = nativebinding.httpsimple.do_http(
+      val response = nativebinding.http.do_http(
         validate_tls = if (isTlsValidationEnabled) 1 else 0,
         method,
         url,
@@ -144,7 +144,7 @@ object LibHttpSimple {
             Success(HttpResponse(response.status, hs, response.body))
           }
         } else {
-          val msg = nativebinding.httpsimple.error_message(response.error)
+          val msg = nativebinding.http.error_message(response.error)
           Failure(InternalNativeFailure(response.error, msg))
         }
 
@@ -155,7 +155,7 @@ object LibHttpSimple {
     headers
       .map {
         case (headerName, headerValue) => s"$headerName$HttpHeaderNameAndValueSeparator $headerValue"
-      }.toList
+      }.toVector
 
   private def parseHeaders(input: Option[String]): Map[String, String] = {
     def splitBySeparator(v: String, separator: String): (String, String) = {

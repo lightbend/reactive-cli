@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package libhttpsimple.curl
+package com.lightbend.rp.reactivecli.http.nativebinding
 
 import scala.scalanative.native
 import scala.scalanative.native._
 
-@native.link("curl")
-@native.extern
+@link("curl")
+@extern
 object curl {
-  type CURL = native.Ptr[_]
-  type curl_slist = native.CStruct2[native.CString, native.Ptr[Byte]]
+  type CURL = Ptr[_]
+  type curl_slist = CStruct2[CString, Ptr[Byte]]
 
   // Following enums were generated automatically by gen-curl-bindings
   class CURLINFO(val value: CInt) extends AnyVal
@@ -446,27 +446,27 @@ object curl {
     val CURL_GLOBAL_DEFAULT: CInt = ((1 << 0) | (1 << 1))
   }
 
-  @native.name("curl_global_init")
-  def global_init(flags: CInt): CURLcode = native.extern
+  @name("curl_global_init")
+  def global_init(flags: CInt): CURLcode = extern
 
-  @native.name("curl_global_cleanup")
-  def global_cleanup(): Unit = native.extern
+  @name("curl_global_cleanup")
+  def global_cleanup(): Unit = extern
 
-  @native.name("curl_easy_init")
-  def easy_init(): CURL = native.extern
+  @name("curl_easy_init")
+  def easy_init(): CURL = extern
 
-  @native.name("curl_easy_cleanup")
-  def easy_cleanup(curl: CURL): Unit = native.extern
+  @name("curl_easy_cleanup")
+  def easy_cleanup(curl: CURL): Unit = extern
 
-  @native.name("curl_easy_setopt")
-  def easy_setopt(curl: CURL, option: CURLoption, args: native.CVararg*): CURLcode = native.extern
+  @name("curl_easy_setopt")
+  def easy_setopt(curl: CURL, option: CURLoption, args: CVararg*): CURLcode = extern
 
-  @native.name("curl_easy_getinfo")
-  def easy_getinfo(curl: CURL, info: CURLINFO, args: native.CVararg*): CURLcode = native.extern
+  @name("curl_easy_getinfo")
+  def easy_getinfo(curl: CURL, info: CURLINFO, args: CVararg*): CURLcode = extern
 
-  @native.name("curl_easy_perform")
-  def easy_perform(curl: CURL): CURLcode = native.extern
+  @name("curl_easy_perform")
+  def easy_perform(curl: CURL): CURLcode = extern
 
-  @native.name("curl_easy_strerror")
-  def easy_strerror(code: CURLcode): CString = native.extern
+  @name("curl_easy_strerror")
+  def easy_strerror(code: CURLcode): CString = extern
 }

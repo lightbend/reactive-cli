@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-package libhttpsimple.nativebinding
+package com.lightbend.rp.reactivecli.http.nativebinding
 
-import libhttpsimple.curl._
 import scala.scalanative.native
 import scala.scalanative.native._
 
-object httpsimple {
+object http {
 
   case class HttpResponse(error: Long, status: Long, header: Option[String], body: Option[String])
 
@@ -38,9 +37,9 @@ object httpsimple {
   }
 
   def do_http(validate_tls: CLong, http_method: String,
-              url: String, request_headers: Seq[String],
-              request_body: String, tls_cacerts_path: String,
-              ssl_cert: String, ssl_key: String)(implicit z: Zone): HttpResponse = {
+    url: String, request_headers: Seq[String],
+    request_body: String, tls_cacerts_path: String,
+    ssl_cert: String, ssl_key: String)(implicit z: Zone): HttpResponse = {
 
     var result = HttpResponse(-1L, 0L, None, None)
     val req = curl.easy_init()
@@ -79,14 +78,13 @@ object httpsimple {
       curl.easy_setopt(req, curl.CURLoption.CURLOPT_HTTPHEADER, head)
       */
 
-      // FIXME: Hand-unrolled code as a workaround for Ptr[T] bug, at most 2 header are used in client code.
-      if(request_headers.length == 1) {
+      // FIXME: Hand-unrolled code as a workaround for Ptr[T] bug, at most 2 headers are used in client code.
+      if (request_headers.length == 1) {
         val list = stackalloc[curl.curl_slist]
         !list._1 = toCString(request_headers.head)
         !list._2 = 0.cast[Ptr[Byte]]
         curl.easy_setopt(req, curl.CURLoption.CURLOPT_HTTPHEADER, list)
-      }
-      else if(request_headers.length == 2) {
+      } else if (request_headers.length == 2) {
         val list = stackalloc[curl.curl_slist]
         val list_next = stackalloc[curl.curl_slist]
         !list._1 = toCString(request_headers.head)
@@ -94,8 +92,7 @@ object httpsimple {
         !list_next._1 = toCString(request_headers.tail.head)
         !list_next._2 = 0.cast[Ptr[Byte]]
         curl.easy_setopt(req, curl.CURLoption.CURLOPT_HTTPHEADER, list)
-      }
-      else {
+      } else {
         System.err.println("Unable to put more than 2 http request headers at this time")
       }
     }

@@ -17,15 +17,15 @@
 package com.lightbend.rp.reactivecli.docker
 
 import argonaut._
-import libhttpsimple._
 import java.nio.file.{ Files, Paths }
 import scala.util.{ Failure, Success, Try }
 import slogging._
+import com.lightbend.rp.reactivecli.http._
 
 import Argonaut._
 
 object DockerEngine extends LazyLogging {
-  def applyDockerHostSettings(settings: LibHttpSimple.Settings, env: Map[String, String]): LibHttpSimple.Settings = {
+  def applyDockerHostSettings(settings: Http.Settings, env: Map[String, String]): Http.Settings = {
     val credentialFiles = for {
       certDir <- env.get("DOCKER_CERT_PATH")
 
@@ -45,7 +45,7 @@ object DockerEngine extends LazyLogging {
     }
   }
 
-  def getConfigFromDockerHost(http: LibHttpSimple.HttpExchange, env: Map[String, String])(uri: String)(implicit settings: LibHttpSimple.Settings): Option[SocketConfig] = {
+  def getConfigFromDockerHost(http: Http.HttpExchange, env: Map[String, String])(uri: String)(implicit settings: Http.Settings): Option[SocketConfig] = {
     for {
       host <- env.get("DOCKER_HOST")
       verify = env.get("DOCKER_TLS_VERIFY").contains("1")

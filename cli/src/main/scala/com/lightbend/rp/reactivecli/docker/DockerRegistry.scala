@@ -18,11 +18,11 @@ package com.lightbend.rp.reactivecli
 package docker
 
 import argonaut._
-import libhttpsimple._
 import scala.util.{ Failure, Success, Try }
 import scalaz._
 import slogging._
-import libhttpsimple.LibHttpSimple.HttpExchange
+import com.lightbend.rp.reactivecli.http._
+import com.lightbend.rp.reactivecli.http.Http.HttpExchange
 
 import Argonaut._
 import Scalaz._
@@ -75,7 +75,7 @@ object DockerRegistry extends LazyLogging {
       r <- getWithToken(http, credentials, validateTls)(blobUrl(i, digest, useHttps), HttpHeaders(Map.empty), token = token)
     } yield r
 
-  def getConfig(http: HttpExchange, credentials: Option[HttpRequest.BasicAuth], useHttps: Boolean, validateTls: Boolean)(uri: String, token: Option[HttpRequest.BearerToken])(implicit settings: LibHttpSimple.Settings): Try[(Config, Option[HttpRequest.BearerToken])] =
+  def getConfig(http: HttpExchange, credentials: Option[HttpRequest.BasicAuth], useHttps: Boolean, validateTls: Boolean)(uri: String, token: Option[HttpRequest.BearerToken])(implicit settings: Http.Settings): Try[(Config, Option[HttpRequest.BearerToken])] =
     for {
       manifest <- getManifest(http, credentials, useHttps, validateTls)(uri, token)
       blob <- getBlob(http, credentials, useHttps, validateTls)(uri, manifest._1.config.digest, token = manifest._2)

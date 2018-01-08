@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package libhttpsimple
+package com.lightbend.rp.reactivecli.http
 
 /**
  * Container class for HTTP headers. Headers are case-insensitive. For example,
