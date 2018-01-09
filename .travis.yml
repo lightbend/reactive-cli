@@ -10,18 +10,11 @@ cache:
   directories:
     - $HOME/.ivy2/cache
     - $HOME/.sbt/launchers
-    - $HOME/.docker
 before_cache:
   # Ensure changes to the cache aren't persisted
   - rm -rf "$HOME/.ivy2/cache/com/lightbend/rp/reactivecli"
   # Delete all ivydata files since ivy touches them on each build
   - find "$HOME/.ivy2/cache" -name "ivydata-*.properties" -delete
-  # Prepare docker cache
-  - mkdir -p "$HOME/.docker"
-  - docker save $(docker images -q -a --filter dangling=false --filter 'reference=lightbend-docker-registry.bintray.io/rp/reactive-cli-build-*') -o "$HOME/.docker/images"
-before_install:
-  # Load docker cache
-  - if [ -f "$HOME/.docker/images" ]; then docker load -i "$HOME/.docker/images"; fi
 script:
   # We don't need to test/compile/package here as buildAll will do that inside each Docker image
   - sbt clean update buildAll
