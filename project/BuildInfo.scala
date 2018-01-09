@@ -4,8 +4,6 @@ import scala.collection.immutable.Seq
 import AdditionalIO._
 
 object BuildInfo {
-  private val ArgonautCommit = "2c719f155744881d30fc932dcbbf597a9ce8084c"
-
   val Builds =
     Seq(
       MuslBuild.rpm("centos-6", "el6", "bash"),
@@ -98,26 +96,7 @@ object BuildInfo {
         target = DebBuildTarget(Seq("zesty", "artful"), "main", "bash,libre2-3,libunwind8,libcurl3", Seq.empty)))
 
   def initialize(root: File): Unit = {
-    val argonautDir = root / "target" / "argonaut" / ArgonautCommit
     val ivyDir = root / "target" / ".ivy2" / "cache"
-
-    if (!argonautDir.isDirectory) {
-      val argonautTempDir = root / "target" / "argonaut" / "temporary" / ArgonautCommit
-
-      IO.createDirectory(argonautTempDir)
-
-      AdditionalIO.runProcess("git", "clone", "https://github.com/argonaut-io/argonaut.git", argonautTempDir.getAbsolutePath)
-
-      AdditionalIO.runProcessCwd(argonautTempDir, "git", "checkout", ArgonautCommit)
-
-      // Remove coursier so we use the ivy cache
-
-      IO.writeLines(
-        argonautTempDir / "project" / "plugins.sbt",
-        IO.readLines(argonautTempDir / "project" / "plugins.sbt").filterNot(_.contains("sbt-coursier")))
-
-      IO.move(argonautTempDir, argonautDir)
-    }
 
     if (!ivyDir.isDirectory && (Path.userHome / ".ivy2" / "cache").isDirectory) {
       IO.createDirectory(root / "target" / ".ivy2")
@@ -203,8 +182,6 @@ object MuslBuild {
 }
 
 case class BuildInfo(name: String, baseImage: String, install: String, target: BuildTarget) {
-  import BuildInfo.ArgonautCommit
-
   private val dockerVersion = "latest"
 
   val dockerBuildImage = s"reactive-cli-build-$name:$dockerVersion"
@@ -245,16 +222,6 @@ case class BuildInfo(name: String, baseImage: String, install: String, target: B
     def clearStage(): Unit = {
       IO.delete(stage)
       IO.createDirectory(stage)
-    }
-
-    def copyArgonaut(): Unit = {
-      val argonautDir = root / "target" / "argonaut" / ArgonautCommit
-
-      assert(argonautDir.isDirectory, s"Argonaut directory missing: $argonautDir")
-
-      log.info(s"[$name] copying argonaut")
-
-      IO.copyDirectory(argonautDir, stage / "argonaut")
     }
 
     def copyProject(): Unit = {
@@ -298,8 +265,6 @@ case class BuildInfo(name: String, baseImage: String, install: String, target: B
     clearStage()
 
     copyProject()
-
-    copyArgonaut()
 
     pullImage()
 

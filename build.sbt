@@ -15,11 +15,11 @@ lazy val buildAllDockerImages = TaskKey[Seq[String]]("buildAllDockerImages")
 lazy val publishToBintray = TaskKey[Unit]("publishToBintray")
 
 lazy val Names = new {
-  val rp                 = "rp"
+  val rp = "rp"
 }
 
 lazy val Versions = new {
-  val argonaut = "6.3-SNAPSHOT"
+  val argonaut = "6.2.1"
   val scala    = "2.11.11"
   val scalaz   = "7.2.16"
   val scopt    = "3.7.0"

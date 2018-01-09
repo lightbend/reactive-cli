@@ -27,10 +27,6 @@ The setup script will install the prerequisites listed below.
 * libunwind
 * libre2
 
-### Argonaut native build (Temporarily)
-
-_The build script temporary builds Argonaut native locally until artifact for Scala Native 0.3 is released_
-
 ### macOS specific setup
 
 Ensure XCode is updated to Apple's latest version. With Apple's latest XCode version, the minimum LLVM version is satisfied, so Homebrew install is not required.
@@ -38,7 +34,8 @@ Ensure XCode is updated to Apple's latest version. With Apple's latest XCode ver
 Once XCode is updated to Apple's latest version, execute the following command to setup the project:
 
 ```bash
-$ bash setup-macos.sh
+$ brew install bdw-gc re2 jq && \
+    brew install curl --with-openssl
 ```
 
 ### Ubuntu 16 specific setup
@@ -46,7 +43,12 @@ $ bash setup-macos.sh
 Execute the following command to setup the project:
 
 ```bash
-$ bash setup-ubuntu-16.sh
+$ sudo apt-get install -y -qq \
+    clang++-3.9 \
+    libgc-dev \
+    libunwind8-dev \
+    libre2-dev \
+    jq
 ```
 
 ## Building and running
@@ -60,7 +62,7 @@ $ sbt cli/nativeLink
 Once built, the native executable can be found in the `cli/target/scala-2.11/rp` path, i.e.
 
 ```bash
-$ cli/target/scala-2.11/rp --help
+$ cli/target/scala-2.11/reactive-cli-out --help
 reactive-cli 0.1.0
 Usage: reactive-cli [options]
 

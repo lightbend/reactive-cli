@@ -63,10 +63,6 @@ trait BuildTarget {
           |
           |export STAGE="$$(pwd)"
           |
-          |pushd argonaut
-          |sbt argonautNative/publishLocal
-          |popd
-          |
           |pushd reactive-cli
           |
           |${libs.map { case (p, n) => s"cp -p '$p' '../package/usr/share/reactive-cli/lib/$n'" }.mkString("\n")}
