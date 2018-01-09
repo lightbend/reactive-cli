@@ -10,7 +10,7 @@ Consult the [Platform Tooling](https://s3-us-west-2.amazonaws.com/rp-tooling-tem
 
 ## Developer
 
-## Build setup
+### Build setup
 
 The CLI depends on Scala Native to build, the setup scripts provided in the project follow the instructions on the [Scala Native setup](http://www.scala-native.org/en/latest/user/setup.html#installing-clang-and-runtime-dependencies) page.
 
@@ -27,10 +27,6 @@ The setup script will install the prerequisites listed below.
 * libunwind
 * libre2
 
-### Argonaut native build (Temporarily)
-
-_The build script temporary builds Argonaut native locally until artifact for Scala Native 0.3 is released_
-
 ### macOS specific setup
 
 Ensure XCode is updated to Apple's latest version. With Apple's latest XCode version, the minimum LLVM version is satisfied, so Homebrew install is not required.
@@ -38,7 +34,8 @@ Ensure XCode is updated to Apple's latest version. With Apple's latest XCode ver
 Once XCode is updated to Apple's latest version, execute the following command to setup the project:
 
 ```bash
-$ bash setup-macos.sh
+$ brew install bdw-gc re2 jq && \
+    brew install curl --with-openssl
 ```
 
 ### Ubuntu 16 specific setup
@@ -46,7 +43,12 @@ $ bash setup-macos.sh
 Execute the following command to setup the project:
 
 ```bash
-$ bash setup-ubuntu-16.sh
+$ sudo apt-get install -y -qq \
+    clang++-3.9 \
+    libgc-dev \
+    libunwind8-dev \
+    libre2-dev \
+    jq
 ```
 
 ## Building and running
@@ -60,7 +62,7 @@ $ sbt cli/nativeLink
 Once built, the native executable can be found in the `cli/target/scala-2.11/rp` path, i.e.
 
 ```bash
-$ cli/target/scala-2.11/rp --help
+$ cli/target/scala-2.11/reactive-cli-out --help
 reactive-cli 0.1.0
 Usage: reactive-cli [options]
 
@@ -72,6 +74,25 @@ Usage: reactive-cli [options]
 This project uses a Docker-based build system that builds `.rpm` and `.deb` files inside Docker containers for each
 supported distribution. To add a distribution, add a `BuildInfo` instance in `project/BuildInfo.scala` emulating
 the ones already created.
+
+#### Prerequisites
+
+The build system uses publicly available Docker images that are pushed to Bintray. To rebuild / update these images,
+you'll need to run the following:
+
+```bash
+sbt buildAllDockerImages
+```
+
+Afterwards, it will give you the commands you must run to push these images (SBT having tagged them). For example,
+below is pushing one of these images:
+
+```bash
+docker push lightbend-docker-registry.bintray.io/rp/reactive-cli-build-debian-9
+```
+
+Note that this doesn't normally need to be done as part of project setup, as the build system will simply pull down
+the build images for you.
 
 #### Building a single distribution package locally
 

@@ -12,8 +12,7 @@ nativeLinkingOptions := {
       .map(dl => s"-Wl,--dynamic-linker=$dl")
 
   dynamicLinkerOptions ++ Seq(
-    "-lcurl",
-    "-L", (baseDirectory.value / ".." / "libhttpsimple" / "target").toPath.toAbsolutePath.toString
+    "-lcurl"
   ) ++ sys.props.get("nativeLinkingOptions").fold(Seq.empty[String])(_.split(" ").toVector)
 }
 

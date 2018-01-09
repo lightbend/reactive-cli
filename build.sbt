@@ -9,18 +9,17 @@ import _root_.bintray.BintrayExt
 lazy val binaryName = SettingKey[String]("binary-name")
 lazy val cSource = SettingKey[File]("c-source")
 lazy val build = inputKey[Seq[(BuildInfo, Seq[File])]]("build")
+lazy val buildDockerImage = inputKey[Seq[String]]("buildDockerImage")
 lazy val buildAll = TaskKey[Seq[(BuildInfo, Seq[File])]]("buildAll")
+lazy val buildAllDockerImages = TaskKey[Seq[String]]("buildAllDockerImages")
 lazy val publishToBintray = TaskKey[Unit]("publishToBintray")
 
 lazy val Names = new {
-  val `httpsimple.c`     = "httpsimple.c"
-  val `httpsimple.o`     = "httpsimple.o"
-  val `libhttpsimple.so` = "libhttpsimple.so"
-  val rp                 = "rp"
+  val rp = "rp"
 }
 
 lazy val Versions = new {
-  val argonaut = "6.3-SNAPSHOT"
+  val argonaut = "6.2.1"
   val scala    = "2.11.11"
   val scalaz   = "7.2.16"
   val scopt    = "3.7.0"
@@ -58,7 +57,6 @@ lazy val commonSettings = Seq(
 lazy val root = project
   .in(file("."))
   .aggregate(
-    `libhttpsimple-bindings`,
     `cli`
   )
   .settings(
@@ -93,6 +91,48 @@ lazy val root = project
             Seq(b -> b.run(baseDirectory.value, stage, version.value, streams.value.log))
         }
       } yield result
+    },
+
+    buildDockerImage in Compile := {
+      for {
+        name <- spaceDelimited("<arg>").parsed.toVector
+        result <- BuildInfo.Builds.find(_.name == name) match {
+          case None =>
+            streams.value.log.error(s"Unable to find build for name: $name")
+
+            Seq.empty
+
+          case Some(b) =>
+            val stage = target.value / "stage" / b.name
+            val tag = b.build(stage)
+
+            streams.value.log.warn("The build has been completed but the image has not been published. To publish:")
+            streams.value.log.warn(s"""docker push "$tag"""")
+
+            Seq(tag)
+        }
+      } yield result
+    },
+
+    buildAllDockerImages in Compile := {
+      val tags =
+        for {
+          b <- BuildInfo.Builds
+        } yield {
+          val stage = target.value / "stage" / b.name
+
+          IO.createDirectory(stage)
+
+          b.build(stage)
+        }
+
+      streams.value.log.warn("The build has been completed but the image has not been published. To publish:")
+
+      tags.foreach { tag =>
+        streams.value.log.warn(s"""docker push "$tag"""")
+      }
+
+      tags
     },
 
     buildAll in Compile := {
@@ -136,7 +176,6 @@ lazy val root = project
 
     Keys.`package` in Compile := {
       val cliOut = (Keys.`package` in (cli, Compile)).value
-      val libHttpSimpleOut = (Keys.`package` in (libhttpsimple, Compile)).value
       val outputDirectory = target.value / "output"
 
       IO.deleteFilesEmptyDirs(Seq(outputDirectory))
@@ -145,7 +184,6 @@ lazy val root = project
 
       IO.copyFile(cliOut, outputDirectory / "bin" / Names.rp)
       AdditionalIO.setExecutable(outputDirectory / "bin" / Names.rp)
-      IO.copyFile(libHttpSimpleOut, outputDirectory / "lib" / Names.`libhttpsimple.so`)
 
       (outputDirectory / Names.rp).setExecutable(true)
 
@@ -155,48 +193,9 @@ lazy val root = project
     }
   )
 
-lazy val libhttpsimple = project
-  .in(file("libhttpsimple"))
-  .settings(commonSettings)
-  .settings(
-    Keys.`package` in Compile := {
-      (compile in Compile).value
-
-      target.value / Names.`libhttpsimple.so`
-    },
-
-    compile in Compile := {
-      val result = (compile in Compile).value
-      val sources = (cSource in Compile).value
-      val output = (target in Compile).value
-
-      streams.value.log.info("Compiling C sources")
-
-      val gccCode1 =
-        Seq("gcc", "-c", "-fPIC", "-o", (output / Names.`httpsimple.o`).toString, (sources / Names.`httpsimple.c`).toString).!
-
-      assert(gccCode1 == 0, s"gcc exited with $gccCode1")
-
-      val gccCode2 =
-        Seq("gcc", "-shared", "-fPIC", "-lcurl", "-o", (output / Names.`libhttpsimple.so`).toString, (output / Names.`httpsimple.o`).toString).!
-
-      assert(gccCode2 == 0, s"gcc exited with $gccCode2")
-
-      result
-    }
-  )
-
-lazy val `libhttpsimple-bindings` = project
-  .in(file("libhttpsimple-bindings"))
-  .enablePlugins(ScalaNativePlugin, AutomateHeaderPlugin)
-  .dependsOn(libhttpsimple)
-  .settings(commonSettings)
-  .settings(test in Compile := ())
-
 lazy val cli = project
   .in(file("cli"))
   .enablePlugins(ScalaNativePlugin, AutomateHeaderPlugin)
-  .dependsOn(`libhttpsimple-bindings`)
   .settings(commonSettings)
   .settings(Seq(
     libraryDependencies ++= Seq(

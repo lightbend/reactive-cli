@@ -60,5 +60,3 @@ local.properties
 .recommenders/
 .cache-main
 .cache-tests
-re2/
-argonaut/

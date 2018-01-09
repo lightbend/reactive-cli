@@ -63,10 +63,6 @@ trait BuildTarget {
           |
           |export STAGE="$$(pwd)"
           |
-          |pushd argonaut
-          |sbt argonautNative/publishLocal
-          |popd
-          |
           |pushd reactive-cli
           |
           |${libs.map { case (p, n) => s"cp -p '$p' '../package/usr/share/reactive-cli/lib/$n'" }.mkString("\n")}
@@ -84,7 +80,6 @@ trait BuildTarget {
           |$postBuildHook
           |
           |mv target/output/bin/* ../package/usr/share/reactive-cli/bin/
-          |mv target/output/lib/* ../package/usr/share/reactive-cli/lib/
           |chmod 755 -R ../package/usr/share/reactive-cli/bin
           |ln -s /usr/share/reactive-cli/bin/rp-launcher ../package/usr/bin/rp
           |popd
@@ -144,7 +139,6 @@ case class RpmBuildTarget(release: String, requires: String, libs: Seq[String]) 
           |/usr/bin/rp
           |/usr/share/reactive-cli/bin/rp
           |/usr/share/reactive-cli/bin/rp-launcher
-          |/usr/share/reactive-cli/lib/libhttpsimple.so
           |${libPathToName.map(e => s"/usr/share/reactive-cli/lib/${e._2}").mkString("\n")}
           |""".stripMargin
 

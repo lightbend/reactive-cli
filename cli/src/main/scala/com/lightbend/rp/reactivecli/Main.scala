@@ -21,8 +21,8 @@ import com.lightbend.rp.reactivecli.argparse.{ GenerateDeploymentArgs, InputArgs
 import com.lightbend.rp.reactivecli.docker.{ Config, DockerCredentials, DockerEngine, DockerRegistry }
 import com.lightbend.rp.reactivecli.process.jq
 import com.lightbend.rp.reactivecli.runtime.kubernetes
-import libhttpsimple.{ HttpRequest, LibHttpSimple }
-import libhttpsimple.LibHttpSimple.HttpExchange
+import com.lightbend.rp.reactivecli.http.{ Http, HttpRequest }
+import com.lightbend.rp.reactivecli.http.Http.HttpExchange
 import java.nio.file.{ Files, Path, Paths }
 import scala.annotation.tailrec
 import scala.util.Try
@@ -59,10 +59,10 @@ object Main extends LazyLogging {
               System.out.println(s"jq support: ${if (jq.available) "Available" else "Unavailable"}")
 
             case generateDeploymentArgs @ GenerateDeploymentArgs(_, _, _, _, _, _, _, Some(kubernetesArgs: KubernetesArgs), _, _, _, _, _) =>
-              implicit val httpSettings: LibHttpSimple.Settings =
-                inputArgs.tlsCacertsPath.fold(LibHttpSimple.defaultSettings)(v => LibHttpSimple.defaultSettings.copy(tlsCacertsPath = Some(v)))
+              implicit val httpSettings: Http.Settings =
+                inputArgs.tlsCacertsPath.fold(Http.defaultSettings)(v => Http.defaultSettings.copy(tlsCacertsPath = Some(v)))
 
-              val http: HttpExchange = LibHttpSimple.http
+              val http: HttpExchange = Http.http
 
               val dockerRegistryArgsAuth =
                 for {
@@ -89,8 +89,8 @@ object Main extends LazyLogging {
               }
 
               def getDockerHostConfig(imageName: String): Option[Config] = {
-                implicit val httpSettingsWithDockerCredentials: LibHttpSimple.Settings = DockerEngine.applyDockerHostSettings(httpSettings, sys.env)
-                val http = LibHttpSimple.http(httpSettingsWithDockerCredentials)
+                implicit val httpSettingsWithDockerCredentials: Http.Settings = DockerEngine.applyDockerHostSettings(httpSettings, sys.env)
+                val http = Http.http(httpSettingsWithDockerCredentials)
                 DockerEngine
                   .getConfigFromDockerHost(http, sys.env)(imageName)(httpSettingsWithDockerCredentials)
                   .map(_.registryConfig)
@@ -143,12 +143,12 @@ object Main extends LazyLogging {
   }
 
   def main(args: Array[String]): Unit = {
-    LibHttpSimple.globalInit()
+    Http.globalInit()
     LoggerConfig.factory = TerminalLoggerFactory
     try {
       run(args)
     } finally {
-      LibHttpSimple.globalCleanup()
+      Http.globalCleanup()
     }
   }
 }

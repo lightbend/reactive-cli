@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package libhttpsimple
+package com.lightbend.rp.reactivecli.http
 
 import scala.annotation.tailrec
 

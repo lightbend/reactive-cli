@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
-package libhttpsimple
+package com.lightbend.rp.reactivecli.http
 
-case class HttpResponse(statusCode: Long, headers: HttpHeaders, body: Option[String])
+case class SocketRequest(socket: String, path: String) {
+  val url: String = s"http://localhost$path"
+}

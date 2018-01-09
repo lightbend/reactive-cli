@@ -4,8 +4,6 @@ import scala.collection.immutable.Seq
 import AdditionalIO._
 
 object BuildInfo {
-  private val ArgonautCommit = "2c719f155744881d30fc932dcbbf597a9ce8084c"
-
   val Builds =
     Seq(
       MuslBuild.rpm("centos-6", "el6", "bash"),
@@ -14,7 +12,7 @@ object BuildInfo {
         name = "centos-7",
         baseImage = "centos:7",
         install = s"""|RUN \\
-                      |  curl -s http://releases.llvm.org/3.8.0/clang+llvm-3.8.0-linux-x86_64-centos6.tar.xz | tar xf - --strip-components=1 -J -C /usr/local/ && \\
+                      |  curl -s https://releases.llvm.org/3.8.0/clang+llvm-3.8.0-linux-x86_64-centos6.tar.xz | tar xf - --strip-components=1 -J -C /usr/local/ && \\
                       |  curl -s https://bintray.com/sbt/rpm/rpm > /etc/yum.repos.d/bintray-sbt-rpm.repo && \\
                       |  yum install -y bc gcc gcc-c++ epel-release git java-1.8.0-openjdk-headless libcurl-devel libunwind-devel make openssl-devel rpm-build sbt which && \\
                       |  yum install -y jq && \\
@@ -98,26 +96,7 @@ object BuildInfo {
         target = DebBuildTarget(Seq("zesty", "artful"), "main", "bash,libre2-3,libunwind8,libcurl3", Seq.empty)))
 
   def initialize(root: File): Unit = {
-    val argonautDir = root / "target" / "argonaut" / ArgonautCommit
     val ivyDir = root / "target" / ".ivy2" / "cache"
-
-    if (!argonautDir.isDirectory) {
-      val argonautTempDir = root / "target" / "argonaut" / "temporary" / ArgonautCommit
-
-      IO.createDirectory(argonautTempDir)
-
-      AdditionalIO.runProcess("git", "clone", "https://github.com/argonaut-io/argonaut.git", argonautTempDir.getAbsolutePath)
-
-      AdditionalIO.runProcessCwd(argonautTempDir, "git", "checkout", ArgonautCommit)
-
-      // Remove coursier so we use the ivy cache
-
-      IO.writeLines(
-        argonautTempDir / "project" / "plugins.sbt",
-        IO.readLines(argonautTempDir / "project" / "plugins.sbt").filterNot(_.contains("sbt-coursier")))
-
-      IO.move(argonautTempDir, argonautDir)
-    }
 
     if (!ivyDir.isDirectory && (Path.userHome / ".ivy2" / "cache").isDirectory) {
       IO.createDirectory(root / "target" / ".ivy2")
@@ -203,24 +182,46 @@ object MuslBuild {
 }
 
 case class BuildInfo(name: String, baseImage: String, install: String, target: BuildTarget) {
-  import BuildInfo.ArgonautCommit
+  private val dockerVersion = "latest"
 
-  val dockerBuildImage = s"reactive-cli-build-$name"
+  val dockerBuildImage = s"reactive-cli-build-$name:$dockerVersion"
+  val dockerTaggedBuildImage = s"lightbend-docker-registry.bintray.io/rp/$dockerBuildImage"
 
+  /**
+   * Builds and tags the Docker image. This needs to then be manually pushed up to Bintray.
+   */
+  def build(stage: File): String = {
+    val dockerFile =
+      s"""|FROM $baseImage
+          |LABEL REBUILD=20171108-01
+          |MAINTAINER info@lightbend.com
+          |
+          |$install
+          |RUN mkdir -p /root
+          |WORKDIR /root/stage
+          |CMD ["./command"]
+          |""".stripMargin
+
+    IO.createDirectory(stage / ".context")
+
+    IO.write(stage / ".context" / "Dockerfile", dockerFile)
+
+    runProcess("docker", "pull", baseImage)
+
+    runProcessCwd(stage / ".context", "docker", "build", "-t", dockerBuildImage, (stage / ".context").getPath)
+
+    runProcess("docker", "tag", dockerBuildImage, dockerTaggedBuildImage)
+
+    dockerTaggedBuildImage
+  }
+
+  /**
+   * Runs the build with the latest published Docker image.
+   */
   def run(root: File, stage: File, version: String, log: Logger): Seq[File] = {
     def clearStage(): Unit = {
       IO.delete(stage)
       IO.createDirectory(stage)
-    }
-
-    def copyArgonaut(): Unit = {
-      val argonautDir = root / "target" / "argonaut" / ArgonautCommit
-
-      assert(argonautDir.isDirectory, s"Argonaut directory missing: $argonautDir")
-
-      log.info(s"[$name] copying argonaut")
-
-      IO.copyDirectory(argonautDir, stage / "argonaut")
     }
 
     def copyProject(): Unit = {
@@ -235,24 +236,12 @@ case class BuildInfo(name: String, baseImage: String, install: String, target: B
       } IO.copyFile(source, destination)
     }
 
-    def build(): Vector[File] = {
-      val dockerFile =
-        s"""|FROM $baseImage
-            |LABEL REBUILD=20171108-01
-            |MAINTAINER info@lightbend.com
-            |
-            |$install
-            |RUN mkdir -p /root
-            |WORKDIR /root/stage
-            |CMD ["./command"]
-            |""".stripMargin
+    def pullImage(): Unit = {
+      runProcess("docker", "pull", dockerTaggedBuildImage)
+    }
 
-      IO.createDirectory(stage / ".context")
+    def run(): Vector[File] = {
       IO.createDirectory(stage / "output")
-
-      IO.write(stage / ".context" / "Dockerfile", dockerFile)
-
-      runProcessCwd(stage / ".context", "docker", "build", "-t", dockerBuildImage, (stage / ".context").getPath)
 
       target.prepare(stage, this, version)
 
@@ -266,7 +255,7 @@ case class BuildInfo(name: String, baseImage: String, install: String, target: B
 
         "-v", s"$stage:/root/stage",
         "-v", s"${root / "target" / ".ivy2" / "cache"}:/root/.ivy2/cache",
-        s"$dockerBuildImage:latest")
+        dockerTaggedBuildImage)
 
       IO.listFiles(stage / "output").toVector
     }
@@ -277,8 +266,8 @@ case class BuildInfo(name: String, baseImage: String, install: String, target: B
 
     copyProject()
 
-    copyArgonaut()
+    pullImage()
 
-    build()
+    run()
   }
 }
