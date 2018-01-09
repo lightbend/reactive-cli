@@ -9,7 +9,9 @@ import _root_.bintray.BintrayExt
 lazy val binaryName = SettingKey[String]("binary-name")
 lazy val cSource = SettingKey[File]("c-source")
 lazy val build = inputKey[Seq[(BuildInfo, Seq[File])]]("build")
+lazy val buildDockerImage = inputKey[Seq[String]]("buildDockerImage")
 lazy val buildAll = TaskKey[Seq[(BuildInfo, Seq[File])]]("buildAll")
+lazy val buildAllDockerImages = TaskKey[Seq[String]]("buildAllDockerImages")
 lazy val publishToBintray = TaskKey[Unit]("publishToBintray")
 
 lazy val Names = new {
@@ -89,6 +91,48 @@ lazy val root = project
             Seq(b -> b.run(baseDirectory.value, stage, version.value, streams.value.log))
         }
       } yield result
+    },
+
+    buildDockerImage in Compile := {
+      for {
+        name <- spaceDelimited("<arg>").parsed.toVector
+        result <- BuildInfo.Builds.find(_.name == name) match {
+          case None =>
+            streams.value.log.error(s"Unable to find build for name: $name")
+
+            Seq.empty
+
+          case Some(b) =>
+            val stage = target.value / "stage" / b.name
+            val tag = b.build(stage)
+
+            streams.value.log.warn("The build has been completed but the image has not been published. To publish:")
+            streams.value.log.warn(s"""docker push "$tag"""")
+
+            Seq(tag)
+        }
+      } yield result
+    },
+
+    buildAllDockerImages in Compile := {
+      val tags =
+        for {
+          b <- BuildInfo.Builds
+        } yield {
+          val stage = target.value / "stage" / b.name
+
+          IO.createDirectory(stage)
+
+          b.build(stage)
+        }
+
+      streams.value.log.warn("The build has been completed but the image has not been published. To publish:")
+
+      tags.foreach { tag =>
+        streams.value.log.warn(s"""docker push "$tag"""")
+      }
+
+      tags
     },
 
     buildAll in Compile := {

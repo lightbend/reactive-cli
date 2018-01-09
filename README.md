@@ -10,7 +10,7 @@ Consult the [Platform Tooling](https://s3-us-west-2.amazonaws.com/rp-tooling-tem
 
 ## Developer
 
-## Build setup
+### Build setup
 
 The CLI depends on Scala Native to build, the setup scripts provided in the project follow the instructions on the [Scala Native setup](http://www.scala-native.org/en/latest/user/setup.html#installing-clang-and-runtime-dependencies) page.
 
@@ -72,6 +72,25 @@ Usage: reactive-cli [options]
 This project uses a Docker-based build system that builds `.rpm` and `.deb` files inside Docker containers for each
 supported distribution. To add a distribution, add a `BuildInfo` instance in `project/BuildInfo.scala` emulating
 the ones already created.
+
+#### Prerequisites
+
+The build system uses publicly available Docker images that are pushed to Bintray. To rebuild / update these images,
+you'll need to run the following:
+
+```bash
+sbt buildAllDockerImages
+```
+
+Afterwards, it will give you the commands you must run to push these images (SBT having tagged them). For example,
+below is pushing one of these images:
+
+```bash
+docker push lightbend-docker-registry.bintray.io/rp/reactive-cli-build-debian-9
+```
+
+Note that this doesn't normally need to be done as part of project setup, as the build system will simply pull down
+the build images for you.
 
 #### Building a single distribution package locally
 

@@ -14,7 +14,7 @@ object BuildInfo {
         name = "centos-7",
         baseImage = "centos:7",
         install = s"""|RUN \\
-                      |  curl -s http://releases.llvm.org/3.8.0/clang+llvm-3.8.0-linux-x86_64-centos6.tar.xz | tar xf - --strip-components=1 -J -C /usr/local/ && \\
+                      |  curl -s https://releases.llvm.org/3.8.0/clang+llvm-3.8.0-linux-x86_64-centos6.tar.xz | tar xf - --strip-components=1 -J -C /usr/local/ && \\
                       |  curl -s https://bintray.com/sbt/rpm/rpm > /etc/yum.repos.d/bintray-sbt-rpm.repo && \\
                       |  yum install -y bc gcc gcc-c++ epel-release git java-1.8.0-openjdk-headless libcurl-devel libunwind-devel make openssl-devel rpm-build sbt which && \\
                       |  yum install -y jq && \\
@@ -205,8 +205,42 @@ object MuslBuild {
 case class BuildInfo(name: String, baseImage: String, install: String, target: BuildTarget) {
   import BuildInfo.ArgonautCommit
 
-  val dockerBuildImage = s"reactive-cli-build-$name"
+  private val dockerVersion = "latest"
 
+  val dockerBuildImage = s"reactive-cli-build-$name:$dockerVersion"
+  val dockerTaggedBuildImage = s"lightbend-docker-registry.bintray.io/rp/$dockerBuildImage"
+
+  /**
+   * Builds and tags the Docker image. This needs to then be manually pushed up to Bintray.
+   */
+  def build(stage: File): String = {
+    val dockerFile =
+      s"""|FROM $baseImage
+          |LABEL REBUILD=20171108-01
+          |MAINTAINER info@lightbend.com
+          |
+          |$install
+          |RUN mkdir -p /root
+          |WORKDIR /root/stage
+          |CMD ["./command"]
+          |""".stripMargin
+
+    IO.createDirectory(stage / ".context")
+
+    IO.write(stage / ".context" / "Dockerfile", dockerFile)
+
+    runProcess("docker", "pull", baseImage)
+
+    runProcessCwd(stage / ".context", "docker", "build", "-t", dockerBuildImage, (stage / ".context").getPath)
+
+    runProcess("docker", "tag", dockerBuildImage, dockerTaggedBuildImage)
+
+    dockerTaggedBuildImage
+  }
+
+  /**
+   * Runs the build with the latest published Docker image.
+   */
   def run(root: File, stage: File, version: String, log: Logger): Seq[File] = {
     def clearStage(): Unit = {
       IO.delete(stage)
@@ -235,24 +269,12 @@ case class BuildInfo(name: String, baseImage: String, install: String, target: B
       } IO.copyFile(source, destination)
     }
 
-    def build(): Vector[File] = {
-      val dockerFile =
-        s"""|FROM $baseImage
-            |LABEL REBUILD=20171108-01
-            |MAINTAINER info@lightbend.com
-            |
-            |$install
-            |RUN mkdir -p /root
-            |WORKDIR /root/stage
-            |CMD ["./command"]
-            |""".stripMargin
+    def pullImage(): Unit = {
+      runProcess("docker", "pull", dockerTaggedBuildImage)
+    }
 
-      IO.createDirectory(stage / ".context")
+    def run(): Vector[File] = {
       IO.createDirectory(stage / "output")
-
-      IO.write(stage / ".context" / "Dockerfile", dockerFile)
-
-      runProcessCwd(stage / ".context", "docker", "build", "-t", dockerBuildImage, (stage / ".context").getPath)
 
       target.prepare(stage, this, version)
 
@@ -266,7 +288,7 @@ case class BuildInfo(name: String, baseImage: String, install: String, target: B
 
         "-v", s"$stage:/root/stage",
         "-v", s"${root / "target" / ".ivy2" / "cache"}:/root/.ivy2/cache",
-        s"$dockerBuildImage:latest")
+        s"$dockerTaggedBuildImage:latest")
 
       IO.listFiles(stage / "output").toVector
     }
@@ -279,6 +301,8 @@ case class BuildInfo(name: String, baseImage: String, install: String, target: B
 
     copyArgonaut()
 
-    build()
+    pullImage()
+
+    run()
   }
 }
