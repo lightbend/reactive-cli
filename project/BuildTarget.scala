@@ -49,6 +49,7 @@ trait BuildTarget {
 
     IO.createDirectory(stage / "package" / "usr" / "bin")
     IO.createDirectory(stage / "package" / "usr" / "share" / "reactive-cli" / "bin")
+    IO.createDirectory(stage / "package" / "usr" / "share" / "reactive-cli" / "lib")
     IO.write(stage / "package" / "usr" / "share" / "reactive-cli" / "bin" / "rp-launcher", launcher)
     AdditionalIO.setExecutable(stage / "package" / "usr" / "share" / "reactive-cli" / "bin" / "rp-launcher")
 
