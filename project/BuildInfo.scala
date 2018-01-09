@@ -288,7 +288,7 @@ case class BuildInfo(name: String, baseImage: String, install: String, target: B
 
         "-v", s"$stage:/root/stage",
         "-v", s"${root / "target" / ".ivy2" / "cache"}:/root/.ivy2/cache",
-        s"$dockerTaggedBuildImage:latest")
+        dockerTaggedBuildImage)
 
       IO.listFiles(stage / "output").toVector
     }
