@@ -37,6 +37,36 @@ object Main extends LazyLogging {
 
   val parser = InputArgs.parser(CliName, ProgramVersion.current)
 
+  object MinSupportedSbtReactiveApp {
+    val major: Int = 0
+    val minor: Int = 4
+
+    private def parseVersion(version: String): Option[(Int, Int, Int)] = {
+      // Only strings like "1.2.3" are supported, what comes after
+      // doesn't matter so snapshots like "0.1.2-SNAPSHOT" are okay.
+      try {
+        val parts = version.split("\\.")
+        Some(parts(0).toInt, parts(1).toInt, parts(2).toInt)
+      }
+      catch {
+        case e : Exception => None
+      }
+    }
+
+    def isVersionValid(version: String): Boolean = {
+      parseVersion(version) match {
+        case Some((givenMajor, givenMinor, _)) => {
+          if (givenMajor == major)
+            givenMinor >= minor
+          else
+            givenMajor >= major
+        }
+        case None => false
+      }
+    }
+  }
+
+
   private def credentialsFile: Option[Path] =
     for {
       home <- sys.props.get("user.home")
@@ -116,6 +146,17 @@ object Main extends LazyLogging {
 
               val outputHandler = kubernetes.handleGeneratedResources(kubernetesArgs.output)
 
+              def validateConfig(config: Config): Boolean = {
+                config.config.Labels match {
+                  case Some(labels) =>  {
+                    labels.get("com.lightbend.rp.sbt-reactive-app-version")
+                        .map(MinSupportedSbtReactiveApp.isVersionValid(_))
+                        .getOrElse(true)
+                  }
+                  case None => true
+                }
+              }
+
               val output = {
                 import Validation.FlatMap._
 
@@ -123,6 +164,7 @@ object Main extends LazyLogging {
                   config <- Validation.fromEither(tryToEither(getDockerConfig(generateDeploymentArgs.dockerImage.get)))
                     .leftMap(t => NonEmptyList(s"Failed to obtain Docker config for ${generateDeploymentArgs.dockerImage.get}, ${t.getMessage}"))
                   resources <- kubernetes.generateResources(config, generateDeploymentArgs, kubernetesArgs)
+                  if validateConfig(config)
                 } yield resources
               }
 
