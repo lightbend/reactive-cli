@@ -25,7 +25,7 @@ import com.lightbend.rp.reactivecli.http.{ Http, HttpRequest }
 import com.lightbend.rp.reactivecli.http.Http.HttpExchange
 import java.nio.file.{ Files, Path, Paths }
 import scala.annotation.tailrec
-import scala.util.Try
+import scala.util.{ Failure, Success, Try }
 import scalaz._
 import slogging._
 
@@ -40,6 +40,7 @@ object Main extends LazyLogging {
   object MinSupportedSbtReactiveApp {
     val major: Int = 0
     val minor: Int = 4
+    val minimum = s"$major.$minor.0"
 
     private def parseVersion(version: String): Option[(Int, Int, Int)] = {
       // Only strings like "1.2.3" are supported, what comes after
@@ -134,8 +135,25 @@ object Main extends LazyLogging {
                   generateDeploymentArgs.registryValidateTls)(imageName, token = None).map(_._1)
 
               def getDockerConfig(imageName: String): Try[Config] = {
+                def validateConfig(config: Config): Try[Config] = {
+                  val maybeVersion =
+                    config
+                      .config
+                      .Labels
+                      .flatMap(_.get("com.lightbend.rp.sbt-reactive-app-version"))
+
+                  val validVersion = maybeVersion.fold(true)(MinSupportedSbtReactiveApp.isVersionValid)
+
+                  if (validVersion)
+                    Success(config)
+                  else
+                    Failure(
+                      new IllegalArgumentException(
+                        s"Minimum sbt-reactive-app version is ${MinSupportedSbtReactiveApp.minimum}, given: ${maybeVersion.getOrElse("")}"))
+                }
+
                 Try(getDockerHostConfig(imageName).get)
-                  .orElse(getDockerRegistryConfig(imageName))
+                  .flatMap(validateConfig)
               }
 
               def tryToEither[T](t: Try[T]): Either[Throwable, T] =
@@ -146,17 +164,6 @@ object Main extends LazyLogging {
 
               val outputHandler = kubernetes.handleGeneratedResources(kubernetesArgs.output)
 
-              def validateConfig(config: Config): Boolean = {
-                config.config.Labels match {
-                  case Some(labels) =>  {
-                    labels.get("com.lightbend.rp.sbt-reactive-app-version")
-                        .map(MinSupportedSbtReactiveApp.isVersionValid(_))
-                        .getOrElse(true)
-                  }
-                  case None => true
-                }
-              }
-
               val output = {
                 import Validation.FlatMap._
 
@@ -164,7 +171,6 @@ object Main extends LazyLogging {
                   config <- Validation.fromEither(tryToEither(getDockerConfig(generateDeploymentArgs.dockerImage.get)))
                     .leftMap(t => NonEmptyList(s"Failed to obtain Docker config for ${generateDeploymentArgs.dockerImage.get}, ${t.getMessage}"))
                   resources <- kubernetes.generateResources(config, generateDeploymentArgs, kubernetesArgs)
-                  if validateConfig(config)
                 } yield resources
               }
 
