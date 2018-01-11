@@ -58,7 +58,7 @@ object Deployment {
         appTypeEnvs(annotations.appType, annotations.modules),
         configEnvs(annotations.configResource),
         endpointEnvs(annotations.endpoints),
-        akkaClusterEnvs(annotations.modules, serviceResourceName, noOfReplicas, annotations.akkaClusterBootstrapSystemName),
+        akkaClusterEnvs(annotations.modules, annotations.namespace, serviceResourceName, noOfReplicas, annotations.akkaClusterBootstrapSystemName),
         externalServicesEnvs(annotations.modules, externalServices))
 
     private[kubernetes] def namespaceEnv(namespace: Option[String]): Map[String, EnvironmentVariable] =
@@ -74,7 +74,7 @@ object Deployment {
           if (modules.isEmpty) Seq.empty else Seq("RP_MODULES" -> LiteralEnvironmentVariable(modules.toVector.sorted.mkString(","))))
     }.toMap
 
-    private[kubernetes] def akkaClusterEnvs(modules: Set[String], serviceResourceName: String, noOfReplicas: Int, akkaClusterBootstrapSystemName: Option[String]): Map[String, EnvironmentVariable] =
+    private[kubernetes] def akkaClusterEnvs(modules: Set[String], namespace: Option[String], serviceResourceName: String, noOfReplicas: Int, akkaClusterBootstrapSystemName: Option[String]): Map[String, EnvironmentVariable] =
       if (!modules.contains(Module.AkkaClusterBootstrapping))
         Map.empty
       else
@@ -82,6 +82,7 @@ object Deployment {
           "RP_JAVA_OPTS" -> LiteralEnvironmentVariable(
             Seq(
               s"-Dakka.discovery.method=kubernetes-api",
+              namespace.fold("")(ns => s"-Dakka.discovery.kubernetes-api.pod-namespace=$ns"),
               s"-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName",
               s"-Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas",
               akkaClusterBootstrapSystemName.fold("-Dakka.discovery.kubernetes-api.pod-label-selector=appName=%s")(systemName => s"-Dakka.discovery.kubernetes-api.pod-label-selector=actorSystemName=$systemName"))
