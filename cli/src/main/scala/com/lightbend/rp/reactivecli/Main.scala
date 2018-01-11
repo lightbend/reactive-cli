@@ -25,7 +25,7 @@ import com.lightbend.rp.reactivecli.http.{ Http, HttpRequest }
 import com.lightbend.rp.reactivecli.http.Http.HttpExchange
 import java.nio.file.{ Files, Path, Paths }
 import scala.annotation.tailrec
-import scala.util.Try
+import scala.util.{ Failure, Success, Try }
 import scalaz._
 import slogging._
 
@@ -36,6 +36,35 @@ object Main extends LazyLogging {
   val CliName = "reactive-cli"
 
   val parser = InputArgs.parser(CliName, ProgramVersion.current)
+
+  object MinSupportedSbtReactiveApp {
+    val major: Int = 0
+    val minor: Int = 4
+    val minimum = s"$major.$minor.0"
+
+    def parseVersion(version: String): Option[(Int, Int, Int)] = {
+      // Only strings like "1.2.3" are supported, what comes after
+      // doesn't matter so snapshots like "0.1.2-SNAPSHOT" are okay.
+      try {
+        val parts = version.split("-|\\.")
+        Some(parts(0).toInt, parts(1).toInt, parts(2).toInt)
+      } catch {
+        case _: Exception => None
+      }
+    }
+
+    def isVersionValid(version: String): Boolean = {
+      parseVersion(version) match {
+        case Some((givenMajor, givenMinor, _)) => {
+          if (givenMajor == major)
+            givenMinor >= minor
+          else
+            givenMajor >= major
+        }
+        case None => false
+      }
+    }
+  }
 
   private def credentialsFile: Option[Path] =
     for {
@@ -104,8 +133,26 @@ object Main extends LazyLogging {
                   generateDeploymentArgs.registryValidateTls)(imageName, token = None).map(_._1)
 
               def getDockerConfig(imageName: String): Try[Config] = {
+                def validateConfig(config: Config): Try[Config] = {
+                  val maybeVersion =
+                    config
+                      .config
+                      .Labels
+                      .flatMap(_.get("com.lightbend.rp.sbt-reactive-app-version"))
+
+                  val validVersion = maybeVersion.fold(true)(MinSupportedSbtReactiveApp.isVersionValid)
+
+                  if (validVersion)
+                    Success(config)
+                  else
+                    Failure(
+                      new IllegalArgumentException(
+                        s"Minimum sbt-reactive-app version is ${MinSupportedSbtReactiveApp.minimum}, given: ${maybeVersion.getOrElse("")}"))
+                }
+
                 Try(getDockerHostConfig(imageName).get)
                   .orElse(getDockerRegistryConfig(imageName))
+                  .flatMap(validateConfig)
               }
 
               def tryToEither[T](t: Try[T]): Either[Throwable, T] =
