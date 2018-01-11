@@ -42,15 +42,14 @@ object Main extends LazyLogging {
     val minor: Int = 4
     val minimum = s"$major.$minor.0"
 
-    private def parseVersion(version: String): Option[(Int, Int, Int)] = {
+    def parseVersion(version: String): Option[(Int, Int, Int)] = {
       // Only strings like "1.2.3" are supported, what comes after
       // doesn't matter so snapshots like "0.1.2-SNAPSHOT" are okay.
       try {
-        val parts = version.split("\\.")
+        val parts = version.split("-|\\.")
         Some(parts(0).toInt, parts(1).toInt, parts(2).toInt)
-      }
-      catch {
-        case e : Exception => None
+      } catch {
+        case _: Exception => None
       }
     }
 
@@ -66,7 +65,6 @@ object Main extends LazyLogging {
       }
     }
   }
-
 
   private def credentialsFile: Option[Path] =
     for {
@@ -153,6 +151,7 @@ object Main extends LazyLogging {
                 }
 
                 Try(getDockerHostConfig(imageName).get)
+                  .orElse(getDockerRegistryConfig(imageName))
                   .flatMap(validateConfig)
               }
 
