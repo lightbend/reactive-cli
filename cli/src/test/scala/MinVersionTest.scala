@@ -28,5 +28,13 @@ object MinVersionTest extends TestSuite {
       assert(Main.MinSupportedSbtReactiveApp.parseVersion("0.x.1") == None)
       assert(Main.MinSupportedSbtReactiveApp.parseVersion("blah") == None)
     }
+    "Validate given version" - {
+      assert(!Main.MinSupportedSbtReactiveApp.isVersionValid("0.1.2", 2, 0))
+      assert(!Main.MinSupportedSbtReactiveApp.isVersionValid("blah", 0, 0))
+      assert(Main.MinSupportedSbtReactiveApp.isVersionValid("0.1.2", 0, 1))
+      assert(Main.MinSupportedSbtReactiveApp.isVersionValid("0.1.0", 0, 1))
+      assert(Main.MinSupportedSbtReactiveApp.isVersionValid("1.0.0", 0, 1))
+      assert(Main.MinSupportedSbtReactiveApp.isVersionValid("0.1.2-SNAPSHOT", 0, 1))
+    }
   }
 }

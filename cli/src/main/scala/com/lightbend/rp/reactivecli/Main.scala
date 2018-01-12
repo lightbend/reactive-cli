@@ -53,13 +53,13 @@ object Main extends LazyLogging {
       }
     }
 
-    def isVersionValid(version: String): Boolean = {
+    def isVersionValid(version: String, reqMajor: Int = major, reqMinor: Int = minor): Boolean = {
       parseVersion(version) match {
         case Some((givenMajor, givenMinor, _)) => {
-          if (givenMajor == major)
-            givenMinor >= minor
+          if (givenMajor == reqMajor)
+            givenMinor >= reqMinor
           else
-            givenMajor >= major
+            givenMajor >= reqMajor
         }
         case None => false
       }
@@ -140,7 +140,7 @@ object Main extends LazyLogging {
                       .Labels
                       .flatMap(_.get("com.lightbend.rp.sbt-reactive-app-version"))
 
-                  val validVersion = maybeVersion.fold(true)(MinSupportedSbtReactiveApp.isVersionValid)
+                  val validVersion = maybeVersion.fold(true)(MinSupportedSbtReactiveApp.isVersionValid(_))
 
                   if (validVersion)
                     Success(config)
