@@ -26,6 +26,17 @@ The setup script will install the prerequisites listed below.
 * libgc
 * libunwind
 * libre2
+* nexe (for JS/Windows builds)
+
+### npm specific setup
+
+You'll need `nexe` on your path. One good way of setting up npm to do this is documented on [this StackOverflow post](https://stackoverflow.com/questions/10081293/install-npm-into-home-directory-with-distribution-nodejs-package-ubuntu).
+
+Once setup, you can use the following command to install nexe:
+
+```bash
+npm i nexe -g
+```
 
 ### macOS specific setup
 

@@ -14,17 +14,30 @@ lazy val buildAll = TaskKey[Seq[(BuildInfo, Seq[File])]]("buildAll")
 lazy val buildAllDockerImages = TaskKey[Seq[String]]("buildAllDockerImages")
 lazy val publishToBintray = TaskKey[Unit]("publishToBintray")
 
+// FIXME shadow sbt-scalajs' crossProject and CrossType until Scala.js 1.0.0 is released
+import sbtcrossproject.{ crossProject, CrossType }
+
 lazy val Names = new {
   val rp = "rp"
 }
 
 lazy val Versions = new {
   val argonaut = "6.2.1"
-  val scala    = "2.11.11"
+  val nodejs   = "0.4.2"
+  val scala    = "2.11.12"
   val scalaz   = "7.2.16"
   val scopt    = "3.7.0"
   val slogging = "0.6.0"
   val utest    = "0.5.3"
+}
+
+lazy val Platform = new {
+  val isWindows =
+    sys
+      .props
+      .get("os.name")
+      .map(_.toLowerCase)
+      .exists(_.contains("win"))
 }
 
 lazy val commonSettings = Seq(
@@ -57,19 +70,26 @@ lazy val commonSettings = Seq(
 lazy val root = project
   .in(file("."))
   .aggregate(
-    `cli`
+    cliJs, cliNative
   )
   .settings(
     name := "reactive-cli-root",
 
+    TaskKey[Unit]("ensureRelease") := {
+      if (Properties.nativeMode != "release") {
+        sys.error("To release, you must launch SBT with -Dbuild.nativeMode=release")
+      }
+    },
+
     releaseProcess := Seq[ReleaseStep](
       inquireVersions,
       runClean,
-      releaseStepCommandAndRemaining("update"),
+      releaseStepCommand("ensureRelease"),
+      releaseStepCommand("update"),
       setReleaseVersion,
       commitReleaseVersion,
       tagRelease,
-      releaseStepCommandAndRemaining("compile:publishToBintray"),
+      releaseStepCommand("compile:publishToBintray"),
       setNextVersion,
       commitNextVersion,
       pushChanges
@@ -172,10 +192,62 @@ lazy val root = project
             BintrayExt.publishRpm(file, version.value, bintrayCredentialsFile.value, log)
         }
       }
+    }
+  )
+
+lazy val cli = crossProject(JSPlatform, NativePlatform)
+  .crossType(CrossType.Full)
+  .in(file("cli"))
+  .enablePlugins(AutomateHeaderPlugin)
+  .settings(commonSettings)
+  .settings(Seq(
+    libraryDependencies ++= Seq(
+      "com.github.scopt"  %%% "scopt"       % Versions.scopt,
+      "io.argonaut"       %%% "argonaut"    % Versions.argonaut,
+      "biz.enef"          %%% "slogging"    % Versions.slogging,
+      "org.scalaz"        %%% "scalaz-core" % Versions.scalaz
+    )
+  ))
+  .settings(
+    name := "reactive-cli",
+    sourceGenerators in Compile += Def.task {
+      val versionFile = (sourceManaged in Compile).value / "ProgramVersion.scala"
+
+      val versionSource =
+        """|package com.lightbend.rp.reactivecli
+           |
+           |object ProgramVersion {
+           |  val current = "%s"
+           |}
+           |"""
+          .stripMargin
+          .format(version.value)
+          .replaceAllLiterally("\n", System.lineSeparator)
+
+      IO.write(versionFile, versionSource)
+
+      Seq(versionFile)
+    }
+  )
+  .nativeSettings(
+    nativeMode := Properties.nativeMode,
+
+    nativeGC := "none",
+
+    nativeLinkingOptions := {
+      val dynamicLinkerOptions =
+        Properties
+          .dynamicLinker
+          .toVector
+          .map(dl => s"-Wl,--dynamic-linker=$dl")
+
+      dynamicLinkerOptions ++ Seq(
+        "-lcurl"
+      ) ++ sys.props.get("nativeLinkingOptions").fold(Seq.empty[String])(_.split(" ").toVector)
     },
 
     Keys.`package` in Compile := {
-      val cliOut = (Keys.`package` in (cli, Compile)).value
+      val cliOut = (nativeLink in Compile).value
       val outputDirectory = target.value / "output"
 
       IO.deleteFilesEmptyDirs(Seq(outputDirectory))
@@ -192,21 +264,37 @@ lazy val root = project
       outputDirectory
     }
   )
-
-lazy val cli = project
-  .in(file("cli"))
-  .enablePlugins(ScalaNativePlugin, AutomateHeaderPlugin)
-  .settings(commonSettings)
-  .settings(Seq(
+  .jsSettings(
+    scalaJSUseMainModuleInitializer := true,
+    scalaJSModuleKind := ModuleKind.CommonJSModule,
     libraryDependencies ++= Seq(
-      "com.github.scopt"  %%% "scopt"       % Versions.scopt,
-      "io.argonaut"       %%% "argonaut"    % Versions.argonaut,
-      "biz.enef"          %%% "slogging"    % Versions.slogging,
-      "org.scalaz"        %%% "scalaz-core" % Versions.scalaz
-    )
-  ))
-  .settings(
-    name := "reactive-cli",
-    nativeMode := Properties.nativeMode,
-    Keys.`package` in Compile := (nativeLink in Compile).value
+      "io.scalajs" %%% "nodejs-lts" % Versions.nodejs
+    ),
+    Keys.`package` in Compile := {
+      val output = (fullOptJS in Compile).value.data
+
+      val entry =
+        s"""|__ScalaJSEnv = {
+            |  exitFunction: function(status) {
+            |    process.exit(status);
+            |  }
+            |};
+            |
+            |require("${output.getAbsolutePath.replaceAllLiterally("\\", "\\\\")}");
+            |"""
+          .stripMargin
+          .replaceAllLiterally("\n", System.lineSeparator)
+
+      val targetDir = (target in Compile).value
+
+      val entryFile = targetDir / "rp.js"
+
+      IO.write(entryFile, entry)
+
+      entryFile
+    }
   )
+
+lazy val cliJs = cli.js
+
+lazy val cliNative = cli.native
