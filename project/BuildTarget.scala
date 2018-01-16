@@ -75,7 +75,7 @@ trait BuildTarget {
           |
           |$preBuildHook
           |
-          |sbt -Dbuild.nativeMode=${Properties.nativeMode} $sbtBuildArgumentsHook clean cliNative/test cliNative/package
+          |sbt -Xmx${Properties.memory}m -Dbuild.nativeMode=${Properties.nativeMode} $sbtBuildArgumentsHook clean cliNative/test cliNative/package
           |
           |$postBuildHook
           |
