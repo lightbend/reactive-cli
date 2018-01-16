@@ -5,6 +5,8 @@ services:
   - docker
 jdk:
   - oraclejdk8
+node_js:
+  - "8"
 sudo: required
 cache:
   directories:
@@ -15,6 +17,10 @@ before_cache:
   - rm -rf "$HOME/.ivy2/cache/com/lightbend/rp/reactivecli"
   # Delete all ivydata files since ivy touches them on each build
   - find "$HOME/.ivy2/cache" -name "ivydata-*.properties" -delete
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y jq
 script:
-  # We don't need to test/compile/package here as buildAll will do that inside each Docker image
+  - sbt clean cliJS/test
+    # We don't need to test/compile/package native here as buildAll will do that inside each Docker image
   - sbt clean update buildAll

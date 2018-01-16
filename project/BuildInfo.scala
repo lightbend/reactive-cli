@@ -97,6 +97,7 @@ object BuildInfo {
 
   def initialize(root: File): Unit = {
     val ivyDir = root / "target" / ".ivy2" / "cache"
+    val sbtDir = root / "target" / ".sbt" / "launchers"
 
     if (!ivyDir.isDirectory && (Path.userHome / ".ivy2" / "cache").isDirectory) {
       IO.createDirectory(root / "target" / ".ivy2")
@@ -106,6 +107,16 @@ object BuildInfo {
       IO.copyDirectory(Path.userHome / ".ivy2" / "cache", ivyTempDir)
 
       IO.move(ivyTempDir, ivyDir)
+    }
+
+    if (!sbtDir.isDirectory && (Path.userHome / ".sbt" / "launchers").isDirectory) {
+      IO.createDirectory(root / "target" / ".sbt")
+
+      val sbtTempDir = root / "target" / ".sbt" / "temporary"
+
+      IO.copyDirectory(Path.userHome / ".sbt" / "launchers", sbtTempDir)
+
+      IO.move(sbtTempDir, sbtDir)
     }
   }
 }
@@ -255,6 +266,7 @@ case class BuildInfo(name: String, baseImage: String, install: String, target: B
 
         "-v", s"$stage:/root/stage",
         "-v", s"${root / "target" / ".ivy2" / "cache"}:/root/.ivy2/cache",
+        "-v", s"${root / "target" / ".sbt" / "launchers"}:/root/.sbt/launchers",
         dockerTaggedBuildImage)
 
       IO.listFiles(stage / "output").toVector

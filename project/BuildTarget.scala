@@ -75,11 +75,11 @@ trait BuildTarget {
           |
           |$preBuildHook
           |
-          |sbt -Dbuild.nativeMode=debug $sbtBuildArgumentsHook clean test package
+          |sbt -Dbuild.nativeMode=${Properties.nativeMode} $sbtBuildArgumentsHook clean cliNative/test cliNative/package
           |
           |$postBuildHook
           |
-          |mv target/output/bin/* ../package/usr/share/reactive-cli/bin/
+          |mv cli/native/target/output/bin/* ../package/usr/share/reactive-cli/bin/
           |chmod 755 -R ../package/usr/share/reactive-cli/bin
           |ln -s /usr/share/reactive-cli/bin/rp-launcher ../package/usr/bin/rp
           |popd
