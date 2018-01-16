@@ -12,8 +12,8 @@ if [ "$curl" = "" ]; then
 fi
 
 version=${1:?usage: build-mac-osx version}
-git checkout "tags/v$version"
-sbt clean test cli/nativeLink
+#git checkout "tags/v$version"
+sbt -Xmx2048m -Dbuild.nativeMode=release clean cliNative/test cliNative/package
 
 pkgbase=target/mac
 rm -rf "$pkgbase"
@@ -23,7 +23,7 @@ mkdir -p "$pkgbase/bin" "$pkgbase/lib"
 # but that's what Docker uses.
 
 cp -p "$curl/libcurl.4.dylib" "$pkgbase/lib"
-cp -p cli/target/scala-*/reactive-cli-out "$pkgbase/bin/rp"
+cp -p cli/native/target/scala-*/reactive-cli-out "$pkgbase/bin/rp"
 
 # link to the bundled curl
 install_name_tool -change /usr/lib/libcurl.4.dylib /usr/local/opt/reactive-cli/lib/libcurl.4.dylib "$pkgbase/bin/rp"
