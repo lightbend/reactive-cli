@@ -475,20 +475,33 @@ object KubernetesPackageTest extends TestSuite {
         }
 
         "Validate Akka Clustering" - {
-          generateResources(
-            dockerConfig.copy(config = dockerConfig.config.copy(Labels = dockerConfig.config.Labels.map(_ ++ Vector(
-              "com.lightbend.rp.modules.akka-cluster-bootstrapping.enabled" -> "true")))),
-            generateDeploymentArgs,
-            kubernetesArgs.copy(generateIngress = true))
-            .map { result =>
-              val failed = result.swap.toOption.get
+          "Require 2 replicas by default" - {
+            generateResources(
+              dockerConfig.copy(config = dockerConfig.config.copy(Labels = dockerConfig.config.Labels.map(_ ++ Vector(
+                "com.lightbend.rp.modules.akka-cluster-bootstrapping.enabled" -> "true")))),
+              generateDeploymentArgs,
+              kubernetesArgs.copy(generateIngress = true))
+              .map { result =>
+                val failed = result.swap.toOption.get
 
-              val message = failed.head
+                val message = failed.head
 
-              val expected = "Akka Cluster Bootstrapping is enabled so you must specify `--pod-controller-replicas 2` (or greater)"
+                val expected = "Akka Cluster Bootstrapping is enabled so you must specify `--pod-controller-replicas 2` (or greater), or provide `--join-existing-akka-cluster` to only join already formed clusters"
 
-              assert(message == expected)
-            }
+                assert(message == expected)
+              }
+          }
+
+          "Skip replica validation when only joining existing cluster" - {
+            generateResources(
+              dockerConfig.copy(config = dockerConfig.config.copy(Labels = dockerConfig.config.Labels.map(_ ++ Vector(
+                "com.lightbend.rp.modules.akka-cluster-bootstrapping.enabled" -> "true")))),
+              generateDeploymentArgs.copy(joinExistingAkkaCluster = true),
+              kubernetesArgs.copy(generateIngress = true))
+              .map { result =>
+                assert(result.isSuccess)
+              }
+          }
         }
       }
     }

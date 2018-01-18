@@ -59,7 +59,7 @@ object DeploymentJsonTest extends TestSuite {
         "deploymentType" - {
           "Canary" - {
             Deployment
-              .generate(annotations, "apps/v1beta2", imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, CanaryDeploymentType, None)
+              .generate(annotations, "apps/v1beta2", imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, CanaryDeploymentType, None, false)
               .toOption
               .get
               .payload
@@ -72,7 +72,7 @@ object DeploymentJsonTest extends TestSuite {
 
           "BlueGreen" - {
             Deployment
-              .generate(annotations, "v1", imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, BlueGreenDeploymentType, None)
+              .generate(annotations, "v1", imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, BlueGreenDeploymentType, None, false)
               .toOption
               .get
               .payload
@@ -85,7 +85,7 @@ object DeploymentJsonTest extends TestSuite {
 
           "Rolling" - {
             Deployment
-              .generate(annotations, "v1", imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, RollingDeploymentType, None)
+              .generate(annotations, "v1", imageName, Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, RollingDeploymentType, None, false)
               .toOption
               .get
               .payload
@@ -349,7 +349,7 @@ object DeploymentJsonTest extends TestSuite {
             """.stripMargin.parse.right.get
 
           val result = Deployment.generate(annotations, "apps/v1beta2", imageName,
-            Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, CanaryDeploymentType, None).toOption.get
+            Deployment.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, CanaryDeploymentType, None, false).toOption.get
 
           // @TODO uncomment this test when we actually have the right format generated
           // @TODO i am proposing keeping them updated for now is counter-productive
@@ -359,12 +359,12 @@ object DeploymentJsonTest extends TestSuite {
         "should fail if application name is not defined" - {
           val invalid = annotations.copy(appName = None)
           assert(Deployment.generate(invalid, "apps/v1beta2", imageName,
-            Deployment.ImagePullPolicy.Never, 1, Map.empty, CanaryDeploymentType, None).toOption.isEmpty)
+            Deployment.ImagePullPolicy.Never, 1, Map.empty, CanaryDeploymentType, None, false).toOption.isEmpty)
         }
 
         "jq" - {
           Deployment
-            .generate(annotations, "apps/v1beta2", imageName, Deployment.ImagePullPolicy.Never, 1, Map.empty, CanaryDeploymentType, Some(".jqTest = \"test\""))
+            .generate(annotations, "apps/v1beta2", imageName, Deployment.ImagePullPolicy.Never, 1, Map.empty, CanaryDeploymentType, Some(".jqTest = \"test\""), false)
             .toOption
             .get
             .payload
@@ -388,7 +388,7 @@ object DeploymentJsonTest extends TestSuite {
 
           val generatedJson =
             Deployment
-              .generate(annotations, "apps/v1beta2", imageName, Deployment.ImagePullPolicy.Never, 1, Map.empty, CanaryDeploymentType, None)
+              .generate(annotations, "apps/v1beta2", imageName, Deployment.ImagePullPolicy.Never, 1, Map.empty, CanaryDeploymentType, None, false)
               .toOption
               .get
               .payload
