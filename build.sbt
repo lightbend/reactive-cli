@@ -190,6 +190,9 @@ lazy val root = project
 
           case RpmBuildTarget(_, _, _) =>
             BintrayExt.publishRpm(file, version.value, bintrayCredentialsFile.value, log)
+
+          case TarGzSelfContainedExecutableBuildTarget(_) =>
+            BintrayExt.publishTarGz(file, version.value, bintrayCredentialsFile.value, log)
         }
       }
     }

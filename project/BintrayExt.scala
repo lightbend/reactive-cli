@@ -59,6 +59,25 @@ object BintrayExt {
       sys.error(responseText)
   }
 
+  def publishTarGz(file: File, version: String, bintrayCredentialsFile: File, log: Logger): Unit = {
+    val urlString =
+      s"https://api.bintray.com/content/lightbend/generic/reactive-cli/$version/${file.getName}"
+
+    val request =
+      withAuth(Bintray.ensuredCredentials(bintrayCredentialsFile, log))(url(urlString) <<< file)
+
+    log.info(s"Uploading ${file.getName} to $urlString")
+
+    val response = Await.result(Http(request), Duration.Inf)
+
+    val responseText = s"[${response.getStatusCode} ${response.getStatusText}] ${response.getResponseBody}"
+
+    if (response.getStatusCode >= 200 && response.getStatusCode <= 299)
+      log.info(responseText)
+    else
+      sys.error(responseText)
+  }
+
   private def withAuth(credentials: Option[BintrayCredentials])(request: Req) =
     credentials.fold(request)(c => request.as_!(c.user, c.password))
 }
