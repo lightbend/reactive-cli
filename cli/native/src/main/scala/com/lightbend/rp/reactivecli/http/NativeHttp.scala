@@ -96,17 +96,19 @@ object NativeHttp {
         settings.tlsCertPath.fold("")(_.toString),
         settings.tlsKeyPath.fold("")(_.toString))
 
-      val result =
-        if (response.error == 0) {
+      response.error match {
+        case 0 => {
           val hs = HttpHeaders(parseHeaders(response.header))
-
           Success(HttpResponse(response.status, hs, response.body))
-        } else {
+        }
+        case -1 => {
+          Failure(InternalNativeFailure(response.error, s"no response from $url"))
+        }
+        case _ => {
           val msg = nativebinding.http.error_message(response.error)
           Failure(InternalNativeFailure(response.error, msg))
         }
-
-      result
+      }
     }
 
   private def httpHeadersToDelimitedString(headers: Map[String, String]): Seq[String] =

@@ -36,6 +36,9 @@ object DockerRegistry extends LazyLogging {
   private[docker] def manifestUrl(img: Image, useHttps: Boolean): String =
     s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/manifests/${img.tag}"
 
+  private[docker] def tagsUrl(img: Image, useHttps: Boolean): String =
+    s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/tags/list"
+
   private def protocol(useHttps: Boolean): String =
     if (useHttps) "https" else "http"
 
@@ -71,16 +74,40 @@ object DockerRegistry extends LazyLogging {
           providedTag = providedTag))
   }
 
-  private def getBlob(http: HttpExchange, credentials: Option[HttpRequest.BasicAuth], useHttps: Boolean, validateTls: Boolean)(uri: String, digest: String, token: Option[HttpRequest.BearerToken]): Future[(HttpResponse, Option[HttpRequest.BearerToken])] =
+  private def getBlob(http: HttpExchange, credentials: Option[HttpRequest.BasicAuth], useHttps: Boolean, validateTls: Boolean)(img: Image, digest: String, token: Option[HttpRequest.BearerToken]): Future[(HttpResponse, Option[HttpRequest.BearerToken])] =
     for {
-      i <- Future.fromTry(parseImageUri(uri))
-      r <- getWithToken(http, credentials, validateTls)(blobUrl(i, digest, useHttps), HttpHeaders(Map.empty), token = token)
+      r <- getWithToken(http, credentials, validateTls)(blobUrl(img, digest, useHttps), HttpHeaders(Map.empty), token = token)
     } yield r
+
+  private def getTags(http: HttpExchange, credentials: Option[HttpRequest.BasicAuth], useHttps: Boolean, validateTls: Boolean)(img: Image, token: Option[HttpRequest.BearerToken])(implicit settings: HttpSettings): Future[(Option[String], Option[HttpRequest.BearerToken])] =
+    for {
+      r <- getWithToken(http, credentials, validateTls)(tagsUrl(img, useHttps), HttpHeaders(Map()), token = token)
+    } yield r._1.body -> r._2
+
+  private def imgValid(tags: Option[String], img: Image): Try[Boolean] = {
+    tags match {
+      case None => Failure(new IllegalArgumentException(s"got unexpected docker registry response"))
+      case Some(str) => {
+        val tags = Parse.parseOption(str).flatMap(_.hcursor.downField("tags").focus)
+        val foundTag = tags.flatMap(j =>
+          j.hcursor.downArray.find(tag => tag.isString && tag.string == Some(img.tag)).focus
+        )
+        (tags, foundTag) match {
+          case (None, None) =>  Failure(new IllegalArgumentException(s"image doesn't seem to exist in docker registry"))
+          case (Some(_), None) => Failure(new IllegalArgumentException(s"image ${img.image} doesn't have tag named ${img.tag}"))
+          case _ => Success(true)
+        }
+      }
+    }
+  }
 
   def getConfig(http: HttpExchange, credentials: Option[HttpRequest.BasicAuth], useHttps: Boolean, validateTls: Boolean)(uri: String, token: Option[HttpRequest.BearerToken])(implicit settings: HttpSettings): Future[(Config, Option[HttpRequest.BearerToken])] =
     for {
-      manifest <- getManifest(http, credentials, useHttps, validateTls)(uri, token)
-      blob <- getBlob(http, credentials, useHttps, validateTls)(uri, manifest._1.config.digest, token = manifest._2)
+      img <- Future.fromTry(parseImageUri(uri))
+      tags <- getTags(http, credentials, useHttps, validateTls)(img, token)
+      valid <- Future.fromTry(imgValid(tags._1, img))
+      manifest <- getManifest(http, credentials, useHttps, validateTls)(img, token = tags._2)
+      blob <- getBlob(http, credentials, useHttps, validateTls)(img, manifest._1.config.digest, token = tags._2)
       config <- Future.fromTry(getDecoded[Config](blob._1))
     } yield config -> blob._2
 
@@ -89,10 +116,9 @@ object DockerRegistry extends LazyLogging {
       .toOption
       .map(_.url)
 
-  private def getManifest(http: HttpExchange, credentials: Option[HttpRequest.BasicAuth], useHttps: Boolean, validateTls: Boolean)(uri: String, token: Option[HttpRequest.BearerToken]): Future[(Manifest, Option[HttpRequest.BearerToken])] =
+  private def getManifest(http: HttpExchange, credentials: Option[HttpRequest.BasicAuth], useHttps: Boolean, validateTls: Boolean)(img: Image, token: Option[HttpRequest.BearerToken]): Future[(Manifest, Option[HttpRequest.BearerToken])] =
     for {
-      i <- Future.fromTry(parseImageUri(uri))
-      r <- getWithToken(http, credentials, validateTls)(manifestUrl(i, useHttps), HttpHeaders(Map("Accept" -> DockerAcceptManifestHeader)), token = token)
+      r <- getWithToken(http, credentials, validateTls)(manifestUrl(img, useHttps), HttpHeaders(Map("Accept" -> DockerAcceptManifestHeader)), token = token)
       v <- Future.fromTry(getDecoded[Manifest](r._1))
     } yield v -> r._2
 
