@@ -70,6 +70,7 @@ case class GenerateDeploymentArgs(
   cpu: Option[Double] = None,
   memory: Option[Long] = None,
   diskSpace: Option[Long] = None,
+  joinExistingAkkaCluster: Boolean = false,
   targetRuntimeArgs: Option[TargetRuntimeArgs] = None,
   registryUsername: Option[String] = None,
   registryPassword: Option[String] = None,

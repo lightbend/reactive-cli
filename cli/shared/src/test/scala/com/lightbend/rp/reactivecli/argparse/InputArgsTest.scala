@@ -80,7 +80,8 @@ object InputArgsTest extends TestSuite {
                     "--generate-namespaces",
                     "--generate-pod-controllers",
                     "--generate-services",
-                    "--deployment-type", "rolling"),
+                    "--deployment-type", "rolling",
+                    "--join-existing-akka-cluster"),
                   InputArgs.default)
                 .get
 
@@ -102,6 +103,7 @@ object InputArgsTest extends TestSuite {
                 assert(!commandArgs.registryUseHttps)
                 assert(!commandArgs.registryValidateTls)
                 assert(commandArgs.externalServices == Map("cas1" -> Seq("1.2.3.4", "5.6.7.8"), "cas2" -> Seq("hello")))
+                assert(commandArgs.joinExistingAkkaCluster)
 
                 assert(targetRuntimeArgs.generateIngress)
                 assert(targetRuntimeArgs.generateNamespaces)

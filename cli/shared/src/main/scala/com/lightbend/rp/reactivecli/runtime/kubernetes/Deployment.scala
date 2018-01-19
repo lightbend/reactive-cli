@@ -49,7 +49,7 @@ object Deployment {
     /**
      * Generates pod environment variables specific for RP applications.
      */
-    def envs(annotations: Annotations, serviceResourceName: String, noOfReplicas: Int, externalServices: Map[String, Seq[String]]): Map[String, EnvironmentVariable] =
+    def envs(annotations: Annotations, serviceResourceName: String, noOfReplicas: Int, externalServices: Map[String, Seq[String]], joinExistingAkkaCluster: Boolean): Map[String, EnvironmentVariable] =
       mergeEnvs(
         PodEnvs,
         namespaceEnv(annotations.namespace),
@@ -58,7 +58,7 @@ object Deployment {
         appTypeEnvs(annotations.appType, annotations.modules),
         configEnvs(annotations.configResource),
         endpointEnvs(annotations.endpoints),
-        akkaClusterEnvs(annotations.modules, annotations.namespace, serviceResourceName, noOfReplicas, annotations.akkaClusterBootstrapSystemName),
+        akkaClusterEnvs(annotations.modules, annotations.namespace, serviceResourceName, noOfReplicas, annotations.akkaClusterBootstrapSystemName, joinExistingAkkaCluster),
         externalServicesEnvs(annotations.modules, externalServices))
 
     private[kubernetes] def namespaceEnv(namespace: Option[String]): Map[String, EnvironmentVariable] =
@@ -74,7 +74,7 @@ object Deployment {
           if (modules.isEmpty) Seq.empty else Seq("RP_MODULES" -> LiteralEnvironmentVariable(modules.toVector.sorted.mkString(","))))
     }.toMap
 
-    private[kubernetes] def akkaClusterEnvs(modules: Set[String], namespace: Option[String], serviceResourceName: String, noOfReplicas: Int, akkaClusterBootstrapSystemName: Option[String]): Map[String, EnvironmentVariable] =
+    private[kubernetes] def akkaClusterEnvs(modules: Set[String], namespace: Option[String], serviceResourceName: String, noOfReplicas: Int, akkaClusterBootstrapSystemName: Option[String], joinExistingAkkaCluster: Boolean): Map[String, EnvironmentVariable] =
       if (!modules.contains(Module.AkkaClusterBootstrapping))
         Map.empty
       else
@@ -85,7 +85,8 @@ object Deployment {
               namespace.fold("")(ns => s"-Dakka.discovery.kubernetes-api.pod-namespace=$ns"),
               s"-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName",
               s"-Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas",
-              akkaClusterBootstrapSystemName.fold("-Dakka.discovery.kubernetes-api.pod-label-selector=appName=%s")(systemName => s"-Dakka.discovery.kubernetes-api.pod-label-selector=actorSystemName=$systemName"))
+              akkaClusterBootstrapSystemName.fold("-Dakka.discovery.kubernetes-api.pod-label-selector=appName=%s")(systemName => s"-Dakka.discovery.kubernetes-api.pod-label-selector=actorSystemName=$systemName"),
+              s"${if (joinExistingAkkaCluster) "-Dakka.management.cluster.bootstrap.form-new-cluster=false" else ""}")
               .filter(_.nonEmpty)
               .mkString(" ")))
 
@@ -268,7 +269,8 @@ object Deployment {
     noOfReplicas: Int,
     externalServices: Map[String, Seq[String]],
     deploymentType: DeploymentType,
-    jqExpression: Option[String]): ValidationNel[String, Deployment] =
+    jqExpression: Option[String],
+    joinExistingAkkaCluster: Boolean): ValidationNel[String, Deployment] =
 
     (annotations.appNameValidation |@| annotations.versionValidation) { (rawAppName, version) =>
       val appName = serviceName(rawAppName)
@@ -348,7 +350,7 @@ object Deployment {
                     "imagePullPolicy" -> imagePullPolicy.asJson,
                     "env" -> RpEnvironmentVariables.mergeEnvs(
                       annotations.environmentVariables ++
-                        RpEnvironmentVariables.envs(annotations, serviceResourceName, noOfReplicas, externalServices)).asJson,
+                        RpEnvironmentVariables.envs(annotations, serviceResourceName, noOfReplicas, externalServices, joinExistingAkkaCluster)).asJson,
                     "ports" -> annotations.endpoints.asJson,
                     "volumeMounts" -> secretNames
                       .map {

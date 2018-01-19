@@ -166,6 +166,10 @@ object InputArgs {
             .text("Appends the expression specified to the paths of the generated Ingress resources")
             .action(IngressArgs.set((v, c) => c.copy(pathAppend = Some(v)))),
 
+          opt[Unit]("join-existing-akka-cluster")
+            .text("When provided, the pod controller will only join an already formed Akka Cluster")
+            .action(GenerateDeploymentArgs.set((_, args) => args.copy(joinExistingAkkaCluster = true))),
+
           opt[String]("namespace")
             .text("Resources will be generated with the supplied namespace")
             .action(KubernetesArgs.set((v, args) => args.copy(namespace = Some(v)))),
@@ -185,7 +189,7 @@ object InputArgs {
             .action(PodControllerArgs.set((v, args) => args.copy(imagePullPolicy = v))),
 
           opt[Int]("pod-controller-replicas")
-            .text("Sets the number of replicas for the Pod Controller resources")
+            .text("Sets the number of replicas for the Pod Controller resources. If Akka Cluster Bootstrap is enabled, this must be set to 2 or greater unless `--join-existing-akka-cluster` is provided")
             .validate(v => if (v >= 0) success else failure("Number of replicas must be zero or more"))
             .action(PodControllerArgs.set((v, args) => args.copy(numberOfReplicas = v))),
 
