@@ -139,13 +139,23 @@ object DockerRegistryTest extends TestSuite {
       assert(DockerRegistry.parseImageUri(":").isFailure)
     }
 
-    "parseWwwAuthenticate" - {
-      val data = """Bearer realm="https://auth.docker.io/token",service="registry.docker.io",scope="repository:dockercloud/hello-world:pull""""
+    "parseAuthHeader" - {
+      assert(DockerRegistry.parseAuthHeader("") == Some(Map()))
+      assert(DockerRegistry.parseAuthHeader("key=\"val1\"") == Some(Map("key" -> "val1")))
+      assert(DockerRegistry.parseAuthHeader("a=\"val1\",b = \"val2\"") == Some(Map("a" -> "val1", "b " -> "val2")))
+      assert(DockerRegistry.parseAuthHeader(" a=\"\",b = \"val2\"") == Some(Map("a" -> "", "b " -> "val2")))
+      assert(DockerRegistry.parseAuthHeader(" p  a=\"1\",b= \"2\"") == Some(Map("p  a" -> "1", "b" -> "2")))
 
-      assert(DockerRegistry.parseWwwAuthenticate(data, "Bearer realm").contains("https://auth.docker.io/token"))
-      assert(DockerRegistry.parseWwwAuthenticate(data, "service").contains("registry.docker.io"))
-      assert(DockerRegistry.parseWwwAuthenticate(data, "scope").contains("repository:dockercloud/hello-world:pull"))
-      assert(DockerRegistry.parseWwwAuthenticate(data, "unknown").isEmpty)
+      val data = """Bearer realm="https://auth.docker.io/token",service="registry.docker.io",scope="repository:dockercloud/hello-world:pull""""
+      assert(DockerRegistry.parseAuthHeader(data) == Some(Map(
+        "Bearer realm" -> "https://auth.docker.io/token",
+        "service" -> "registry.docker.io",
+        "scope" -> "repository:dockercloud/hello-world:pull")))
+
+      assert(DockerRegistry.parseAuthHeader("key =") == None)
+      assert(DockerRegistry.parseAuthHeader("key = value") == None)
+      assert(DockerRegistry.parseAuthHeader(",") == None)
+      assert(DockerRegistry.parseAuthHeader("a=\"val1\"b = \"val2\"") == None)
     }
   }
 }

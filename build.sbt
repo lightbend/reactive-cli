@@ -22,13 +22,14 @@ lazy val Names = new {
 }
 
 lazy val Versions = new {
-  val argonaut = "6.2.1"
-  val nodejs   = "0.4.2"
-  val scala    = "2.11.12"
-  val scalaz   = "7.2.16"
-  val scopt    = "3.7.0"
-  val slogging = "0.6.0"
-  val utest    = "0.5.3"
+  val argonaut  = "6.2.1"
+  val nodejs    = "0.4.2"
+  val scala     = "2.11.12"
+  val scalaz    = "7.2.16"
+  val scopt     = "3.7.0"
+  val slogging  = "0.6.0"
+  val utest     = "0.5.3"
+  val fastparse = "1.0.0"
 }
 
 lazy val Platform = new {
@@ -208,7 +209,8 @@ lazy val cli = crossProject(JSPlatform, NativePlatform)
       "com.github.scopt"  %%% "scopt"       % Versions.scopt,
       "io.argonaut"       %%% "argonaut"    % Versions.argonaut,
       "biz.enef"          %%% "slogging"    % Versions.slogging,
-      "org.scalaz"        %%% "scalaz-core" % Versions.scalaz
+      "org.scalaz"        %%% "scalaz-core" % Versions.scalaz,
+      "com.lihaoyi"       %%% "fastparse"   % Versions.fastparse
     )
   ))
   .settings(

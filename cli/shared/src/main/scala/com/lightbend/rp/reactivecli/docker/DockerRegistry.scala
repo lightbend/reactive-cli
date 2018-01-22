@@ -25,6 +25,7 @@ import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Success, Try }
 import scalaz._
 import slogging._
+import fastparse.all._
 
 import Argonaut._
 import Scalaz._
@@ -90,10 +91,9 @@ object DockerRegistry extends LazyLogging {
       case Some(str) => {
         val tags = Parse.parseOption(str).flatMap(_.hcursor.downField("tags").focus)
         val foundTag = tags.flatMap(j =>
-          j.hcursor.downArray.find(tag => tag.isString && tag.string == Some(img.tag)).focus
-        )
+          j.hcursor.downArray.find(tag => tag.isString && tag.string == Some(img.tag)).focus)
         (tags, foundTag) match {
-          case (None, None) =>  Failure(new IllegalArgumentException(s"image doesn't seem to exist in docker registry"))
+          case (None, None) => Failure(new IllegalArgumentException(s"image doesn't seem to exist in docker registry"))
           case (Some(_), None) => Failure(new IllegalArgumentException(s"image ${img.image} doesn't have tag named ${img.tag}"))
           case _ => Success(true)
         }
@@ -144,9 +144,10 @@ object DockerRegistry extends LazyLogging {
 
         val maybeResponse =
           for {
-            realm <- optionToFuture(parseWwwAuthenticate(authenticateHeader, "realm"), "Missing realm")
-            service <- optionToFuture(parseWwwAuthenticate(authenticateHeader, "service"), "Missing service")
-            scope <- optionToFuture(parseWwwAuthenticate(authenticateHeader, "scope"), "Missing scope")
+            auth <- optionToFuture(parseAuthHeader(authenticateHeader), "Unable to parse authentication header")
+            realm <- optionToFuture(auth.get("Bearer realm"), "Missing realm")
+            service <- optionToFuture(auth.get("service"), "Missing service")
+            scope <- optionToFuture(auth.get("scope"), "Missing scope")
             tokenRequest = HttpRequest(tokenUrl(realm, service, scope, "LightbendReactiveCLI"))
             maybeTokenResponse <- attempt(http(credentials.fold(tokenRequest)(tokenRequest.withAuth))).map(_.toOption)
 
@@ -178,10 +179,17 @@ object DockerRegistry extends LazyLogging {
   private def tokenUrl(realm: String, service: String, scope: String, clientId: String) =
     s"$realm?service=$service&scope=$scope&client_id=$clientId"
 
-  /* @TODO need a more robust parser */
-  def parseWwwAuthenticate(authenticate: String, section: String): Option[String] =
-    (section + "=\"([^\"]+)\"")
-      .r
-      .findFirstMatchIn(authenticate)
-      .flatMap(_.subgroups.headOption)
+  def parseAuthHeader(auth: String): Option[Map[String, String]] = {
+    val ws = P(CharIn(" \t").rep(1))
+    val letters = P(CharIn('a' to 'z', 'A' to 'Z') ~ CharsWhile(_ != '=', min = 0))
+    val value = P("\"" ~ CharsWhile(_ != '\"', min = 0).! ~ "\"")
+    val keyval = P(ws.? ~ letters.! ~ "=" ~ ws.? ~ value)
+    val parser = P(Start ~ keyval.rep(sep = ",") ~ End)
+
+    parser.parse(auth) match {
+      case Parsed.Success(seq, _) => Some(seq.toMap)
+      case Parsed.Failure(_, _, _) => None
+    }
+  }
+
 }
