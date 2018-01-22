@@ -31,4 +31,4 @@ if (-not $nexe_success) {
   throw "nexe failed"
 }
 
-Compress-Archive -Path .\target\win\rp.exe -DestinationPath ".\target\win\reactive-cli-$version-Windows.zip"
+Compress-Archive -Path .\target\win\rp.exe -DestinationPath ".\target\win\reactive-cli-$version-Windows-amd64.zip"

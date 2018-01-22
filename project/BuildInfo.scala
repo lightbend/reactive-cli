@@ -6,6 +6,8 @@ import AdditionalIO._
 object BuildInfo {
   val Builds =
     Seq(
+      MuslBuild.tgz("tgz"),
+
       MuslBuild.rpm("centos-6", "el6", "bash"),
 
       BuildInfo(
@@ -190,6 +192,17 @@ object MuslBuild {
 
       override protected def sbtBuildArgumentsHook: String = sbtBuildArguments
     })
+
+  def tgz(name: String): BuildInfo = new BuildInfo(
+    name = name,
+    baseImage = image,
+    install = install,
+    target = new TarGzSelfContainedExecutableBuildTarget(libs) {
+      override protected def preBuildHook: String = preBuild
+
+      override protected def sbtBuildArgumentsHook: String = sbtBuildArguments
+    }
+  )
 }
 
 case class BuildInfo(name: String, baseImage: String, install: String, target: BuildTarget) {
