@@ -21,6 +21,7 @@ import argonaut._
 import com.lightbend.rp.reactivecli.concurrent._
 import com.lightbend.rp.reactivecli.http._
 import com.lightbend.rp.reactivecli.http.Http.HttpExchange
+import com.lightbend.rp.reactivecli.Platform
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Success, Try }
 import scalaz._
@@ -32,13 +33,16 @@ import Scalaz._
 
 object DockerRegistry extends LazyLogging {
   private[docker] def blobUrl(img: Image, digest: String, useHttps: Boolean): String =
-    s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/blobs/$digest"
+    Platform.encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/blobs/$digest")
 
   private[docker] def manifestUrl(img: Image, useHttps: Boolean): String =
-    s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/manifests/${img.tag}"
+    Platform.encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/manifests/${img.tag}")
 
   private[docker] def tagsUrl(img: Image, useHttps: Boolean): String =
-    s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/tags/list"
+    Platform.encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/tags/list")
+
+  private def tokenUrl(realm: String, service: String, scope: String, clientId: String) =
+    Platform.encodeURI(s"$realm?service=$service&scope=$scope&client_id=$clientId")
 
   private def protocol(useHttps: Boolean): String =
     if (useHttps) "https" else "http"
@@ -174,10 +178,6 @@ object DockerRegistry extends LazyLogging {
         Future.successful(response -> token)
     }
   }
-
-  /* @TODO need a URL query library */
-  private def tokenUrl(realm: String, service: String, scope: String, clientId: String) =
-    s"$realm?service=$service&scope=$scope&client_id=$clientId"
 
   def parseAuthHeader(auth: String): Option[Map[String, String]] = {
     val ws = P(CharIn(" \t").rep(1))
