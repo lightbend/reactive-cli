@@ -19,7 +19,7 @@ package com.lightbend.rp.reactivecli.runtime
 import argonaut.PrettyParams
 import com.lightbend.rp.reactivecli.annotations.{ Annotations, Module }
 import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
-import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
+import com.lightbend.rp.reactivecli.argparse.kubernetes.{ KubernetesArgs, PodControllerArgs }
 import com.lightbend.rp.reactivecli.concurrent._
 import com.lightbend.rp.reactivecli.docker.Config
 import com.lightbend.rp.reactivecli.files._
@@ -62,7 +62,8 @@ package object kubernetes extends LazyLogging {
   def generateResources(config: Config, generateDeploymentArgs: GenerateDeploymentArgs, kubernetesArgs: KubernetesArgs): Future[ValidationNel[String, Seq[GeneratedKubernetesResource]]] =
     for {
       namespaceApiVersion <- KubernetesArgs.DefaultNamespaceApiVersion
-      podControllerApiVersion <- kubernetesArgs.podControllerArgs.apiVersion
+      appsApiVersion <- kubernetesArgs.podControllerArgs.appsApiVersion
+      batchApiVersion <- kubernetesArgs.podControllerArgs.batchApiVersion
       serviceApiVersion <- kubernetesArgs.serviceArgs.apiVersion
       ingressApiVersion <- kubernetesArgs.ingressArgs.apiVersion
       jqAvailable <- jq.available
@@ -74,17 +75,36 @@ package object kubernetes extends LazyLogging {
         annotations,
         namespaceApiVersion,
         kubernetesArgs.transformNamespaces)
-      val deployments = Deployment.generate(
-        annotations,
-        podControllerApiVersion,
-        generateDeploymentArgs.application,
-        generateDeploymentArgs.dockerImage.get,
-        kubernetesArgs.podControllerArgs.imagePullPolicy,
-        kubernetesArgs.podControllerArgs.numberOfReplicas,
-        generateDeploymentArgs.externalServices,
-        generateDeploymentArgs.deploymentType,
-        kubernetesArgs.transformPodControllers,
-        generateDeploymentArgs.joinExistingAkkaCluster)
+
+      val podControllers =
+        kubernetesArgs.podControllerArgs.controllerType match {
+          case PodControllerArgs.ControllerType.Deployment =>
+            Deployment.generate(
+              annotations,
+              appsApiVersion,
+              generateDeploymentArgs.application,
+              generateDeploymentArgs.dockerImage.get,
+              kubernetesArgs.podControllerArgs.imagePullPolicy,
+              kubernetesArgs.podControllerArgs.numberOfReplicas,
+              generateDeploymentArgs.externalServices,
+              generateDeploymentArgs.deploymentType,
+              kubernetesArgs.transformPodControllers,
+              generateDeploymentArgs.joinExistingAkkaCluster)
+
+          case PodControllerArgs.ControllerType.Job =>
+            Job.generate(
+              annotations,
+              batchApiVersion,
+              generateDeploymentArgs.application,
+              generateDeploymentArgs.dockerImage.get,
+              kubernetesArgs.podControllerArgs.imagePullPolicy,
+              kubernetesArgs.podControllerArgs.numberOfReplicas,
+              generateDeploymentArgs.externalServices,
+              generateDeploymentArgs.deploymentType,
+              kubernetesArgs.transformPodControllers,
+              generateDeploymentArgs.joinExistingAkkaCluster)
+        }
+
       val services = Service.generate(
         annotations,
         serviceApiVersion,
@@ -112,9 +132,9 @@ package object kubernetes extends LazyLogging {
         else
           ().successNel[String]
 
-      (namespaces |@| deployments |@| services |@| ingress |@| validateAkkaCluster |@| validateJq) { (ns, ds, ss, is, _, _) =>
+      (namespaces |@| podControllers |@| services |@| ingress |@| validateAkkaCluster |@| validateJq) { (ns, pcs, ss, is, _, _) =>
         ns.filter(_ => kubernetesArgs.shouldGenerateNamespaces).toSeq ++
-          Seq(ds).filter(_ => kubernetesArgs.shouldGeneratePodControllers) ++
+          Seq(pcs).filter(_ => kubernetesArgs.shouldGeneratePodControllers) ++
           ss.toSeq.filter(_ => kubernetesArgs.shouldGenerateServices) ++
           is.toSeq.filter(_ => kubernetesArgs.shouldGenerateIngress)
       }

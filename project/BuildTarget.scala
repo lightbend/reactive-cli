@@ -225,7 +225,7 @@ case class TarGzSelfContainedExecutableBuildTarget(libs: Seq[String]) extends Bu
   val architecture = "amd64"
 
   override def launcherExecHook: String = "exec $DIR/lib/ld-musl-x86_64.so.1"
-  
+
   def prepare(stage: File, info: BuildInfo, version: String): Unit = {
     val libPathToName = parseLibs(libs)
 

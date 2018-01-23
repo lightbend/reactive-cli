@@ -272,21 +272,21 @@ object AnnotationsTest extends TestSuite {
           Annotations(
             Map("com.lightbend.rp.name" -> "test1"),
             GenerateDeploymentArgs(name = Some("test2"))) == Annotations(
-            namespace = None,
-            applications = Vector.empty,
-            appName = Some("test2"),
-            appType = None,
-            configResource = None,
-            diskSpace = None,
-            memory = None,
-            cpu = None,
-            endpoints = Map.empty,
-            secrets = Seq.empty,
-            privileged = false,
-            environmentVariables = Map.empty,
-            version = None,
-            modules = Set.empty,
-            akkaClusterBootstrapSystemName = None))
+              namespace = None,
+              applications = Vector.empty,
+              appName = Some("test2"),
+              appType = None,
+              configResource = None,
+              diskSpace = None,
+              memory = None,
+              cpu = None,
+              endpoints = Map.empty,
+              secrets = Seq.empty,
+              privileged = false,
+              environmentVariables = Map.empty,
+              version = None,
+              modules = Set.empty,
+              akkaClusterBootstrapSystemName = None))
       }
 
       "version (argument override)" - {

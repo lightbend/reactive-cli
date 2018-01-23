@@ -17,10 +17,28 @@
 package com.lightbend.rp.reactivecli.argparse.kubernetes
 
 import com.lightbend.rp.reactivecli.argparse.InputArgs
-import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment
+import com.lightbend.rp.reactivecli.runtime.kubernetes.PodTemplate
+import scala.collection.immutable.Seq
 import scala.concurrent.Future
 
 object PodControllerArgs {
+  sealed trait ControllerType {
+    def arg: String
+  }
+
+  object ControllerType {
+    case object Deployment extends ControllerType {
+      val arg: String = "deployment"
+    }
+
+    case object Job extends ControllerType {
+      val arg: String = "job"
+    }
+
+    val All: Seq[ControllerType] = Seq(Deployment, Job)
+    val Default: ControllerType = Deployment
+  }
+
   /**
    * Convenience method to set the [[PodControllerArgs]] values when parsing the complete user input.
    * Refer to [[InputArgs.parser()]] for more details.
@@ -39,6 +57,8 @@ object PodControllerArgs {
  * Represents user input arguments required to build Kubernetes Deployment resource.
  */
 case class PodControllerArgs(
-  apiVersion: Future[String] = KubernetesArgs.DefaultPodControllerApiVersion,
+  appsApiVersion: Future[String] = KubernetesArgs.DefaultAppsApiVersion,
+  batchApiVersion: Future[String] = KubernetesArgs.DefaultBatchApiVersion,
+  controllerType: PodControllerArgs.ControllerType = PodControllerArgs.ControllerType.Deployment,
   numberOfReplicas: Int = KubernetesArgs.DefaultNumberOfReplicas,
-  imagePullPolicy: Deployment.ImagePullPolicy.Value = KubernetesArgs.DefaultImagePullPolicy)
+  imagePullPolicy: PodTemplate.ImagePullPolicy.Value = KubernetesArgs.DefaultImagePullPolicy)
