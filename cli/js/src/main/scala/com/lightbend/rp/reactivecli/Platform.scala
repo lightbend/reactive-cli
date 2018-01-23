@@ -29,6 +29,7 @@ import java.nio.charset.StandardCharsets
 import scala.collection.mutable
 import scala.concurrent.{ ExecutionContext, Future, Promise }
 import scalajs.js
+import scalajs.js.URIUtils
 import slogging._
 
 import js.JSConverters._
@@ -110,6 +111,8 @@ object Platform extends LazyLogging {
 
     promise.future
   }
+
+  def encodeURI(uri: String): String = URIUtils.encodeURI(uri)
 
   def mkDirs(path: String): Unit =
     Fs.mkdirSync(path)

@@ -139,13 +139,5 @@ object DockerRegistryTest extends TestSuite {
       assert(DockerRegistry.parseImageUri(":").isFailure)
     }
 
-    "parseWwwAuthenticate" - {
-      val data = """Bearer realm="https://auth.docker.io/token",service="registry.docker.io",scope="repository:dockercloud/hello-world:pull""""
-
-      assert(DockerRegistry.parseWwwAuthenticate(data, "Bearer realm").contains("https://auth.docker.io/token"))
-      assert(DockerRegistry.parseWwwAuthenticate(data, "service").contains("registry.docker.io"))
-      assert(DockerRegistry.parseWwwAuthenticate(data, "scope").contains("repository:dockercloud/hello-world:pull"))
-      assert(DockerRegistry.parseWwwAuthenticate(data, "unknown").isEmpty)
-    }
   }
 }

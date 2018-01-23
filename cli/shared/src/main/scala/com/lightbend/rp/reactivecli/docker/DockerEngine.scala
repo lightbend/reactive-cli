@@ -53,7 +53,7 @@ object DockerEngine extends LazyLogging {
       case Some(host) if host.startsWith("tcp://") =>
         val verify = env.get("DOCKER_TLS_VERIFY").contains("1")
         val protocol = if (verify) "https" else "http"
-        val url = s"$protocol://${host.replaceFirst("tcp://", "")}/images/$uri/json"
+        val url = encodeURI(s"$protocol://${host.replaceFirst("tcp://", "")}/images/$uri/json")
 
         logger.debug("Attempting to pull config from Engine, {}", url)
 

@@ -18,6 +18,7 @@ package com.lightbend.rp.reactivecli
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{ Files, Paths }
+import java.net.URI
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.collection.JavaConverters._
 import scala.util.{ Failure, Success, Try }
@@ -69,6 +70,11 @@ object Platform extends LazyLogging {
       case Failure(t) => Future.failed(t)
       case Success(r) => Future.successful(r)
     }
+
+  def encodeURI(uri: String): String = {
+    val enc = new URI(uri)
+    enc.toASCIIString
+  }
 
   def mkDirs(path: String): Unit =
     Files.createDirectories(Paths.get(path))

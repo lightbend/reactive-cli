@@ -31,13 +31,16 @@ import Scalaz._
 
 object DockerRegistry extends LazyLogging {
   private[docker] def blobUrl(img: Image, digest: String, useHttps: Boolean): String =
-    s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/blobs/$digest"
+    encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/blobs/$digest")
 
   private[docker] def manifestUrl(img: Image, useHttps: Boolean): String =
-    s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/manifests/${img.tag}"
+    encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/manifests/${img.tag}")
 
   private[docker] def tagsUrl(img: Image, useHttps: Boolean): String =
-    s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/tags/list"
+    encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/tags/list")
+
+  private def tokenUrl(realm: String, service: String, scope: String, clientId: String) =
+    encodeURI(s"$realm?service=$service&scope=$scope&client_id=$clientId")
 
   private def protocol(useHttps: Boolean): String =
     if (useHttps) "https" else "http"
@@ -90,10 +93,9 @@ object DockerRegistry extends LazyLogging {
       case Some(str) => {
         val tags = Parse.parseOption(str).flatMap(_.hcursor.downField("tags").focus)
         val foundTag = tags.flatMap(j =>
-          j.hcursor.downArray.find(tag => tag.isString && tag.string == Some(img.tag)).focus
-        )
+          j.hcursor.downArray.find(tag => tag.isString && tag.string == Some(img.tag)).focus)
         (tags, foundTag) match {
-          case (None, None) =>  Failure(new IllegalArgumentException(s"image doesn't seem to exist in docker registry"))
+          case (None, None) => Failure(new IllegalArgumentException(s"image doesn't seem to exist in docker registry"))
           case (Some(_), None) => Failure(new IllegalArgumentException(s"image ${img.image} doesn't have tag named ${img.tag}"))
           case _ => Success(true)
         }
@@ -144,9 +146,10 @@ object DockerRegistry extends LazyLogging {
 
         val maybeResponse =
           for {
-            realm <- optionToFuture(parseWwwAuthenticate(authenticateHeader, "realm"), "Missing realm")
-            service <- optionToFuture(parseWwwAuthenticate(authenticateHeader, "service"), "Missing service")
-            scope <- optionToFuture(parseWwwAuthenticate(authenticateHeader, "scope"), "Missing scope")
+            auth <- optionToFuture(parseAuthHeader(authenticateHeader), "Unable to parse authentication header")
+            realm <- optionToFuture(auth.get("Bearer realm"), "Missing realm")
+            service <- optionToFuture(auth.get("service"), "Missing service")
+            scope <- optionToFuture(auth.get("scope"), "Missing scope")
             tokenRequest = HttpRequest(tokenUrl(realm, service, scope, "LightbendReactiveCLI"))
             maybeTokenResponse <- attempt(http(credentials.fold(tokenRequest)(tokenRequest.withAuth))).map(_.toOption)
 
@@ -173,15 +176,4 @@ object DockerRegistry extends LazyLogging {
         Future.successful(response -> token)
     }
   }
-
-  /* @TODO need a URL query library */
-  private def tokenUrl(realm: String, service: String, scope: String, clientId: String) =
-    s"$realm?service=$service&scope=$scope&client_id=$clientId"
-
-  /* @TODO need a more robust parser */
-  def parseWwwAuthenticate(authenticate: String, section: String): Option[String] =
-    (section + "=\"([^\"]+)\"")
-      .r
-      .findFirstMatchIn(authenticate)
-      .flatMap(_.subgroups.headOption)
 }
