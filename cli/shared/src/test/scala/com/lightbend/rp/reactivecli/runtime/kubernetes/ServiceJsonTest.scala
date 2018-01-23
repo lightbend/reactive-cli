@@ -29,6 +29,7 @@ object ServiceJsonTest extends TestSuite {
 
   val annotations = Annotations(
     namespace = Some("chirper"),
+    applications = Vector.empty,
     appName = Some("friendimpl"),
     appType = None,
     configResource = None,

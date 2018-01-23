@@ -83,6 +83,11 @@ object InputArgs {
             .required()
             .action(GenerateDeploymentArgs.set((v, args) => args.copy(dockerImage = Some(v)))),
 
+          opt[String]("application") /* note: this argument will apply for other targets */
+            .text("Application to generate resources for. If omitted, resources are generated for the default application. If generating for an alternate application, its name will be part of the generated resource names")
+            .optional()
+            .action(GenerateDeploymentArgs.set((v, args) => args.copy(application = Some(v)))),
+
           opt[DeploymentType]("deployment-type")
             .text(s"Sets the deployment type. Default: ${DeploymentType.Canary}; Available: ${DeploymentType.All.mkString(", ")}")
             .optional()
@@ -169,6 +174,11 @@ object InputArgs {
           opt[Unit]("join-existing-akka-cluster")
             .text("When provided, the pod controller will only join an already formed Akka Cluster")
             .action(GenerateDeploymentArgs.set((_, args) => args.copy(joinExistingAkkaCluster = true))),
+
+          opt[String]("name")
+            .text("Uses specified name for generated resources instead of name in the Docker image")
+            .optional()
+            .action(GenerateDeploymentArgs.set((v, args) => args.copy(name = Some(v)))),
 
           opt[String]("namespace")
             .text("Resources will be generated with the supplied namespace")

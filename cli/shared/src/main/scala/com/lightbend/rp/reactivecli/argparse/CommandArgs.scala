@@ -63,8 +63,10 @@ case object RollingDeploymentType extends DeploymentType
  * Represents the input argument for `generate-deployment` command.
  */
 case class GenerateDeploymentArgs(
+  application: Option[String] = None,
   deploymentType: DeploymentType = CanaryDeploymentType,
   dockerImage: Option[String] = None,
+  name: Option[String] = None,
   version: Option[String] = None,
   environmentVariables: Map[String, String] = Map.empty,
   cpu: Option[Double] = None,

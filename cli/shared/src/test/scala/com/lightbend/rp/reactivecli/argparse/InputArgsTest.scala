@@ -81,7 +81,8 @@ object InputArgsTest extends TestSuite {
                     "--generate-pod-controllers",
                     "--generate-services",
                     "--deployment-type", "rolling",
-                    "--join-existing-akka-cluster"),
+                    "--join-existing-akka-cluster",
+                    "--name", "test"),
                   InputArgs.default)
                 .get
 
@@ -95,6 +96,7 @@ object InputArgsTest extends TestSuite {
 
                 val targetRuntimeArgs = commandArgs.targetRuntimeArgs.get.asInstanceOf[KubernetesArgs]
 
+                assert(commandArgs.name == Some("test"))
                 assert(commandArgs.deploymentType == RollingDeploymentType)
                 assert(commandArgs.dockerImage == Some("dockercloud/hello-world:1.0.0-SNAPSHOT"))
                 assert(commandArgs.environmentVariables == Map("test1" -> "test2"))

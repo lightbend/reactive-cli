@@ -28,6 +28,7 @@ import Scalaz._
 
 case class Annotations(
   namespace: Option[String],
+  applications: Seq[(String, Seq[String])],
   appName: Option[String],
   appType: Option[String],
   configResource: Option[String],
@@ -41,6 +42,34 @@ case class Annotations(
   version: Option[String],
   modules: Set[String],
   akkaClusterBootstrapSystemName: Option[String]) {
+
+  def applicationValidation(application: Option[String]): ValidationNel[String, Option[Seq[String]]] =
+    application match {
+      case None =>
+        val defaultApp =
+          if (applications.length == 1)
+            applications.headOption
+          else
+            applications.find(_._1 == Annotations.DefaultApplication)
+
+        if (defaultApp.nonEmpty)
+          defaultApp
+            .map(_._2)
+            .successNel
+        else if (applications.isEmpty)
+          None.successNel
+        else
+          s"Unable to determine application. Available: ${applications.map(_._1).mkString(", ")}".failureNel
+
+      case Some(a) =>
+        applications.find(_._1 == a) match {
+          case Some(command) =>
+            Some(command._2).successNel
+
+          case None =>
+            s"Invalid application $a. Available: ${applications.map(_._1).mkString(", ")}".failureNel
+        }
+    }
 
   def appNameValidation: ValidationNel[String, String] =
     appName.fold[ValidationNel[String, String]]("Docker label \"com.lightbend.rp.app-name\" must be defined".failureNel)(_.successNel)
@@ -71,22 +100,26 @@ case class Annotations(
  * )
  */
 object Annotations extends LazyLogging {
+  val DefaultApplication = "default"
+
   def apply(labels: Map[String, String], args: GenerateDeploymentArgs): Annotations = {
-    val appVersion = args.version.orElse(version(labels))
+    val applicationName = args.name.orElse(appName(labels))
+    val applicationVersion = args.version.orElse(version(labels))
     Annotations(
       namespace = namespace(args),
-      appName = appName(labels),
+      applications = applications(selectArray(labels, ns("applications"))),
+      appName = applicationName,
       appType = appType(labels),
       configResource = configFile(labels),
       diskSpace = args.diskSpace.orElse(diskSpace(labels)),
       memory = args.memory.orElse(memory(labels)),
       cpu = args.cpu.orElse(cpu(labels)),
-      endpoints = endpoints(selectArrayWithIndex(labels, ns("endpoints")), appVersion),
+      endpoints = endpoints(selectArrayWithIndex(labels, ns("endpoints")), applicationVersion),
       secrets = secrets(selectArray(labels, ns("secrets"))),
       privileged = privileged(labels),
       environmentVariables = environmentVariables(selectArray(labels, ns("environment-variables"))) ++
         args.environmentVariables.mapValues(LiteralEnvironmentVariable.apply),
-      version = appVersion,
+      version = applicationVersion,
       modules = appModules(selectSubset(labels, ns("modules"))),
       akkaClusterBootstrapSystemName = akkaClusterBootstrapSystemName(labels))
   }
@@ -95,6 +128,15 @@ object Annotations extends LazyLogging {
     args.targetRuntimeArgs.collect {
       case KubernetesArgs(_, _, _, _, _, _, _, _, Some(namespace), _, _, _, _) => namespace
     }
+
+  private[annotations] def applications(applications: Seq[Map[String, String]]): Seq[(String, Seq[String])] =
+    for {
+      labels <- applications
+      name <- labels.get("name")
+      arguments = selectArrayWithIndex(labels, "arguments").flatMap(_._2.values)
+
+      if arguments.nonEmpty
+    } yield name -> arguments
 
   private[annotations] def appName(labels: Map[String, String]): Option[String] =
     labels

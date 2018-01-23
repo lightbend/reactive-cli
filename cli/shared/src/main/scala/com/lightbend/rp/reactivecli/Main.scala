@@ -93,7 +93,7 @@ object Main extends LazyLogging {
                 System.out.println(s"jq support: ${if (jqAvail) "Available" else "Unavailable"}")
               }
 
-            case generateDeploymentArgs @ GenerateDeploymentArgs(_, _, _, _, _, _, _, _, Some(kubernetesArgs: KubernetesArgs), _, _, _, _, _) =>
+            case generateDeploymentArgs @ GenerateDeploymentArgs(_, _, _, _, _, _, _, _, _, _, Some(kubernetesArgs: KubernetesArgs), _, _, _, _, _) =>
               implicit val httpSettings: HttpSettings =
                 inputArgs.tlsCacertsPath.fold(HttpSettings.default)(v => HttpSettings.default.copy(tlsCacertsPath = Some(v)))
 

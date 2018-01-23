@@ -77,6 +77,7 @@ package object kubernetes extends LazyLogging {
       val deployments = Deployment.generate(
         annotations,
         podControllerApiVersion,
+        generateDeploymentArgs.application,
         generateDeploymentArgs.dockerImage.get,
         kubernetesArgs.podControllerArgs.imagePullPolicy,
         kubernetesArgs.podControllerArgs.numberOfReplicas,

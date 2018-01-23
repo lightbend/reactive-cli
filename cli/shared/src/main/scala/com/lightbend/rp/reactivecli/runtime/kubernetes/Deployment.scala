@@ -264,6 +264,7 @@ object Deployment {
   def generate(
     annotations: Annotations,
     apiVersion: String,
+    application: Option[String],
     imageName: String,
     imagePullPolicy: ImagePullPolicy.Value,
     noOfReplicas: Int,
@@ -272,7 +273,7 @@ object Deployment {
     jqExpression: Option[String],
     joinExistingAkkaCluster: Boolean): ValidationNel[String, Deployment] =
 
-    (annotations.appNameValidation |@| annotations.versionValidation) { (rawAppName, version) =>
+    (annotations.applicationValidation(application) |@| annotations.appNameValidation |@| annotations.versionValidation) { (applicationArgs, rawAppName, version) =>
       val appName = serviceName(rawAppName)
       val appNameVersion = serviceName(s"$appName$VersionSeparator$version")
 
@@ -327,6 +328,20 @@ object Deployment {
         else
           jEmptyObject
 
+      val commandArgs =
+        applicationArgs match {
+          case None =>
+            jEmptyObject
+
+          case Some(c) =>
+            if (c.isEmpty)
+              jEmptyObject
+            else
+              Json(
+                "command" -> jArrayElements(jString(c.head)),
+                "args" -> jArray(c.tail.map(jString).toList))
+        }
+
       Deployment(
         deploymentName,
         Json(
@@ -360,6 +375,7 @@ object Deployment {
                             "name" -> volumeName.asJson)
                       }
                       .asJson)
+                    .deepmerge(commandArgs)
                     .deepmerge(readinessProbe)
                     .deepmerge(livenessProbe)
                     .deepmerge(resourceLimits.asJson)).asJson,
