@@ -23,13 +23,13 @@ lazy val Names = new {
 
 lazy val Versions = new {
   val argonaut  = "6.2.1"
+  val fastparse = "1.0.0"
   val nodejs    = "0.4.2"
   val scala     = "2.11.12"
   val scalaz    = "7.2.16"
   val scopt     = "3.7.0"
   val slogging  = "0.6.0"
   val utest     = "0.5.3"
-  val fastparse = "1.0.0"
 }
 
 lazy val Platform = new {

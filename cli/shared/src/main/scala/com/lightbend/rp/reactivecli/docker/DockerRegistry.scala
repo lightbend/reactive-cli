@@ -21,28 +21,26 @@ import argonaut._
 import com.lightbend.rp.reactivecli.concurrent._
 import com.lightbend.rp.reactivecli.http._
 import com.lightbend.rp.reactivecli.http.Http.HttpExchange
-import com.lightbend.rp.reactivecli.Platform
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Success, Try }
 import scalaz._
 import slogging._
-import fastparse.all._
 
 import Argonaut._
 import Scalaz._
 
 object DockerRegistry extends LazyLogging {
   private[docker] def blobUrl(img: Image, digest: String, useHttps: Boolean): String =
-    Platform.encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/blobs/$digest")
+    encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/blobs/$digest")
 
   private[docker] def manifestUrl(img: Image, useHttps: Boolean): String =
-    Platform.encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/manifests/${img.tag}")
+    encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/manifests/${img.tag}")
 
   private[docker] def tagsUrl(img: Image, useHttps: Boolean): String =
-    Platform.encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/tags/list")
+    encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/tags/list")
 
   private def tokenUrl(realm: String, service: String, scope: String, clientId: String) =
-    Platform.encodeURI(s"$realm?service=$service&scope=$scope&client_id=$clientId")
+    encodeURI(s"$realm?service=$service&scope=$scope&client_id=$clientId")
 
   private def protocol(useHttps: Boolean): String =
     if (useHttps) "https" else "http"
@@ -178,18 +176,4 @@ object DockerRegistry extends LazyLogging {
         Future.successful(response -> token)
     }
   }
-
-  def parseAuthHeader(auth: String): Option[Map[String, String]] = {
-    val ws = P(CharIn(" \t").rep(1))
-    val letters = P(CharIn('a' to 'z', 'A' to 'Z') ~ CharsWhile(_ != '=', min = 0))
-    val value = P("\"" ~ CharsWhile(_ != '\"', min = 0).! ~ "\"")
-    val keyval = P(ws.? ~ letters.! ~ "=" ~ ws.? ~ value)
-    val parser = P(Start ~ keyval.rep(sep = ",") ~ End)
-
-    parser.parse(auth) match {
-      case Parsed.Success(seq, _) => Some(seq.toMap)
-      case Parsed.Failure(_, _, _) => None
-    }
-  }
-
 }

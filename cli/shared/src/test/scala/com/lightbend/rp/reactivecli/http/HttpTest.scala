@@ -21,7 +21,7 @@ import utest._
 // FIXME scala native doesn't seem to like tests in two different projects in the
 // FIXME same build so it throws a [error] (cli/nativetest:nativeLinkNIR) java.nio.file.FileSystemAlreadyExistsException
 
-object Base64Test extends TestSuite {
+object HttpTest extends TestSuite {
   val tests = this{
     "Encode Strings to base64" - {
       val tests = Map(
@@ -38,6 +38,25 @@ object Base64Test extends TestSuite {
 
           assert(encoded == out)
       }
+    }
+
+    "Parse authentication header" - {
+      assert(parseAuthHeader("") == Some(Map()))
+      assert(parseAuthHeader("key=\"val1\"") == Some(Map("key" -> "val1")))
+      assert(parseAuthHeader("a=\"val1\",b = \"val2\"") == Some(Map("a" -> "val1", "b " -> "val2")))
+      assert(parseAuthHeader(" a=\"\",b = \"val2\"") == Some(Map("a" -> "", "b " -> "val2")))
+      assert(parseAuthHeader(" p  a=\"1\",b= \"2\"") == Some(Map("p  a" -> "1", "b" -> "2")))
+
+      val data = """Bearer realm="https://auth.docker.io/token",service="registry.docker.io",scope="repository:dockercloud/hello-world:pull""""
+      assert(parseAuthHeader(data) == Some(Map(
+        "Bearer realm" -> "https://auth.docker.io/token",
+        "service" -> "registry.docker.io",
+        "scope" -> "repository:dockercloud/hello-world:pull")))
+
+      assert(parseAuthHeader("key =") == None)
+      assert(parseAuthHeader("key = value") == None)
+      assert(parseAuthHeader(",") == None)
+      assert(parseAuthHeader("a=\"val1\"b = \"val2\"") == None)
     }
   }
 }

@@ -71,7 +71,7 @@ object Platform extends LazyLogging {
       case Success(r) => Future.successful(r)
     }
 
-  def encodeURI(uri: String) : String = {
+  def encodeURI(uri: String): String = {
     val enc = new URI(uri)
     enc.toASCIIString
   }
