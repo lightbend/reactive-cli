@@ -37,7 +37,7 @@ object InputArgsTest extends TestSuite {
           "minimum arguments" - {
             val result = parser.parse(
               Seq(
-                "generate-kubernetes-deployment",
+                "generate-kubernetes-resources",
                 "dockercloud/hello-world:1.0.0-SNAPSHOT"),
               InputArgs.default)
             assert(
@@ -53,7 +53,7 @@ object InputArgsTest extends TestSuite {
               val res = parser
                 .parse(
                   Seq(
-                    "generate-kubernetes-deployment",
+                    "generate-kubernetes-resources",
                     "--loglevel", "debug",
                     "--cainfo", mockCacerts,
                     "dockercloud/hello-world:1.0.0-SNAPSHOT",
@@ -124,7 +124,7 @@ object InputArgsTest extends TestSuite {
 
           "registry credentials" - {
             val baseArgs = Seq(
-              "generate-kubernetes-deployment",
+              "generate-kubernetes-resources",
               "dockercloud/hello-world:1.0.0-SNAPSHOT")
 
             "should fail if username is defined but password is empty" - {

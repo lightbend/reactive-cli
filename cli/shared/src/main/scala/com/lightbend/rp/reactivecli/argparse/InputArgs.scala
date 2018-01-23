@@ -74,7 +74,7 @@ object InputArgs {
         .text("Outputs the program's version")
         .action((_, inputArgs) => inputArgs.copy(commandArgs = Some(VersionArgs)))
 
-      cmd("generate-kubernetes-deployment")
+      cmd("generate-kubernetes-resources")
         .text("Generate Kubernetes resource files for kubectl")
         .action((_, inputArgs) => inputArgs.copy(commandArgs = Some(GenerateDeploymentArgs(targetRuntimeArgs = Some(KubernetesArgs())))))
         .children(
