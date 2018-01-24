@@ -18,7 +18,7 @@ package com.lightbend.rp.reactivecli.argparse.kubernetes
 
 import com.lightbend.rp.reactivecli.argparse.{ GenerateDeploymentArgs, InputArgs, TargetRuntimeArgs }
 import com.lightbend.rp.reactivecli.process.kubectl
-import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment
+import com.lightbend.rp.reactivecli.runtime.kubernetes.PodTemplate
 import java.io.PrintStream
 import scala.concurrent.Future
 
@@ -42,11 +42,12 @@ object KubernetesArgs {
   sealed trait Output
 
   val DefaultNumberOfReplicas: Int = 1
-  val DefaultImagePullPolicy: Deployment.ImagePullPolicy.Value = Deployment.ImagePullPolicy.IfNotPresent
+  val DefaultImagePullPolicy: PodTemplate.ImagePullPolicy.Value = PodTemplate.ImagePullPolicy.IfNotPresent
 
+  lazy val DefaultAppsApiVersion: Future[String] = kubectl.findApi("apps/v1beta2", "apps/v1beta1")
+  lazy val DefaultBatchApiVersion: Future[String] = kubectl.findApi("batch/v1", "batch/v1beta1")
   lazy val DefaultNamespaceApiVersion: Future[String] = kubectl.findApi("v1")
   lazy val DefaultIngressApiVersion: Future[String] = kubectl.findApi("extensions/v1beta1")
-  lazy val DefaultPodControllerApiVersion: Future[String] = kubectl.findApi("apps/v1beta2", "apps/v1beta1")
   lazy val DefaultServiceApiVersion: Future[String] = kubectl.findApi("v1")
 
   /**

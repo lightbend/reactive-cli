@@ -112,6 +112,7 @@ object AnnotationsTest extends TestSuite {
       assert(
         Annotations(Map.empty, GenerateDeploymentArgs()) == Annotations(
           namespace = None,
+          applications = Vector.empty,
           appName = None,
           appType = None,
           configResource = None,
@@ -136,6 +137,12 @@ object AnnotationsTest extends TestSuite {
               "com.lightbend.rp.app-name" -> "my-app",
               "com.lightbend.rp.app-type" -> "basic",
               "com.lightbend.rp.app-version" -> "3.2.1-SNAPSHOT",
+              "com.lightbend.rp.applications.0.name" -> "test",
+              "com.lightbend.rp.applications.0.arguments.0" -> "arg0",
+              "com.lightbend.rp.applications.0.arguments.1" -> "arg1",
+              "com.lightbend.rp.applications.1.name" -> "test2",
+              "com.lightbend.rp.applications.1.arguments.0" -> "arrrg0",
+              "com.lightbend.rp.applications.1.arguments.1" -> "arrrg1",
               "com.lightbend.rp.config-resource" -> "my-app.conf",
               "com.lightbend.rp.disk-space" -> "65536",
               "com.lightbend.rp.memory" -> "8192",
@@ -174,6 +181,9 @@ object AnnotationsTest extends TestSuite {
               "com.lightbend.rp.akka-cluster-bootstrap.system-name" -> "test"),
             GenerateDeploymentArgs()) == Annotations(
               namespace = None,
+              applications = Vector(
+                "test" -> Vector("arg0", "arg1"),
+                "test2" -> Vector("arrrg0", "arrrg1")),
               appName = Some("my-app"),
               appType = Some("basic"),
               configResource = Some("my-app.conf"),
@@ -215,6 +225,7 @@ object AnnotationsTest extends TestSuite {
               targetRuntimeArgs = Some(KubernetesArgs(
                 namespace = Some("chirper"))))) == Annotations(
               namespace = Some("chirper"),
+              applications = Vector.empty,
               appName = None,
               appType = None,
               configResource = None,
@@ -240,6 +251,7 @@ object AnnotationsTest extends TestSuite {
               "com.lightbend.rp.app-version" -> "3.2.1"),
             GenerateDeploymentArgs()) == Annotations(
               namespace = None,
+              applications = Vector.empty,
               appName = None,
               appType = None,
               configResource = None,
@@ -255,12 +267,35 @@ object AnnotationsTest extends TestSuite {
               akkaClusterBootstrapSystemName = None))
       }
 
+      "name (argument override)" - {
+        assert(
+          Annotations(
+            Map("com.lightbend.rp.name" -> "test1"),
+            GenerateDeploymentArgs(name = Some("test2"))) == Annotations(
+              namespace = None,
+              applications = Vector.empty,
+              appName = Some("test2"),
+              appType = None,
+              configResource = None,
+              diskSpace = None,
+              memory = None,
+              cpu = None,
+              endpoints = Map.empty,
+              secrets = Seq.empty,
+              privileged = false,
+              environmentVariables = Map.empty,
+              version = None,
+              modules = Set.empty,
+              akkaClusterBootstrapSystemName = None))
+      }
+
       "version (argument override)" - {
         assert(
           Annotations(
             Map("com.lightbend.rp.app-version" -> "3.2.1"),
             GenerateDeploymentArgs(version = Some("2.1.3"))) == Annotations(
               namespace = None,
+              applications = Vector.empty,
               appName = None,
               appType = None,
               configResource = None,
@@ -287,6 +322,7 @@ object AnnotationsTest extends TestSuite {
               "com.lightbend.rp.endpoints.1.port" -> "1234"),
             GenerateDeploymentArgs()) == Annotations(
               namespace = None,
+              applications = Vector.empty,
               appName = None,
               appType = None,
               configResource = None,
@@ -312,6 +348,7 @@ object AnnotationsTest extends TestSuite {
               "com.lightbend.rp.endpoints.1.port" -> "1234"),
             GenerateDeploymentArgs()) == Annotations(
               namespace = None,
+              applications = Vector.empty,
               appName = None,
               appType = None,
               configResource = None,

@@ -58,7 +58,8 @@ object InputArgsTest extends TestSuite {
                     "--cainfo", mockCacerts,
                     "dockercloud/hello-world:1.0.0-SNAPSHOT",
                     "--namespace", "chirper",
-                    "--pod-controller-api-version", "hello1",
+                    "--apps-api-version", "hello1",
+                    "--batch-api-version", "hello2",
                     "--pod-controller-replicas", "10",
                     "--pod-controller-image-pull-policy", "Always",
                     "--service-cluster-ip", "10.0.0.1",
@@ -81,7 +82,9 @@ object InputArgsTest extends TestSuite {
                     "--generate-pod-controllers",
                     "--generate-services",
                     "--deployment-type", "rolling",
-                    "--join-existing-akka-cluster"),
+                    "--join-existing-akka-cluster",
+                    "--name", "test",
+                    "--pod-controller-type", "job"),
                   InputArgs.default)
                 .get
 
@@ -95,6 +98,7 @@ object InputArgsTest extends TestSuite {
 
                 val targetRuntimeArgs = commandArgs.targetRuntimeArgs.get.asInstanceOf[KubernetesArgs]
 
+                assert(commandArgs.name == Some("test"))
                 assert(commandArgs.deploymentType == RollingDeploymentType)
                 assert(commandArgs.dockerImage == Some("dockercloud/hello-world:1.0.0-SNAPSHOT"))
                 assert(commandArgs.environmentVariables == Map("test1" -> "test2"))
@@ -111,13 +115,15 @@ object InputArgsTest extends TestSuite {
                 assert(targetRuntimeArgs.generateServices)
                 assert(targetRuntimeArgs.namespace == Some("chirper"))
                 assert(targetRuntimeArgs.output == KubernetesArgs.Output.SaveToFile("/tmp/foo"))
-                assert(targetRuntimeArgs.podControllerArgs.apiVersion.value.get.get == "hello1")
+                assert(targetRuntimeArgs.podControllerArgs.appsApiVersion.value.get.get == "hello1")
+                assert(targetRuntimeArgs.podControllerArgs.batchApiVersion.value.get.get == "hello2")
                 assert(targetRuntimeArgs.podControllerArgs.numberOfReplicas == 10)
                 assert(targetRuntimeArgs.serviceArgs.apiVersion.value.get.get == "hello3")
                 assert(targetRuntimeArgs.serviceArgs.clusterIp == Some("10.0.0.1"))
                 assert(targetRuntimeArgs.ingressArgs.apiVersion.value.get.get == "hello2")
                 assert(targetRuntimeArgs.ingressArgs.ingressAnnotations == Map("ing" -> "123"))
                 assert(targetRuntimeArgs.ingressArgs.pathAppend == Some(".*"))
+                assert(targetRuntimeArgs.podControllerArgs.controllerType == PodControllerArgs.ControllerType.Job)
               }
             }
           }

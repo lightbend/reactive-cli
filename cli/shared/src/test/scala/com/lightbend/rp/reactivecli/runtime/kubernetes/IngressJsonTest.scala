@@ -27,6 +27,7 @@ import Argonaut._
 object IngressJsonTest extends TestSuite {
   val annotations = Annotations(
     namespace = Some("chirper"),
+    applications = Vector.empty,
     appName = Some("friendservice"),
     appType = None,
     configResource = None,

@@ -19,7 +19,7 @@ package com.lightbend.rp.reactivecli.argparse
 import com.lightbend.rp.reactivecli.argparse.kubernetes.{ PodControllerArgs, IngressArgs, KubernetesArgs, ServiceArgs }
 import com.lightbend.rp.reactivecli.files._
 import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment
-import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment.ImagePullPolicy
+import com.lightbend.rp.reactivecli.runtime.kubernetes.PodTemplate.ImagePullPolicy
 import scala.collection.immutable.Seq
 import scala.concurrent.Future
 import scopt.OptionParser
@@ -48,6 +48,14 @@ object InputArgs {
 
   implicit val imagePullPolicyRead: scopt.Read[ImagePullPolicy.Value] =
     scopt.Read.reads(ImagePullPolicy.withName)
+
+  implicit val podControllerTypeRead: scopt.Read[PodControllerArgs.ControllerType] =
+    scopt.Read.reads {
+      case v if v.toLowerCase == PodControllerArgs.ControllerType.Deployment.arg =>
+        PodControllerArgs.ControllerType.Deployment
+      case v if v.toLowerCase == PodControllerArgs.ControllerType.Job.arg =>
+        PodControllerArgs.ControllerType.Job
+    }
 
   val default = InputArgs()
 
@@ -82,6 +90,11 @@ object InputArgs {
             .text("Docker image to be deployed. Format: [<registry host>/][<repo>/]image[:tag]")
             .required()
             .action(GenerateDeploymentArgs.set((v, args) => args.copy(dockerImage = Some(v)))),
+
+          opt[String]("application") /* note: this argument will apply for other targets */
+            .text("Application to generate resources for. If omitted, resources are generated for the default application. If generating for an alternate application, its name will be part of the generated resource names")
+            .optional()
+            .action(GenerateDeploymentArgs.set((v, args) => args.copy(application = Some(v)))),
 
           opt[DeploymentType]("deployment-type")
             .text(s"Sets the deployment type. Default: ${DeploymentType.Canary}; Available: ${DeploymentType.All.mkString(", ")}")
@@ -170,6 +183,11 @@ object InputArgs {
             .text("When provided, the pod controller will only join an already formed Akka Cluster")
             .action(GenerateDeploymentArgs.set((_, args) => args.copy(joinExistingAkkaCluster = true))),
 
+          opt[String]("name")
+            .text("Uses specified name for generated resources instead of name in the Docker image")
+            .optional()
+            .action(GenerateDeploymentArgs.set((v, args) => args.copy(name = Some(v)))),
+
           opt[String]("namespace")
             .text("Resources will be generated with the supplied namespace")
             .action(KubernetesArgs.set((v, args) => args.copy(namespace = Some(v)))),
@@ -179,19 +197,29 @@ object InputArgs {
             .optional()
             .action(KubernetesArgs.set((v, args) => args.copy(output = KubernetesArgs.Output.SaveToFile(v)))),
 
-          opt[String]("pod-controller-api-version")
-            .text(s"Sets the Pod Controller (e.g. Deployment) API version. Default: ${KubernetesArgs.DefaultPodControllerApiVersion}")
+          opt[String]("apps-api-version")
+            .text(s"Sets the apps (e.g. Deployment) API version. Default: ${KubernetesArgs.DefaultAppsApiVersion}")
             .optional()
-            .action(PodControllerArgs.set((v, args) => args.copy(apiVersion = Future.successful(v)))),
+            .action(PodControllerArgs.set((v, args) => args.copy(appsApiVersion = Future.successful(v)))),
+
+          opt[String]("batch-api-version")
+            .text(s"Sets the batch (e.g. Job) API version. Default: ${KubernetesArgs.DefaultBatchApiVersion}")
+            .optional()
+            .action(PodControllerArgs.set((v, args) => args.copy(batchApiVersion = Future.successful(v)))),
 
           opt[ImagePullPolicy.Value]("pod-controller-image-pull-policy")
-            .text(s"Sets the Docker image pull policy for Pod Controller resources. Supported: ${Deployment.ImagePullPolicy.values.mkString(", ")}")
+            .text(s"Sets the Docker image pull policy for Pod Controller resources. Supported: ${ImagePullPolicy.values.mkString(", ")}")
             .action(PodControllerArgs.set((v, args) => args.copy(imagePullPolicy = v))),
 
           opt[Int]("pod-controller-replicas")
             .text("Sets the number of replicas for the Pod Controller resources. If Akka Cluster Bootstrap is enabled, this must be set to 2 or greater unless `--join-existing-akka-cluster` is provided")
             .validate(v => if (v >= 0) success else failure("Number of replicas must be zero or more"))
             .action(PodControllerArgs.set((v, args) => args.copy(numberOfReplicas = v))),
+
+          opt[PodControllerArgs.ControllerType]("pod-controller-type")
+            .text(s"Sets the type of pod controller to generate. Default: ${PodControllerArgs.ControllerType.Default.arg}; Available: ${PodControllerArgs.ControllerType.All.map(_.arg).mkString(", ")}")
+            .optional()
+            .action(PodControllerArgs.set((v, c) => c.copy(controllerType = v))),
 
           opt[Unit]("registry-disable-https") /* note: this argument will apply for other targets */
             .text("Disables HTTPS when accessing docker registry")

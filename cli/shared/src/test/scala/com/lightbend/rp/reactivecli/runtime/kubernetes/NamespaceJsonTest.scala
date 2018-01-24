@@ -30,6 +30,7 @@ object NamespaceJsonTest extends TestSuite {
     "json serialization" - {
       val annotations = Annotations(
         namespace = None,
+        applications = Vector.empty,
         appName = None,
         appType = None,
         configResource = None,

@@ -201,8 +201,7 @@ object MuslBuild {
       override protected def preBuildHook: String = preBuild
 
       override protected def sbtBuildArgumentsHook: String = sbtBuildArguments
-    }
-  )
+    })
 }
 
 case class BuildInfo(name: String, baseImage: String, install: String, target: BuildTarget) {

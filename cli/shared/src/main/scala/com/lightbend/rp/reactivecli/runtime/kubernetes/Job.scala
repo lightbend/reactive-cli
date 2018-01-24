@@ -26,9 +26,9 @@ import Argonaut._
 import PodTemplate._
 import Scalaz._
 
-object Deployment {
+object Job {
   /**
-   * Builds [[Deployment]] resource.
+   * Builds [[Job]] resource.
    */
   def generate(
     annotations: Annotations,
@@ -40,7 +40,7 @@ object Deployment {
     externalServices: Map[String, Seq[String]],
     deploymentType: DeploymentType,
     jqExpression: Option[String],
-    joinExistingAkkaCluster: Boolean): ValidationNel[String, Deployment] =
+    joinExistingAkkaCluster: Boolean): ValidationNel[String, Job] =
 
     (annotations.applicationValidation(application) |@| annotations.appNameValidation |@| annotations.versionValidation) { (applicationArgs, rawAppName, version) =>
       val appName = serviceName(rawAppName)
@@ -58,7 +58,7 @@ object Deployment {
           imageName,
           imagePullPolicy,
           noOfReplicas,
-          RestartPolicy.Always,
+          RestartPolicy.OnFailure,
           externalServices,
           deploymentType,
           joinExistingAkkaCluster,
@@ -67,39 +67,32 @@ object Deployment {
           appNameVersion,
           labels)
 
-      val (deploymentName, deploymentMatchLabels) =
+      val jobName =
         deploymentType match {
-          case CanaryDeploymentType =>
-            (appNameVersion, Json("appNameVersion" -> appNameVersion.asJson))
-
-          case BlueGreenDeploymentType =>
-            (appNameVersion, Json("appNameVersion" -> appNameVersion.asJson))
-
-          case RollingDeploymentType =>
-            (appName, Json("appName" -> appName.asJson))
+          case CanaryDeploymentType => appNameVersion
+          case BlueGreenDeploymentType => appNameVersion
+          case RollingDeploymentType => appName
         }
 
-      Deployment(
-        deploymentName,
+      Job(
+        jobName,
         Json(
           "apiVersion" -> apiVersion.asJson,
-          "kind" -> "Deployment".asJson,
+          "kind" -> jString("Job"),
           "metadata" -> Json(
-            "name" -> deploymentName.asJson,
+            "name" -> jobName.asJson,
             "labels" -> labels.asJson)
             .deepmerge(
               annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
           "spec" -> Json(
-            "replicas" -> noOfReplicas.asJson,
-            "selector" -> Json("matchLabels" -> deploymentMatchLabels),
             "template" -> podTemplate.json)),
         jqExpression)
     }
 }
 
 /**
- * Represents the generated Kubernetes deployment resource.
+ * Represents the generated Kubernetes job resource.
  */
-case class Deployment(name: String, json: Json, jqExpression: Option[String]) extends GeneratedKubernetesResource {
-  val resourceType = "deployment"
+case class Job(name: String, json: Json, jqExpression: Option[String]) extends GeneratedKubernetesResource {
+  val resourceType = "job"
 }
