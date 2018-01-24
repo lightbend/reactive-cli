@@ -312,7 +312,8 @@ object PodTemplate {
             "httpGet" -> Json(
               "path" -> jString("/platform-tooling/healthy"),
               "port" -> jString(AkkaManagementPortName)),
-            "periodSeconds" -> jNumber(StatusPeriodSeconds)))
+            "periodSeconds" -> jNumber(StatusPeriodSeconds),
+            "initialDelaySeconds" -> jNumber(LivenessInitialDelaySeconds)))
       else
         jEmptyObject
 
