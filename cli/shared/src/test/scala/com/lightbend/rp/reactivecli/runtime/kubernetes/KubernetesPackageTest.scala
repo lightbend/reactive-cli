@@ -513,20 +513,16 @@ object KubernetesPackageTest extends TestSuite {
           Service("svc1", Json("key2" -> "value2".asJson), None))
         withTempDir { testDir =>
           handleGeneratedResources(KubernetesArgs.Output.SaveToFile(testDir))(generatedResources).map { _ =>
-            val deploymentFile = pathFor(testDir, "deployment-dep1.json")
+            val deploymentFile = pathFor(testDir, "deployment-dep1.yml")
             val deploymentFileContent = readFile(deploymentFile)
             val deploymentFileExpected =
-              """{
-                |  "key1" : "value1"
-                |}""".stripMargin
+              """key1: value1""".stripMargin
             assert(deploymentFileContent == deploymentFileExpected)
 
-            val serviceFile = pathFor(testDir, "service-svc1.json")
+            val serviceFile = pathFor(testDir, "service-svc1.yml")
             val serviceFileContent = readFile(serviceFile)
             val serviceFileExpected =
-              """{
-                |  "key2" : "value2"
-                |}""".stripMargin
+              """key2: value2""".stripMargin
             assert(serviceFileContent == serviceFileExpected)
           }
         }
@@ -545,15 +541,11 @@ object KubernetesPackageTest extends TestSuite {
 
           val generatedText = new String(output.toByteArray)
           val expectedText =
-            """---
-              |{
-              |  "key1" : "value1"
-              |}
-              |---
-              |{
-              |  "key2" : "value2"
-              |}
-              |""".stripMargin
+            """|---
+               |key1: value1
+               |---
+               |key2: value2
+               |""".stripMargin
           assert(generatedText == expectedText)
         }
       }

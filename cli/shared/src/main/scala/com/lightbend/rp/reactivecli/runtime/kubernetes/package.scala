@@ -16,8 +16,9 @@
 
 package com.lightbend.rp.reactivecli.runtime
 
-import argonaut.PrettyParams
+import argonaut.Json
 import com.lightbend.rp.reactivecli.annotations.{ Annotations, Module }
+import com.lightbend.rp.reactivecli.argonaut.YamlRenderer
 import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
 import com.lightbend.rp.reactivecli.argparse.kubernetes.{ KubernetesArgs, PodControllerArgs }
 import com.lightbend.rp.reactivecli.concurrent._
@@ -26,7 +27,6 @@ import com.lightbend.rp.reactivecli.files._
 import com.lightbend.rp.reactivecli.process.jq
 import java.io.PrintStream
 import scala.concurrent.Future
-import scala.util.{ Failure, Success, Try }
 import scalaz._
 import slogging.LazyLogging
 
@@ -150,6 +150,8 @@ package object kubernetes extends LazyLogging {
       case KubernetesArgs.Output.SaveToFile(path) => saveToFile(path)
     }
 
+  private[kubernetes] def format(json: Json) = YamlRenderer.render(json)
+
   private[kubernetes] def saveToFile(path: String)(generatedResources: Seq[GeneratedKubernetesResource]): Future[Unit] = {
     if (!fileExists(path)) {
       mkDirs(path)
@@ -158,11 +160,11 @@ package object kubernetes extends LazyLogging {
     Future
       .sequence(
         generatedResources.map { r =>
-          val fileName = s"${r.resourceType}-${r.name}.json"
+          val fileName = s"${r.resourceType}-${r.name}.yml"
           val file = pathFor(path, fileName)
 
           r.payload.map { json =>
-            val formattedJson = json.spaces2
+            val formattedJson = format(json)
 
             logger.debug(fileName)
 
@@ -182,7 +184,7 @@ package object kubernetes extends LazyLogging {
         .sequence(generatedResources.map(_.payload))
         .map {
           _.foreach { r =>
-            val formattedJson = r.spaces2
+            val formattedJson = format(r)
             out.println("---")
             out.println(formattedJson)
           }
