@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-package com.lightbend.rp.reactivecli
-package docker
+package com.lightbend.rp.reactivecli.docker
 
 import argonaut._
 import com.lightbend.rp.reactivecli.concurrent._
