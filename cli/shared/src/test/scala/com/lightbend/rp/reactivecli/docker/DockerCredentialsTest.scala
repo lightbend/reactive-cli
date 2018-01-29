@@ -15,14 +15,13 @@
  */
 
 package com.lightbend.rp.reactivecli.docker
-
 import scala.collection.immutable.Seq
 import utest._
 
 object DockerCredentialsTest extends TestSuite {
   val tests = this{
     "Parse Credentials" - {
-      val result = DockerCredentials.decode(
+      val result = DockerCredentials.decodeCreds(
         """|registry = lightbend-docker-registry.bintray.io
            |username=hello
            |password =      there
@@ -40,10 +39,34 @@ object DockerCredentialsTest extends TestSuite {
            |""".stripMargin)
 
       val expected = Seq(
-        DockerCredentials("lightbend-docker-registry.bintray.io", "hello", "there"),
-        DockerCredentials("registry.hub.docker.com", "foo", "bar"),
-        DockerCredentials("2.hub.docker.com", "ok", "what"))
+        DockerCredentials("lightbend-docker-registry.bintray.io", "hello", "there", ""),
+        DockerCredentials("registry.hub.docker.com", "foo", "bar", ""),
+        DockerCredentials("2.hub.docker.com", "ok", "what", ""))
 
+      assert(result == expected)
+    }
+    "Parse Docker Config" - {
+      val result_empty = DockerCredentials.decodeConfig("""{"auths": {} }""")
+      val result = DockerCredentials.decodeConfig(
+        """
+          |{
+          |   "auths": {
+          |       "https://index.docker.io/v1/": {
+          |         "auth": "0123abcdef="
+          |       },
+          |       "lightbend-docker-registry.bintray.io": {
+          |         "auth": "xzyw="
+          |       }
+          |   }
+          |}
+        """.stripMargin)
+
+      val expected = Seq(
+        DockerCredentials("https://index.docker.io/v1/", "", "", "0123abcdef="),
+        DockerCredentials("lightbend-docker-registry.bintray.io", "", "", "xzyw=")
+      )
+
+      assert(result_empty == Seq.empty)
       assert(result == expected)
     }
   }

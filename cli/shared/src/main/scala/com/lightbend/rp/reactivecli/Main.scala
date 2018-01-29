@@ -69,10 +69,10 @@ object Main extends LazyLogging {
     }
   }
 
-  private def credentialsFile(): Option[String] =
+  private def homeDirPath(subdir: String, filename: String): Option[String] =
     for {
       home <- sys.props.get("user.home")
-      path = files.pathFor(home, ".lightbend", "docker.credentials")
+      path = files.pathFor(home, subdir, filename)
       if files.fileExists(path)
     } yield path
 
@@ -109,10 +109,14 @@ object Main extends LazyLogging {
                 for {
                   imageName <- generateDeploymentArgs.dockerImage
                   registry <- DockerRegistry.getRegistry(imageName)
-                  credsFile <- credentialsFile()
-                  auth = DockerCredentials.parse(credsFile)
-                  entry <- auth.find(_.registry == registry)
-                } yield HttpRequest.BasicAuth(entry.username, entry.password)
+                  configFile = homeDirPath(".docker", "config.json")
+                  credsFile = homeDirPath(".lightbend", "docker.credentials")
+                  auth = DockerCredentials.get(credsFile, configFile)
+                  entry <- auth.find(realm => docker.registryAuthNameMatches(registry, realm.registry))
+                } yield {
+                  if (entry.token.length > 0) HttpRequest.BearerToken(entry.token)
+                  else HttpRequest.BasicAuth(entry.username, entry.password)
+                }
 
               val dockerRegistryAuth = dockerRegistryArgsAuth.orElse(dockerRegistryFileAuth)
 
@@ -121,6 +125,8 @@ object Main extends LazyLogging {
                   logger.debug("Attempting to pull manifest while unauthenticated")
                 case Some(HttpRequest.BasicAuth(username, _)) =>
                   logger.debug(s"Attempting to pull manifest as $username")
+                case Some(HttpRequest.BearerToken(_)) =>
+                  logger.debug("Attempting to pull manifest with bearer token authentication")
               }
 
               def getDockerHostConfig(imageName: String): Future[Option[Config]] = {

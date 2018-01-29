@@ -76,14 +76,14 @@ object DockerRegistry extends LazyLogging {
           providedTag = providedTag))
   }
 
-  private def getBlob(http: HttpExchange, credentials: Option[HttpRequest.BasicAuth], useHttps: Boolean, validateTls: Boolean)(img: Image, digest: String, token: Option[HttpRequest.BearerToken]): Future[(HttpResponse, Option[HttpRequest.BearerToken])] =
+  private def getBlob(http: HttpExchange, credentials: Option[HttpRequest.Auth], useHttps: Boolean, validateTls: Boolean)(img: Image, digest: String, token: Option[HttpRequest.BearerToken]): Future[(HttpResponse, Option[HttpRequest.BearerToken])] =
     for {
-      r <- getWithToken(http, credentials, validateTls)(blobUrl(img, digest, useHttps), HttpHeaders(Map.empty), token = token)
+      r <- getWithAuth(http, credentials, validateTls, blobUrl(img, digest, useHttps), HttpHeaders(Map.empty), token)
     } yield r
 
-  private def getTags(http: HttpExchange, credentials: Option[HttpRequest.BasicAuth], useHttps: Boolean, validateTls: Boolean)(img: Image, token: Option[HttpRequest.BearerToken])(implicit settings: HttpSettings): Future[(Option[String], Option[HttpRequest.BearerToken])] =
+  private def getTags(http: HttpExchange, credentials: Option[HttpRequest.Auth], useHttps: Boolean, validateTls: Boolean)(img: Image, token: Option[HttpRequest.BearerToken])(implicit settings: HttpSettings): Future[(Option[String], Option[HttpRequest.BearerToken])] =
     for {
-      r <- getWithToken(http, credentials, validateTls)(tagsUrl(img, useHttps), HttpHeaders(Map()), token = token)
+      r <- getWithAuth(http, credentials, validateTls, tagsUrl(img, useHttps), HttpHeaders(Map()), token)
     } yield r._1.body -> r._2
 
   private def imgValid(tags: Option[String], img: Image): Try[Boolean] = {
@@ -102,7 +102,7 @@ object DockerRegistry extends LazyLogging {
     }
   }
 
-  def getConfig(http: HttpExchange, credentials: Option[HttpRequest.BasicAuth], useHttps: Boolean, validateTls: Boolean)(uri: String, token: Option[HttpRequest.BearerToken])(implicit settings: HttpSettings): Future[(Config, Option[HttpRequest.BearerToken])] =
+  def getConfig(http: HttpExchange, credentials: Option[HttpRequest.Auth], useHttps: Boolean, validateTls: Boolean)(uri: String, token: Option[HttpRequest.BearerToken])(implicit settings: HttpSettings): Future[(Config, Option[HttpRequest.BearerToken])] =
     for {
       img <- Future.fromTry(parseImageUri(uri))
       tags <- getTags(http, credentials, useHttps, validateTls)(img, token)
@@ -117,9 +117,9 @@ object DockerRegistry extends LazyLogging {
       .toOption
       .map(_.url)
 
-  private def getManifest(http: HttpExchange, credentials: Option[HttpRequest.BasicAuth], useHttps: Boolean, validateTls: Boolean)(img: Image, token: Option[HttpRequest.BearerToken]): Future[(Manifest, Option[HttpRequest.BearerToken])] =
+  private def getManifest(http: HttpExchange, credentials: Option[HttpRequest.Auth], useHttps: Boolean, validateTls: Boolean)(img: Image, token: Option[HttpRequest.BearerToken]): Future[(Manifest, Option[HttpRequest.BearerToken])] =
     for {
-      r <- getWithToken(http, credentials, validateTls)(manifestUrl(img, useHttps), HttpHeaders(Map("Accept" -> DockerAcceptManifestHeader)), token = token)
+      r <- getWithAuth(http, credentials, validateTls, manifestUrl(img, useHttps), HttpHeaders(Map("Accept" -> DockerAcceptManifestHeader)), token)
       v <- Future.fromTry(getDecoded[Manifest](r._1))
     } yield v -> r._2
 
@@ -130,6 +130,20 @@ object DockerRegistry extends LazyLogging {
         Success.apply)
     else
       Failure(new IllegalArgumentException(s"Expected code 200, received ${response.statusCode}"))
+
+  private def getWithAuth(http: HttpExchange, auth: Option[HttpRequest.Auth], validateTls: Boolean, url: String, headers: HttpHeaders, overrideToken: Option[HttpRequest.BearerToken]): Future[(HttpResponse, Option[HttpRequest.BearerToken])] = {
+    auth match {
+      // No authentication, will get temporary token
+      case None => getWithToken(http, None, validateTls)(url, headers, true, overrideToken)
+      // Username and password authentication
+      case Some(basic: HttpRequest.BasicAuth) => getWithToken(http, Some(basic), validateTls)(url, headers, true, overrideToken)
+      // Bearer token authentication
+      case Some(token: HttpRequest.BearerToken) => {
+        val useToken = if (overrideToken.isDefined) overrideToken else Some(token)
+        getWithToken(http, None, validateTls)(url, headers, false, useToken)
+      }
+    }
+  }
 
   private def getWithToken(http: HttpExchange, credentials: Option[HttpRequest.BasicAuth], validateTls: Boolean)(url: String, headers: HttpHeaders, tryNewToken: Boolean = true, token: Option[HttpRequest.BearerToken] = None): Future[(HttpResponse, Option[HttpRequest.BearerToken])] = {
     val request =
