@@ -17,7 +17,9 @@
 package com.lightbend.rp.reactivecli.docker
 
 import com.lightbend.rp.reactivecli.files._
+import com.lightbend.rp.reactivecli.process._
 import scala.collection.immutable.Seq
+import scala.concurrent._
 import argonaut._
 import Argonaut._
 
@@ -34,7 +36,33 @@ object DockerCredentials {
   def get(credsFilePath: Option[String], configFilePath: Option[String]): Seq[DockerCredentials] = {
     val fromConfig = configFilePath.map(parseDockerConfig)
     val fromCreds = credsFilePath.map(parseCredsFile)
-    fromConfig.getOrElse(Seq.empty) ++ fromCreds.getOrElse(Seq.empty)
+    val fromHelpers = getHelperCredentials()
+    // TODO: Solve duplicates here
+    fromConfig.getOrElse(Seq.empty) ++ fromCreds.getOrElse(Seq.empty) ++ fromHelpers
+  }
+
+  def getHelperCredentials(): Seq[DockerCredentials] = {
+    val helpers = Seq(
+      "docker-credential-osxkeychan",
+      "docker-credential-wincred",
+      "docker-credential-pass",
+      "docker-credential-secretservice")
+
+    // Find first available helper executable
+    helpers.find(helper => {
+      val futureCode = for {
+        (code, output) <- exec(helper)
+      } yield {
+        if (code == 0) true
+        else false
+      }
+
+      Await.result(futureCode)
+    })
+
+    // TODO: Put back code to parse "{helper list}" & "{helper get}" outputs
+
+    Seq.empty
   }
 
   def parseDockerConfig(configFilePath: String): Seq[DockerCredentials] =
