@@ -38,11 +38,33 @@ object DockerCredentials {
   private val Password = "password"
 
   def get(credsFilePath: Option[String], configFilePath: Option[String]): Seq[DockerCredentials] = {
-    val fromConfig = configFilePath.map(parseDockerConfig)
-    val fromCreds = credsFilePath.map(parseCredsFile)
+    // Credential priorities:
+    // 1. Lightbend credential file
+    // 2. Docker credential helpers
+    // 3. Docker config file
+    val fromCreds = credsFilePath.map(parseCredsFile).getOrElse(Seq.empty)
     val fromHelpers = dockercred.getCredentials
-    // TODO: Solve duplicates here
-    fromConfig.getOrElse(Seq.empty) ++ fromCreds.getOrElse(Seq.empty) ++ fromHelpers
+    val fromConfig = configFilePath.map(parseDockerConfig).getOrElse(Seq.empty)
+
+    def credsToMap(creds: Seq[DockerCredentials]): Map[String, DockerCredentials] = {
+      creds.map(c => c.registry -> c).toMap
+    }
+
+    // Combines two maps, keeps first one when keys overlap
+    def combine(first: Map[String, DockerCredentials], second: Map[String, DockerCredentials]) = {
+      val keys = first.keys ++ second.keys
+      keys.map(k => {
+        if(first.contains(k))
+          k -> first(k)
+        else
+          k -> second(k)
+      }).toMap
+    }
+
+    // Build maps indexed by registry and combine their keys according to priority
+    combine(
+      credsToMap(fromCreds), combine(credsToMap(fromHelpers), credsToMap(fromConfig)))
+      .values.toVector
   }
 
   def parseDockerConfig(configFilePath: String): Seq[DockerCredentials] =

@@ -26,12 +26,11 @@ import argonaut._
 import Argonaut._
 
 object dockercred extends LazyLogging {
-
   private def isAvailable(kind: String): Future[Boolean] = {
     exec(s"docker-credential-$kind", "list").map(_._1 == 0)
   }
 
-  def choseKind(): Future[String] = {
+  private def chooseKind(): Future[String] = {
     val kinds = Seq("osxkeychain", "wincred", "pass", "secretservice")
     optionToFuture(kinds.find(kind => Await.result(isAvailable(kind), Duration.Inf)), "No docker credential helpers found")
   }
@@ -40,7 +39,7 @@ object dockercred extends LazyLogging {
     json.hcursor.downField(field).focus.flatMap(_.string)
 
   // Returns seq of pairs server -> username
-  def list(kind: String): Future[Seq[(String, String)]] = {
+  private def list(kind: String): Future[Seq[(String, String)]] = {
     for {
       (code, output) <- exec(s"docker-credential-$kind", "list")
     } yield {
@@ -57,7 +56,7 @@ object dockercred extends LazyLogging {
   }
 
   // Returns pair username -> password
-  def get(kind: String, server: String): Future[Option[(String, String)]] = {
+  private def get(kind: String, server: String): Future[Option[(String, String)]] = {
     for {
       (code, output) <- exec("echo", s"$server", "|", s"docker-credential-$kind", "get")
     } yield {
@@ -77,7 +76,7 @@ object dockercred extends LazyLogging {
 
   def getCredentials(): Seq[DockerCredentials] = {
     Await.result(for {
-      kind <- choseKind()
+      kind <- chooseKind()
       lst <- list(kind)
     } yield {
       lst.flatMap({case (server, username) => {
