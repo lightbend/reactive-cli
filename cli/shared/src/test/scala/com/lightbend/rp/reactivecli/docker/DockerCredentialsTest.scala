@@ -63,8 +63,7 @@ object DockerCredentialsTest extends TestSuite {
 
       val expected = Seq(
         DockerCredentials("https://index.docker.io/v1/", "", "", "0123abcdef="),
-        DockerCredentials("lightbend-docker-registry.bintray.io", "", "", "xzyw=")
-      )
+        DockerCredentials("lightbend-docker-registry.bintray.io", "", "", "xzyw="))
 
       assert(result_empty == Seq.empty)
       assert(result == expected)

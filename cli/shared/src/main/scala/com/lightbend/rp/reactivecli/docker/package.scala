@@ -24,7 +24,7 @@ package object docker {
 
   // Sometimes authentication credentials store different address than our default server,
   // this function handles these discrepancies.
-  def registryAuthNameMatches(registry: String, authRealm: String) : Boolean = {
+  def registryAuthNameMatches(registry: String, authRealm: String): Boolean = {
     if (registry == authRealm)
       true
     else if (registry == DockerDefaultRegistry && authRealm == "https://index.docker.io/v1/")

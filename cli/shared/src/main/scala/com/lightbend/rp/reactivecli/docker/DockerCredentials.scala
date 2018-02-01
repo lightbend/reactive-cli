@@ -19,14 +19,18 @@ package com.lightbend.rp.reactivecli.docker
 import com.lightbend.rp.reactivecli.files._
 import com.lightbend.rp.reactivecli.process._
 import scala.collection.immutable.Seq
-import scala.concurrent._
+import scala.concurrent.{ Future, Await }
+import scala.concurrent.duration._
 import argonaut._
 import Argonaut._
 
 case class DockerCredentials(registry: String, username: String, password: String, token: String)
 
 /**
- * Parses a file for credentials
+ * Finds docker credentials in multiple places:
+ * ~/.lightbend/docker.credentials
+ * ~/.docker/config.json
+ * OS-specific storage (OS X Keychan, Windows credential store, etc.)
  */
 object DockerCredentials {
   private val Registry = "registry"
@@ -36,33 +40,9 @@ object DockerCredentials {
   def get(credsFilePath: Option[String], configFilePath: Option[String]): Seq[DockerCredentials] = {
     val fromConfig = configFilePath.map(parseDockerConfig)
     val fromCreds = credsFilePath.map(parseCredsFile)
-    val fromHelpers = getHelperCredentials()
+    val fromHelpers = dockercred.getCredentials
     // TODO: Solve duplicates here
     fromConfig.getOrElse(Seq.empty) ++ fromCreds.getOrElse(Seq.empty) ++ fromHelpers
-  }
-
-  def getHelperCredentials(): Seq[DockerCredentials] = {
-    val helpers = Seq(
-      "docker-credential-osxkeychan",
-      "docker-credential-wincred",
-      "docker-credential-pass",
-      "docker-credential-secretservice")
-
-    // Find first available helper executable
-    helpers.find(helper => {
-      val futureCode = for {
-        (code, output) <- exec(helper)
-      } yield {
-        if (code == 0) true
-        else false
-      }
-
-      Await.result(futureCode)
-    })
-
-    // TODO: Put back code to parse "{helper list}" & "{helper get}" outputs
-
-    Seq.empty
   }
 
   def parseDockerConfig(configFilePath: String): Seq[DockerCredentials] =
@@ -72,20 +52,20 @@ object DockerCredentials {
     decodeCreds(readFile(credsFilePath))
 
   /**
-    * Decodes ~/.docker/config.json, where authentication tokens may be stored.
-    * Example:
-    *  {
-    *     "auths": {
-		*       "https://index.docker.io/v1/": {
-		*          "auth": "0123abcdef="
-    *       }
-    *     },
-	  *     "HttpHeaders": {
-		*       "User-Agent": "Docker-Client/17.12.0-ce (linux)"
-	  *     }
-    *  }
+   * Decodes ~/.docker/config.json, where authentication tokens may be stored.
+   * Example:
+   *  {
+   *     "auths": {
+   *       "https://index.docker.io/v1/": {
+   *          "auth": "0123abcdef="
+   *       }
+   *     },
+   *     "HttpHeaders": {
+   *       "User-Agent": "Docker-Client/17.12.0-ce (linux)"
+   *     }
+   *  }
    */
-  def decodeConfig(content: String) : Seq[DockerCredentials] = {
+  def decodeConfig(content: String): Seq[DockerCredentials] = {
     val auths = Parse.parseOption(content).flatMap(_.hcursor.downField("auths").focus)
     val fields = auths.flatMap(_.hcursor.fields)
     if (auths.isDefined && fields.isDefined) {
@@ -96,10 +76,8 @@ object DockerCredentials {
           case _ => None
         }
       })
-    }
-    else Seq.empty
+    } else Seq.empty
   }
-
 
   /**
    * Decodes a Docker credential file. This is a simplistic format with a number of

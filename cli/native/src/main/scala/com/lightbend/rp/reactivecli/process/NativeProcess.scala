@@ -37,11 +37,14 @@ object NativeProcess extends LazyLogging {
    * the command will be processed by `sh` per POSIX specification.
    *
    * This means that we can simply enclose each argument in a single quote. However, if a single quote occurs in
-   * an argument, we special case that by enclosing it in double quotes.
+   * an argument, we special case that by enclosing it in double quotes. Also, we don't enclose "|" pipes and
+   * stdin/stdout redirects.
    */
   private[NativeProcess] def command(args: Seq[String]): String = {
-    def escape(s: String): String =
-      "'" + s.replaceAllLiterally("'", "'\"'\"'") + "'"
+    def escape(s: String): String = {
+      if (s == "|" || s == "<" || s == ">") s
+      else "'" + s.replaceAllLiterally("'", "'\"'\"'") + "'"
+    }
 
     args
       .map(escape)
