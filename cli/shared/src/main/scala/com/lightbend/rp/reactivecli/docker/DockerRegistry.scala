@@ -88,8 +88,9 @@ object DockerRegistry extends LazyLogging {
 
   private def imgValid(tags: Option[String], img: Image): Try[Boolean] = {
     tags match {
-      case None => Failure(new IllegalArgumentException(s"got unexpected docker registry response"))
-      case Some(str) => {
+      case None =>
+        Failure(new IllegalArgumentException(s"got unexpected docker registry response"))
+      case Some(str) =>
         val tags = Parse.parseOption(str).flatMap(_.hcursor.downField("tags").focus)
         val foundTag = tags.flatMap(j =>
           j.hcursor.downArray.find(tag => tag.isString && tag.string == Some(img.tag)).focus)
@@ -98,7 +99,6 @@ object DockerRegistry extends LazyLogging {
           case (Some(_), None) => Failure(new IllegalArgumentException(s"image ${img.image} doesn't have tag named ${img.tag}"))
           case _ => Success(true)
         }
-      }
     }
   }
 
@@ -133,19 +133,25 @@ object DockerRegistry extends LazyLogging {
 
   private def getWithAuth(http: HttpExchange, auth: Option[HttpRequest.Auth], validateTls: Boolean, url: String, headers: HttpHeaders, overrideToken: Option[HttpRequest.BearerToken]): Future[(HttpResponse, Option[HttpRequest.BearerToken])] = {
     auth match {
-      // No authentication, will get temporary token
-      case None => getWithToken(http, None, validateTls)(url, headers, true, overrideToken)
-      // Username and password authentication
-      case Some(basic: HttpRequest.BasicAuth) => getWithToken(http, Some(basic), validateTls)(url, headers, true, overrideToken)
-      // Bearer token authentication
-      case Some(token: HttpRequest.BearerToken) => {
-        val useToken = if (overrideToken.isDefined) overrideToken else Some(token)
-        getWithToken(http, None, validateTls)(url, headers, false, useToken)
-      }
+      case None =>
+        // No authentication, will get temporary token
+        getWithToken(http, None, validateTls)(url, headers, true, overrideToken)
+
+      case Some(basic: HttpRequest.BasicAuth) =>
+        // Username and password authentication
+        getWithToken(http, Some(basic), validateTls)(url, headers, true, overrideToken)
+
+      case Some(basic: HttpRequest.EncodedBasicAuth) =>
+        // Username and password auth, already base64 encoded (docker config.json)
+        getWithToken(http, Some(basic), validateTls)(url, headers, true, overrideToken)
+
+      case Some(token: HttpRequest.BearerToken) =>
+        // Bearer token authentication
+        getWithToken(http, auth, validateTls)(url, headers, true, overrideToken)
     }
   }
 
-  private def getWithToken(http: HttpExchange, credentials: Option[HttpRequest.BasicAuth], validateTls: Boolean)(url: String, headers: HttpHeaders, tryNewToken: Boolean = true, token: Option[HttpRequest.BearerToken] = None): Future[(HttpResponse, Option[HttpRequest.BearerToken])] = {
+  private def getWithToken(http: HttpExchange, credentials: Option[HttpRequest.Auth], validateTls: Boolean)(url: String, headers: HttpHeaders, tryNewToken: Boolean = true, token: Option[HttpRequest.BearerToken] = None): Future[(HttpResponse, Option[HttpRequest.BearerToken])] = {
     val request =
       HttpRequest(url)
         .headers(token.fold(headers)(t => headers.updated("Authorization", s"Bearer ${t.value}")))
@@ -180,12 +186,13 @@ object DockerRegistry extends LazyLogging {
         maybeResponse.recover {
           case t: Throwable =>
             logger.error(s"Unable to obtain an OAuth token (${response.statusCode}${response.body.fold("")(" " + _)})")
-            logger.debug(response.toString)
 
             response -> token
         }
 
       case response =>
+        logger.debug(s"Received ${response.statusCode} from Registry")
+
         Future.successful(response -> token)
     }
   }

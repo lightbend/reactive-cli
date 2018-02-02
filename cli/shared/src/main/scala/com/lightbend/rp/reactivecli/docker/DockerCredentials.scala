@@ -16,16 +16,23 @@
 
 package com.lightbend.rp.reactivecli.docker
 
+import argonaut._
 import com.lightbend.rp.reactivecli.files._
 import com.lightbend.rp.reactivecli.process._
 import com.lightbend.rp.reactivecli.concurrent._
 import scala.collection.immutable.Seq
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import argonaut._
+import slogging._
+
 import Argonaut._
 
-case class DockerCredentials(registry: String, username: String, password: String, token: String)
+/**
+ * Holds Docker credentials
+ * @param registry registry credentials are for
+ * @param credentials Left(base64 encoded Basic Auth string) or Right((username, password))
+ */
+case class DockerCredentials(registry: String, credentials: Either[String, (String, String)])
 
 /**
  * Finds docker credentials in multiple places:
@@ -33,7 +40,7 @@ case class DockerCredentials(registry: String, username: String, password: Strin
  * ~/.docker/config.json
  * OS-specific storage (OS X Keychan, Windows credential store, etc.)
  */
-object DockerCredentials {
+object DockerCredentials extends LazyLogging {
   private val Registry = "registry"
   private val Username = "username"
   private val Password = "password"
@@ -44,7 +51,11 @@ object DockerCredentials {
     // 2. Docker credential helpers
     // 3. Docker config file
     val fromCreds = credsFilePath.map(parseCredsFile).getOrElse(Seq.empty)
-    val futureFromHelpers = dockercred.getCredentials
+    val futureFromHelpers = dockercred.getCredentials().recover {
+      case t: Throwable =>
+        logger.debug("Failed to find any Docker credential helpers", t)
+        Seq.empty
+    }
     val fromConfig = configFilePath.map(parseDockerConfig).getOrElse(Seq.empty)
 
     def credsToMap(creds: Seq[DockerCredentials]): Map[String, DockerCredentials] = {
@@ -85,7 +96,8 @@ object DockerCredentials {
       fields.get.flatMap { field =>
         val auth = auths.flatMap(_.hcursor.downField(field).downField("auth").focus)
         auth match {
-          case Some(token) if token.isString => Some(DockerCredentials(field, "", "", token.string.get))
+          case Some(token) if token.isString =>
+            Some(DockerCredentials(field, Left(token.string.get)))
           case _ => None
         }
       }
@@ -121,27 +133,27 @@ object DockerCredentials {
           val modify =
             accum.nonEmpty && (
               accum.head.registry.isEmpty ||
-              accum.head.username.isEmpty ||
-              accum.head.password.isEmpty)
+              accum.head.credentials.fold(_ => false, _._1.isEmpty) ||
+              accum.head.credentials.fold(_ => false, _._2.isEmpty))
 
           parseLine(next) match {
             case (Registry, registry) =>
               if (modify)
                 accum.head.copy(registry = registry) :: accum.tail
               else
-                DockerCredentials(registry, "", "", "") :: accum
+                DockerCredentials(registry, Right("" -> "")) :: accum
 
             case (Username, username) =>
               if (modify)
-                accum.head.copy(username = username) :: accum.tail
+                accum.head.copy(credentials = accum.head.credentials.fold(Left(_), right => Right(username -> right._2))) :: accum.tail
               else
-                DockerCredentials("", username, "", "") :: accum
+                DockerCredentials("", Right("username" -> "")) :: accum
 
             case (Password, password) =>
               if (modify)
-                accum.head.copy(password = password) :: accum.tail
+                accum.head.copy(credentials = accum.head.credentials.fold(Left(_), right => Right(right._1 -> password))) :: accum.tail
               else
-                DockerCredentials("", "", password, "") :: accum
+                DockerCredentials("", Right("password" -> "")) :: accum
 
             case _ =>
               accum

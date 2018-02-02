@@ -68,7 +68,7 @@ object dockercred extends LazyLogging {
     for {
       (code, output) <- exec("echo", s"$server", "|", s"docker-credential-$kind", "get")
     } yield {
-      if(code == 0) {
+      if (code == 0) {
         val json = Parse.parseOption(output)
         val username = json.flatMap(getJsonField(_, "Username"))
         val password = json.flatMap(getJsonField(_, "Secret"))
@@ -77,8 +77,7 @@ object dockercred extends LazyLogging {
           case (Some(username), Some(password)) => Some(username -> password)
           case _ => None
         }
-      }
-      else None
+      } else None
     }
   }
 
@@ -89,7 +88,7 @@ object dockercred extends LazyLogging {
         val (server, username) = cs.head
         get(kind, server).flatMap {
           case Some((username, password)) => step(kind, cs.tail).map { seq =>
-            DockerCredentials(server, username, password, "") :: seq
+            DockerCredentials(server, Right(username -> password)) :: seq
           }
           case None => step(kind, cs.tail)
         }

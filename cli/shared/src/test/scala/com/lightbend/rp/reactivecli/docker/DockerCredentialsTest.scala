@@ -39,9 +39,9 @@ object DockerCredentialsTest extends TestSuite {
            |""".stripMargin)
 
       val expected = Seq(
-        DockerCredentials("lightbend-docker-registry.bintray.io", "hello", "there", ""),
-        DockerCredentials("registry.hub.docker.com", "foo", "bar", ""),
-        DockerCredentials("2.hub.docker.com", "ok", "what", ""))
+        DockerCredentials("lightbend-docker-registry.bintray.io", Right("hello", "there")),
+        DockerCredentials("registry.hub.docker.com", Right("foo", "bar")),
+        DockerCredentials("2.hub.docker.com", Right("ok", "what")))
 
       assert(result == expected)
     }
@@ -62,8 +62,8 @@ object DockerCredentialsTest extends TestSuite {
         """.stripMargin)
 
       val expected = Seq(
-        DockerCredentials("https://index.docker.io/v1/", "", "", "0123abcdef="),
-        DockerCredentials("lightbend-docker-registry.bintray.io", "", "", "xzyw="))
+        DockerCredentials("https://index.docker.io/v1/", Left("0123abcdef=")),
+        DockerCredentials("lightbend-docker-registry.bintray.io", Left("xzyw=")))
 
       assert(resultEmpty == Seq.empty)
       assert(result == expected)

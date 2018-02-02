@@ -20,6 +20,7 @@ object HttpRequest {
   sealed trait Auth
   case class BasicAuth(username: String, password: String) extends Auth
   case class BearerToken(value: String) extends Auth
+  case class EncodedBasicAuth(value: String) extends Auth
 }
 
 case class HttpRequest(
@@ -42,6 +43,20 @@ case class HttpRequest(
   def get: HttpRequest = copy(requestMethod = "GET")
 
   def headers(headers: HttpHeaders): HttpRequest = copy(requestHeaders = headers)
+
+  def headersWithAuth: HttpHeaders =
+    auth.foldLeft(requestHeaders) {
+      case (hs, HttpRequest.BasicAuth(username, password)) =>
+        hs.updated(
+          "Authorization",
+          s"Basic ${Base64Encoder(s"$username:$password")}")
+
+      case (hs, HttpRequest.BearerToken(bearer)) =>
+        hs.updated("Authorization", s"Bearer $bearer")
+
+      case (hs, HttpRequest.EncodedBasicAuth(value)) =>
+        hs.updated("Authorization", s"Basic $value")
+    }
 
   def noContent: HttpRequest = copy(requestBody = None)
 

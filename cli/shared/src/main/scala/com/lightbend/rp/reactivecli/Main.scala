@@ -116,9 +116,9 @@ object Main extends LazyLogging {
                       imageName <- generateDeploymentArgs.dockerImage
                       registry <- DockerRegistry.getRegistry(imageName)
                       entry <- creds.find(realm => docker.registryAuthNameMatches(registry, realm.registry))
-                    } yield {
-                      if (entry.token.length > 0) HttpRequest.BearerToken(entry.token)
-                      else HttpRequest.BasicAuth(entry.username, entry.password)
+                    } yield entry.credentials match {
+                      case Left(raw) => HttpRequest.EncodedBasicAuth(raw)
+                      case Right((username, password)) => HttpRequest.BasicAuth(username, password)
                     }
 
                   val dockerRegistryAuth = dockerRegistryArgsAuth.orElse(dockerRegistryFileAuth)
@@ -128,7 +128,9 @@ object Main extends LazyLogging {
                       logger.debug("Attempting to pull manifest while unauthenticated")
                     case Some(HttpRequest.BasicAuth(username, _)) =>
                       logger.debug(s"Attempting to pull manifest as $username")
-                    case Some(HttpRequest.BearerToken(_)) =>
+                    case Some(HttpRequest.EncodedBasicAuth(_)) =>
+                      logger.debug("Attempting to pull manifest with encoded basic auth (config.json)")
+                    case Some(HttpRequest.BearerToken(t)) =>
                       logger.debug("Attempting to pull manifest with bearer token authentication")
                   }
 
