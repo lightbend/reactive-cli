@@ -16,11 +16,11 @@
 
 package com.lightbend.rp.reactivecli.process
 
+import java.util.NoSuchElementException
 import com.lightbend.rp.reactivecli.concurrent._
 import com.lightbend.rp.reactivecli.docker.DockerCredentials
 import scala.collection.immutable.Seq
-import scala.concurrent.{Future, Await}
-import scala.concurrent.duration._
+import scala.concurrent.Future
 import slogging._
 import argonaut._
 import Argonaut._
@@ -31,8 +31,16 @@ object dockercred extends LazyLogging {
   }
 
   private def chooseKind(): Future[String] = {
-    val kinds = Seq("osxkeychain", "wincred", "pass", "secretservice")
-    optionToFuture(kinds.find(kind => Await.result(isAvailable(kind), Duration.Inf)), "No docker credential helpers found")
+    def step(ks: Seq[String]): Future[String] =
+      if (ks.isEmpty)
+        Future.failed(new NoSuchElementException("No docker credential helper found"))
+      else
+        isAvailable(ks.head).flatMap {
+          case true => Future.successful(ks.head)
+          case false => step(ks.tail)
+        }
+
+    step(Seq("osxkeychain", "wincred", "pass", "secretservice"))
   }
 
   private def getJsonField(json: Json, field: String): Option[String] =
@@ -74,21 +82,24 @@ object dockercred extends LazyLogging {
     }
   }
 
-  def getCredentials(): Seq[DockerCredentials] = {
-    Await.result(for {
+  def getCredentials(): Future[Seq[DockerCredentials]] = {
+    def step(kind: String, cs: Seq[(String, String)]): Future[List[DockerCredentials]] = {
+      if (cs.isEmpty) Future.successful(List.empty)
+      else {
+        val (server, username) = cs.head
+        get(kind, server).flatMap {
+          case Some((username, password)) => step(kind, cs.tail).map { seq =>
+            DockerCredentials(server, username, password, "") :: seq
+          }
+          case None => step(kind, cs.tail)
+        }
+      }
+    }
+
+    for {
       kind <- chooseKind()
-      lst <- list(kind)
-    } yield {
-      lst.flatMap({case (server, username) => {
-        Await.result(for {
-          maybeCreds <- get(kind, server)
-        } yield {
-          maybeCreds.flatMap(cred => {
-            val (username, password) = cred
-            Some(DockerCredentials(server, username, password, ""))
-          })
-        }, Duration.Inf)
-      }})
-    }, Duration.Inf)
+      creds <- list(kind)
+      result <- step(kind, creds)
+    } yield result
   }
 }

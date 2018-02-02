@@ -18,8 +18,9 @@ package com.lightbend.rp.reactivecli.docker
 
 import com.lightbend.rp.reactivecli.files._
 import com.lightbend.rp.reactivecli.process._
+import com.lightbend.rp.reactivecli.concurrent._
 import scala.collection.immutable.Seq
-import scala.concurrent.{ Future, Await }
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import argonaut._
 import Argonaut._
@@ -37,34 +38,24 @@ object DockerCredentials {
   private val Username = "username"
   private val Password = "password"
 
-  def get(credsFilePath: Option[String], configFilePath: Option[String]): Seq[DockerCredentials] = {
+  def get(credsFilePath: Option[String], configFilePath: Option[String]): Future[Seq[DockerCredentials]] = {
     // Credential priorities:
     // 1. Lightbend credential file
     // 2. Docker credential helpers
     // 3. Docker config file
     val fromCreds = credsFilePath.map(parseCredsFile).getOrElse(Seq.empty)
-    val fromHelpers = dockercred.getCredentials
+    val futureFromHelpers = dockercred.getCredentials
     val fromConfig = configFilePath.map(parseDockerConfig).getOrElse(Seq.empty)
 
     def credsToMap(creds: Seq[DockerCredentials]): Map[String, DockerCredentials] = {
       creds.map(c => c.registry -> c).toMap
     }
 
-    // Combines two maps, keeps first one when keys overlap
-    def combine(first: Map[String, DockerCredentials], second: Map[String, DockerCredentials]) = {
-      val keys = first.keys ++ second.keys
-      keys.map(k => {
-        if(first.contains(k))
-          k -> first(k)
-        else
-          k -> second(k)
-      }).toMap
+    futureFromHelpers.map { fromHelpers =>
+      // Build maps indexed by registry and combine their keys according to priority.
+      (credsToMap(fromConfig) ++ credsToMap(fromHelpers) ++ credsToMap(fromCreds))
+        .values.toVector
     }
-
-    // Build maps indexed by registry and combine their keys according to priority
-    combine(
-      credsToMap(fromCreds), combine(credsToMap(fromHelpers), credsToMap(fromConfig)))
-      .values.toVector
   }
 
   def parseDockerConfig(configFilePath: String): Seq[DockerCredentials] =
@@ -91,13 +82,13 @@ object DockerCredentials {
     val auths = Parse.parseOption(content).flatMap(_.hcursor.downField("auths").focus)
     val fields = auths.flatMap(_.hcursor.fields)
     if (auths.isDefined && fields.isDefined) {
-      fields.get.flatMap(field => {
+      fields.get.flatMap { field =>
         val auth = auths.flatMap(_.hcursor.downField(field).downField("auth").focus)
         auth match {
           case Some(token) if token.isString => Some(DockerCredentials(field, "", "", token.string.get))
           case _ => None
         }
-      })
+      }
     } else Seq.empty
   }
 

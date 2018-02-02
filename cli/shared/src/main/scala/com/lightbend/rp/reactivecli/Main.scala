@@ -105,29 +105,35 @@ object Main extends LazyLogging {
                   password <- generateDeploymentArgs.registryPassword
                 } yield HttpRequest.BasicAuth(username, password)
 
-              val dockerRegistryFileAuth =
+              val configFile = homeDirPath(".docker", "config.json")
+              val credsFile = homeDirPath(".lightbend", "docker.credentials")
+              val dockerCredentials =
                 for {
-                  imageName <- generateDeploymentArgs.dockerImage
-                  registry <- DockerRegistry.getRegistry(imageName)
-                  configFile = homeDirPath(".docker", "config.json")
-                  credsFile = homeDirPath(".lightbend", "docker.credentials")
-                  auth = DockerCredentials.get(credsFile, configFile)
-                  entry <- auth.find(realm => docker.registryAuthNameMatches(registry, realm.registry))
+                  creds <- DockerCredentials.get(credsFile, configFile)
                 } yield {
-                  if (entry.token.length > 0) HttpRequest.BearerToken(entry.token)
-                  else HttpRequest.BasicAuth(entry.username, entry.password)
+                  val dockerRegistryFileAuth =
+                    for {
+                      imageName <- generateDeploymentArgs.dockerImage
+                      registry <- DockerRegistry.getRegistry(imageName)
+                      entry <- creds.find(realm => docker.registryAuthNameMatches(registry, realm.registry))
+                    } yield {
+                      if (entry.token.length > 0) HttpRequest.BearerToken(entry.token)
+                      else HttpRequest.BasicAuth(entry.username, entry.password)
+                    }
+
+                  val dockerRegistryAuth = dockerRegistryArgsAuth.orElse(dockerRegistryFileAuth)
+
+                  dockerRegistryAuth match {
+                    case None =>
+                      logger.debug("Attempting to pull manifest while unauthenticated")
+                    case Some(HttpRequest.BasicAuth(username, _)) =>
+                      logger.debug(s"Attempting to pull manifest as $username")
+                    case Some(HttpRequest.BearerToken(_)) =>
+                      logger.debug("Attempting to pull manifest with bearer token authentication")
+                  }
+
+                  dockerRegistryAuth
                 }
-
-              val dockerRegistryAuth = dockerRegistryArgsAuth.orElse(dockerRegistryFileAuth)
-
-              dockerRegistryAuth match {
-                case None =>
-                  logger.debug("Attempting to pull manifest while unauthenticated")
-                case Some(HttpRequest.BasicAuth(username, _)) =>
-                  logger.debug(s"Attempting to pull manifest as $username")
-                case Some(HttpRequest.BearerToken(_)) =>
-                  logger.debug("Attempting to pull manifest with bearer token authentication")
-              }
 
               def getDockerHostConfig(imageName: String): Future[Option[Config]] = {
                 implicit val httpSettingsWithDockerCredentials: HttpSettings = DockerEngine.applyDockerHostSettings(httpSettings, environment)
@@ -138,11 +144,13 @@ object Main extends LazyLogging {
               }
 
               def getDockerRegistryConfig(imageName: String): Future[Config] =
-                DockerRegistry.getConfig(
-                  http,
-                  dockerRegistryAuth,
-                  generateDeploymentArgs.registryUseHttps,
-                  generateDeploymentArgs.registryValidateTls)(imageName, token = None).map(_._1)
+                dockerCredentials.flatMap { creds =>
+                  DockerRegistry.getConfig(
+                    http,
+                    creds,
+                    generateDeploymentArgs.registryUseHttps,
+                    generateDeploymentArgs.registryValidateTls)(imageName, token = None).map(_._1)
+                }
 
               def getDockerConfig(imageName: String): Future[Config] = {
                 def validateConfig(config: Config): Future[Config] = {
