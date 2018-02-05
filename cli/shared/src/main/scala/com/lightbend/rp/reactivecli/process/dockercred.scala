@@ -19,6 +19,7 @@ package com.lightbend.rp.reactivecli.process
 import java.util.NoSuchElementException
 import com.lightbend.rp.reactivecli.concurrent._
 import com.lightbend.rp.reactivecli.docker.DockerCredentials
+import com.lightbend.rp.reactivecli.files._
 import scala.collection.immutable.Seq
 import scala.concurrent.Future
 import slogging._
@@ -65,19 +66,22 @@ object dockercred extends LazyLogging {
 
   // Returns pair username -> password
   private def get(kind: String, server: String): Future[Option[(String, String)]] = {
-    for {
-      (code, output) <- exec("echo", s"$server", "|", s"docker-credential-$kind", "get")
-    } yield {
-      if (code == 0) {
-        val json = Parse.parseOption(output)
-        val username = json.flatMap(getJsonField(_, "Username"))
-        val password = json.flatMap(getJsonField(_, "Secret"))
+    withTempFile { inputFile =>
+      writeFile(inputFile, server)
+      for {
+        (code, output) <- exec(s"docker-credential-$kind", "get", "<", inputFile)
+      } yield {
+        if (code == 0) {
+          val json = Parse.parseOption(output)
+          val username = json.flatMap(getJsonField(_, "Username"))
+          val password = json.flatMap(getJsonField(_, "Secret"))
 
-        (username, password) match {
-          case (Some(username), Some(password)) => Some(username -> password)
-          case _ => None
-        }
-      } else None
+          (username, password) match {
+            case (Some(username), Some(password)) => Some(username -> password)
+            case _ => None
+          }
+        } else None
+      }
     }
   }
 
