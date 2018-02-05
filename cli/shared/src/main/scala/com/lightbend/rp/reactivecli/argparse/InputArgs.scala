@@ -16,9 +16,8 @@
 
 package com.lightbend.rp.reactivecli.argparse
 
-import com.lightbend.rp.reactivecli.argparse.kubernetes.{ PodControllerArgs, IngressArgs, KubernetesArgs, ServiceArgs }
+import com.lightbend.rp.reactivecli.argparse.kubernetes._
 import com.lightbend.rp.reactivecli.files._
-import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment
 import com.lightbend.rp.reactivecli.runtime.kubernetes.PodTemplate.ImagePullPolicy
 import scala.collection.immutable.Seq
 import scala.concurrent.Future
@@ -83,13 +82,14 @@ object InputArgs {
         .action((_, inputArgs) => inputArgs.copy(commandArgs = Some(VersionArgs)))
 
       cmd("generate-kubernetes-resources")
-        .text("Generate Kubernetes resource files for kubectl")
+        .text("Generate Kubernetes resource files (Pod Controllers, Services) for kubectl")
         .action((_, inputArgs) => inputArgs.copy(commandArgs = Some(GenerateDeploymentArgs(targetRuntimeArgs = Some(KubernetesArgs())))))
         .children(
-          arg[String]("docker-image") /* note: this argument will apply for other targets */
-            .text("Docker image to be deployed. Format: [<registry host>/][<repo>/]image[:tag]")
-            .required()
-            .action(GenerateDeploymentArgs.set((v, args) => args.copy(dockerImage = Some(v)))),
+          arg[String]("docker-images") /* note: this argument will apply for other targets */
+            .text("Docker images to be deployed. Format: [<registry host>/][<repo>/]image[:tag]")
+            .unbounded()
+            .minOccurs(1)
+            .action(GenerateDeploymentArgs.set((v, args) => args.copy(dockerImages = args.dockerImages :+ v))),
 
           opt[String]("application") /* note: this argument will apply for other targets */
             .text("Application to generate resources for. If omitted, resources are generated for the default application. If generating for an alternate application, its name will be part of the generated resource names")
@@ -133,28 +133,28 @@ object InputArgs {
             }),
 
           opt[Unit]("generate-all")
-            .text("Generate all resource types. This is the default and overrides other generate flags")
+            .text("Generate all resource types (excluding namespaces which must be explicitly enabled)")
             .action(
               KubernetesArgs.set((v, args) =>
                 args.copy(
-                  generateIngress = false,
-                  generatePodControllers = false,
-                  generateServices = false))),
+                  generateIngress = true,
+                  generatePodControllers = true,
+                  generateServices = true))),
 
           opt[Unit]("generate-ingress")
-            .text("Generate Ingress resources. When provided, Ingress and Pod Controller resource types are not generated unless explicitly requested")
+            .text("Generate Ingress resources")
             .action(KubernetesArgs.set((_, args) => args.copy(generateIngress = true))),
 
           opt[Unit]("generate-namespaces")
-            .text("Generate Namespace resources. Does not affect the generation of other resources")
+            .text("Generate Namespace resources")
             .action(KubernetesArgs.set((_, args) => args.copy(generateNamespaces = true))),
 
           opt[Unit]("generate-pod-controllers")
-            .text("Generate PodController resources. When provided, Ingress and Pod Controller resource types are not generated unless explicitly requested")
+            .text("Generate PodController resources")
             .action(KubernetesArgs.set((_, args) => args.copy(generatePodControllers = true))),
 
           opt[Unit]("generate-services")
-            .text("Generate Service resources. When provided, Ingress and Pod Controller resource types are not generated unless explicitly requested")
+            .text("Generate Service resources")
             .action(KubernetesArgs.set((_, args) => args.copy(generateServices = true))),
 
           opt[String]("ingress-annotation")
@@ -174,6 +174,20 @@ object InputArgs {
             .text(s"Sets the Ingress API version. Default: ${KubernetesArgs.DefaultIngressApiVersion}")
             .optional()
             .action(IngressArgs.set((v, args) => args.copy(apiVersion = Future.successful(v)))),
+
+          opt[String]("ingress-host")
+            .text("Add a host to the generated Ingress resource")
+            .minOccurs(0)
+            .unbounded()
+            .action(IngressArgs.set {
+              (v, c) =>
+                c.copy(hosts = c.hosts :+ v)
+            }),
+
+          opt[String]("ingress-name")
+            .text("Specifies the name for the generated Ingress resource")
+            .optional()
+            .action(IngressArgs.set((v, c) => c.copy(name = Some(v)))),
 
           opt[String]("ingress-path-suffix")
             .text("Appends the expression specified to the paths of the generated Ingress resources")
@@ -280,6 +294,19 @@ object InputArgs {
               failure("Registry username can't be empty if registry password is specified")
             else
               success
+          case _ =>
+            success
+        }
+      }
+
+      checkConfig { inputArgs =>
+        inputArgs.commandArgs match {
+          case Some(v: GenerateDeploymentArgs) =>
+            v.targetRuntimeArgs match {
+              case Some(k: KubernetesArgs) if !k.generateServices && !k.generateIngress && !k.generatePodControllers && !k.generateNamespaces =>
+                failure("Must specify at least one resource type to generate")
+              case _ => success
+            }
           case _ =>
             success
         }

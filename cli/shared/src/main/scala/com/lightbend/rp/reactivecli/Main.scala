@@ -26,7 +26,6 @@ import com.lightbend.rp.reactivecli.http.{ Http, HttpRequest, HttpSettings }
 import com.lightbend.rp.reactivecli.http.Http.HttpExchange
 import scala.annotation.tailrec
 import scala.concurrent.Future
-import scala.util.{ Failure, Success, Try }
 import scalaz._
 import slogging._
 
@@ -79,141 +78,173 @@ object Main extends LazyLogging {
   @tailrec
   private def run(args: Array[String]): Unit = {
     if (args.nonEmpty) {
-      parser.parse(args, InputArgs.default).foreach { inputArgs =>
-        val inputArgsMerged = InputArgs.Envs.mergeWithEnvs(inputArgs, environment)
+      val parsedArgs = parser.parse(args, InputArgs.default)
 
-        LoggerConfig.level = inputArgsMerged.logLevel
+      if (parsedArgs.isEmpty) {
+        System.exit(1)
+      } else {
+        parsedArgs.foreach { inputArgs =>
+          import scalaz.Validation.FlatMap._
 
-        inputArgsMerged.commandArgs
-          .collect {
-            case VersionArgs =>
-              System.out.println(s"rp (Reactive CLI) ${ProgramVersion.current}")
+          val inputArgsMerged = InputArgs.Envs.mergeWithEnvs(inputArgs, environment)
 
-              jq.available.foreach { jqAvail =>
-                System.out.println(s"jq support: ${if (jqAvail) "Available" else "Unavailable"}")
-              }
+          LoggerConfig.level = inputArgsMerged.logLevel
 
-            case generateDeploymentArgs @ GenerateDeploymentArgs(_, _, _, _, _, _, _, _, _, _, Some(kubernetesArgs: KubernetesArgs), _, _, _, _, _) =>
-              implicit val httpSettings: HttpSettings =
-                inputArgs.tlsCacertsPath.fold(HttpSettings.default)(v => HttpSettings.default.copy(tlsCacertsPath = Some(v)))
+          inputArgsMerged.commandArgs
+            .collect {
+              case VersionArgs =>
+                System.out.println(s"rp (Reactive CLI) ${ProgramVersion.current}")
 
-              val http: HttpExchange = Http.http
+                jq.available.foreach { jqAvail =>
+                  System.out.println(s"jq support: ${if (jqAvail) "Available" else "Unavailable"}")
+                }
 
-              val dockerRegistryArgsAuth =
-                for {
-                  username <- generateDeploymentArgs.registryUsername
-                  password <- generateDeploymentArgs.registryPassword
-                } yield HttpRequest.BasicAuth(username, password)
+              case generateDeploymentArgs @ GenerateDeploymentArgs(_, _, _, _, _, _, _, _, _, _, Some(kubernetesArgs: KubernetesArgs), _, _, _, _, _) =>
+                implicit val httpSettings: HttpSettings =
+                  inputArgs.tlsCacertsPath.fold(HttpSettings.default)(v => HttpSettings.default.copy(tlsCacertsPath = Some(v)))
 
-              val configFile = homeDirPath(".docker", "config.json")
-              val credsFile = homeDirPath(".lightbend", "docker.credentials")
-              val dockerCredentials =
-                for {
-                  creds <- DockerCredentials.get(credsFile, configFile)
-                } yield {
-                  val dockerRegistryFileAuth =
-                    for {
-                      imageName <- generateDeploymentArgs.dockerImage
-                      registry <- DockerRegistry.getRegistry(imageName)
-                      entry <- creds.find(realm => docker.registryAuthNameMatches(registry, realm.registry))
-                    } yield entry.credentials match {
-                      case Left(raw) => HttpRequest.EncodedBasicAuth(raw)
-                      case Right((username, password)) => HttpRequest.BasicAuth(username, password)
+                val http: HttpExchange = Http.http
+
+                def dockerRegistryArgsAuth =
+                  for {
+                    username <- generateDeploymentArgs.registryUsername
+                    password <- generateDeploymentArgs.registryPassword
+                  } yield HttpRequest.BasicAuth(username, password)
+
+                def dockerRegistryAuth(imageName: String) = {
+                  val configFile = homeDirPath(".docker", "config.json")
+                  val credsFile = homeDirPath(".lightbend", "docker.credentials")
+
+                  for {
+                    creds <- DockerCredentials.get(credsFile, configFile)
+                  } yield {
+                    val dockerRegistryFileAuth =
+                      for {
+                        registry <- DockerRegistry.getRegistry(imageName)
+                        entry <- creds.find(realm => docker.registryAuthNameMatches(registry, realm.registry))
+                      } yield entry.credentials match {
+                        case Left(raw) => HttpRequest.EncodedBasicAuth(raw)
+                        case Right((username, password)) => HttpRequest.BasicAuth(username, password)
+                      }
+
+                    val dockerRegistryAuth = dockerRegistryArgsAuth.orElse(dockerRegistryFileAuth)
+
+                    dockerRegistryAuth match {
+                      case None =>
+                        logger.debug("Attempting to pull manifest while unauthenticated")
+                      case Some(HttpRequest.BasicAuth(username, _)) =>
+                        logger.debug(s"Attempting to pull manifest as $username")
+                      case Some(HttpRequest.EncodedBasicAuth(_)) =>
+                        logger.debug("Attempting to pull manifest with encoded basic auth (config.json)")
+                      case Some(HttpRequest.BearerToken(t)) =>
+                        logger.debug("Attempting to pull manifest with bearer token authentication")
                     }
 
-                  val dockerRegistryAuth = dockerRegistryArgsAuth.orElse(dockerRegistryFileAuth)
+                    dockerRegistryAuth
+                  }
+                }
 
-                  dockerRegistryAuth match {
-                    case None =>
-                      logger.debug("Attempting to pull manifest while unauthenticated")
-                    case Some(HttpRequest.BasicAuth(username, _)) =>
-                      logger.debug(s"Attempting to pull manifest as $username")
-                    case Some(HttpRequest.EncodedBasicAuth(_)) =>
-                      logger.debug("Attempting to pull manifest with encoded basic auth (config.json)")
-                    case Some(HttpRequest.BearerToken(t)) =>
-                      logger.debug("Attempting to pull manifest with bearer token authentication")
+                def getDockerHostConfig(imageName: String): Future[Option[Config]] = {
+                  implicit val httpSettingsWithDockerCredentials: HttpSettings = DockerEngine.applyDockerHostSettings(httpSettings, environment)
+                  val http = Http.http(httpSettingsWithDockerCredentials)
+                  DockerEngine
+                    .getConfigFromDockerHost(http, environment)(imageName)(httpSettingsWithDockerCredentials)
+                    .map(_.map(_.registryConfig))
+                }
+
+                def getDockerRegistryConfig(imageName: String): Future[Config] =
+                  dockerRegistryAuth(imageName).flatMap { creds =>
+                    DockerRegistry.getConfig(
+                      http,
+                      creds,
+                      generateDeploymentArgs.registryUseHttps,
+                      generateDeploymentArgs.registryValidateTls)(imageName, token = None).map(_._1)
                   }
 
-                  dockerRegistryAuth
-                }
+                def getDockerConfig(imageName: String): Future[Config] = {
+                  def validateConfig(config: Config): Future[Config] = {
+                    val maybeVersion =
+                      config
+                        .config
+                        .Labels
+                        .flatMap(_.get("com.lightbend.rp.sbt-reactive-app-version"))
 
-              def getDockerHostConfig(imageName: String): Future[Option[Config]] = {
-                implicit val httpSettingsWithDockerCredentials: HttpSettings = DockerEngine.applyDockerHostSettings(httpSettings, environment)
-                val http = Http.http(httpSettingsWithDockerCredentials)
-                DockerEngine
-                  .getConfigFromDockerHost(http, environment)(imageName)(httpSettingsWithDockerCredentials)
-                  .map(_.map(_.registryConfig))
-              }
+                    val validVersion = maybeVersion.fold(true)(MinSupportedSbtReactiveApp.isVersionValid(_))
 
-              def getDockerRegistryConfig(imageName: String): Future[Config] =
-                dockerCredentials.flatMap { creds =>
-                  DockerRegistry.getConfig(
-                    http,
-                    creds,
-                    generateDeploymentArgs.registryUseHttps,
-                    generateDeploymentArgs.registryValidateTls)(imageName, token = None).map(_._1)
-                }
-
-              def getDockerConfig(imageName: String): Future[Config] = {
-                def validateConfig(config: Config): Future[Config] = {
-                  val maybeVersion =
-                    config
-                      .config
-                      .Labels
-                      .flatMap(_.get("com.lightbend.rp.sbt-reactive-app-version"))
-
-                  val validVersion = maybeVersion.fold(true)(MinSupportedSbtReactiveApp.isVersionValid(_))
-
-                  if (validVersion)
-                    Future.successful(config)
-                  else
-                    Future.failed(
-                      new IllegalArgumentException(
-                        s"Minimum sbt-reactive-app version is ${MinSupportedSbtReactiveApp.minimum}, given: ${maybeVersion.getOrElse("")}"))
-                }
-
-                for {
-                  maybeConfig <- getDockerHostConfig(imageName)
-                  config <- maybeConfig match {
-                    case None => getDockerRegistryConfig(imageName)
-                    case Some(c) => Future.successful(c)
-                  }
-                  validConfig <- validateConfig(config)
-                } yield validConfig
-              }
-
-              val outputHandler = kubernetes.handleGeneratedResources(kubernetesArgs.output)
-
-              val output =
-                attempt(getDockerConfig(generateDeploymentArgs.dockerImage.get))
-                  .flatMap {
-                    case Failure(t) =>
-                      Future.successful(s"Failed to obtain Docker config for ${generateDeploymentArgs.dockerImage.get}, ${t.getMessage}".failureNel)
-                    case Success(config) =>
-                      kubernetes
-                        .generateResources(config, generateDeploymentArgs, kubernetesArgs)
-                        .recover { case t: Throwable => s"Failed to generate Kubernetes resources for ${generateDeploymentArgs.dockerImage.get}, ${t.getMessage}".failureNel }
+                    if (validVersion)
+                      Future.successful(config)
+                    else
+                      Future.failed(
+                        new IllegalArgumentException(
+                          s"Minimum sbt-reactive-app version is ${MinSupportedSbtReactiveApp.minimum}, given: ${maybeVersion.getOrElse("")}"))
                   }
 
-              output
-                .foreach { validation =>
-                  validation.fold(
-                    { errors =>
-                      errors
-                        .stream
-                        .toVector
-                        .distinct
-                        .foreach(logger.error(_))
-
-                      System.exit(1)
-                    },
-                    resources =>
-                      outputHandler(resources).onComplete {
-                        case v if v.isSuccess => System.exit(0)
-                        case v => System.exit(2)
-                      })
+                  for {
+                    maybeConfig <- getDockerHostConfig(imageName)
+                    config <- maybeConfig match {
+                      case None => getDockerRegistryConfig(imageName)
+                      case Some(c) => Future.successful(c)
+                    }
+                    validConfig <- validateConfig(config)
+                  } yield validConfig
                 }
-          }
+
+                val outputHandler = kubernetes.handleGeneratedResources(kubernetesArgs.output)
+
+                def configFailure(img: String, t: Throwable) =
+                  s"Failed to obtain Docker config for ${generateDeploymentArgs.dockerImages.mkString(", ")}, ${t.getMessage}"
+
+                val output =
+                  Future
+                    .sequence(generateDeploymentArgs.dockerImages.map(img => attempt(getDockerConfig(img)).map(c => img -> c)))
+                    .flatMap { tryConfigs =>
+                      val (failures, successes) = tryConfigs.partition(_._2.isFailure)
+
+                      if (failures.isEmpty) {
+                        val futureValidationResources =
+                          successes.map {
+                            case (image, tryConfig) =>
+                              kubernetes.generateResources(image, tryConfig.get, generateDeploymentArgs, kubernetesArgs)
+                          }
+
+                        Future
+                          .sequence(futureValidationResources)
+                          .map { validations =>
+                            validations
+                              .foldLeft(Vector.empty[kubernetes.GeneratedKubernetesResource].successNel[String]) {
+                                case (acc, v) => (acc |@| v)(_ ++ _)
+                              }
+                              .flatMap(kubernetes.mergeGeneratedResources(kubernetesArgs, _))
+                          }
+                          .recover { case t: Throwable => s"Failed to generate Kubernetes resources for ${generateDeploymentArgs.dockerImages.mkString(", ")}, ${t.getMessage}".failureNel }
+                      } else {
+                        val failureMessages =
+                          failures
+                            .map { case (img, f) => configFailure(img, f.failed.get) }
+                        Future.successful(NonEmptyList(failureMessages.head, failureMessages.tail: _*).failure)
+                      }
+                    }
+
+                output
+                  .foreach { validation =>
+                    validation.fold(
+                      { errors =>
+                        errors
+                          .stream
+                          .toVector
+                          .distinct
+                          .foreach(logger.error(_))
+
+                        System.exit(1)
+                      },
+                      resources =>
+                        outputHandler(resources).onComplete {
+                          case v if v.isSuccess => System.exit(0)
+                          case v => System.exit(2)
+                        })
+                  }
+            }
+        }
       }
     } else {
       run(Array("--help"))

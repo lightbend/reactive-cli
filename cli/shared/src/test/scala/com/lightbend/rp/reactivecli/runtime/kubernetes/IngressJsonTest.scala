@@ -25,31 +25,34 @@ import utest._
 import Argonaut._
 
 object IngressJsonTest extends TestSuite {
-  val annotations = Annotations(
-    namespace = Some("chirper"),
-    applications = Vector.empty,
-    appName = Some("friendservice"),
-    appType = None,
-    configResource = None,
-    diskSpace = Some(65536L),
-    memory = Some(8192L),
-    cpu = Some(0.5D),
-    endpoints = Map(
-      "ep1" -> HttpEndpoint(
-        index = 0,
-        name = "ep1",
-        port = 1234,
-        ingress = Seq(
-          HttpIngress(Seq(80, 443), Seq.empty, Seq("/api/friend")),
-          HttpIngress(Seq(80, 443), Seq("hello.com"), Seq.empty),
-          HttpIngress(Seq(80, 443), Seq("hello.com", "world.io"), Seq("/api/friend", "/api/enemy"))))),
-    secrets = Seq.empty,
-    privileged = true,
-    environmentVariables = Map(
-      "testing1" -> LiteralEnvironmentVariable("testingvalue1")),
-    version = Some("3.2.1-SNAPSHOT"),
-    modules = Set.empty,
-    akkaClusterBootstrapSystemName = None)
+  def createAnnotations(appName: String, urlOne: String, urlTwo: String) =
+    Annotations(
+      namespace = Some("chirper"),
+      applications = Vector.empty,
+      appName = Some(appName),
+      appType = None,
+      configResource = None,
+      diskSpace = Some(65536L),
+      memory = Some(8192L),
+      cpu = Some(0.5D),
+      endpoints = Map(
+        "ep1" -> HttpEndpoint(
+          index = 0,
+          name = "ep1",
+          port = 1234,
+          ingress = Seq(
+            HttpIngress(Seq(80, 443), Seq.empty, Seq(urlOne)),
+            HttpIngress(Seq(80, 443), Seq("hello.com"), Seq.empty),
+            HttpIngress(Seq(80, 443), Seq("hello.com", "world.io"), Seq(urlOne, urlTwo))))),
+      secrets = Seq.empty,
+      privileged = true,
+      environmentVariables = Map(
+        "testing1" -> LiteralEnvironmentVariable("testingvalue1")),
+      version = Some("3.2.1-SNAPSHOT"),
+      modules = Set.empty,
+      akkaClusterBootstrapSystemName = None)
+
+  val annotations = createAnnotations("friendservice", "/api/friend", "/api/enemy")
 
   val tests = this{
     "json serialization" - {
@@ -57,9 +60,10 @@ object IngressJsonTest extends TestSuite {
         val generatedJson = Ingress.generate(
           annotations,
           "extensions/v1beta1",
+          None,
           ingressAnnotations = Map.empty,
-          pathAppend = Option.empty,
-          None).toOption.get
+          None,
+          pathAppend = Option.empty).toOption.get
         val expectedJson =
           """
             |{
@@ -89,19 +93,6 @@ object IngressJsonTest extends TestSuite {
             |        "http" : {
             |          "paths" : [
             |            {
-            |              "backend" : {
-            |                "serviceName" : "friendservice",
-            |                "servicePort" : 1234
-            |              }
-            |            }
-            |          ]
-            |        }
-            |      },
-            |      {
-            |        "host" : "hello.com",
-            |        "http" : {
-            |          "paths" : [
-            |            {
             |              "path" : "/api/friend",
             |              "backend" : {
             |                "serviceName" : "friendservice",
@@ -110,6 +101,12 @@ object IngressJsonTest extends TestSuite {
             |            },
             |            {
             |              "path" : "/api/enemy",
+            |              "backend" : {
+            |                "serviceName" : "friendservice",
+            |                "servicePort" : 1234
+            |              }
+            |            },
+            |            {
             |              "backend" : {
             |                "serviceName" : "friendservice",
             |                "servicePort" : 1234
@@ -144,16 +141,17 @@ object IngressJsonTest extends TestSuite {
             |}
           """.stripMargin.parse.right.get
 
-        assert(generatedJson.contains(Ingress("friendservice", expectedJson, None)))
+        assert(generatedJson.get.json == expectedJson)
       }
 
       "with ingress specific input" - {
         val generatedJson = Ingress.generate(
           annotations,
           "extensions/v1beta1",
+          Some(Vector("test.com")),
           ingressAnnotations = Map("kubernetes.io/ingress.class" -> "istio"),
-          pathAppend = Some(".*"),
-          None).toOption.get
+          None,
+          pathAppend = Some(".*")).toOption.get
 
         val expectedJson =
           """
@@ -170,33 +168,7 @@ object IngressJsonTest extends TestSuite {
             |  "spec" : {
             |    "rules" : [
             |      {
-            |        "http" : {
-            |          "paths" : [
-            |            {
-            |              "path" : "/api/friend.*",
-            |              "backend" : {
-            |                "serviceName" : "friendservice",
-            |                "servicePort" : 1234
-            |              }
-            |            }
-            |          ]
-            |        }
-            |      },
-            |      {
-            |        "host" : "hello.com",
-            |        "http" : {
-            |          "paths" : [
-            |            {
-            |              "backend" : {
-            |                "serviceName" : "friendservice",
-            |                "servicePort" : 1234
-            |              }
-            |            }
-            |          ]
-            |        }
-            |      },
-            |      {
-            |        "host" : "hello.com",
+            |        "host" : "test.com",
             |        "http" : {
             |          "paths" : [
             |            {
@@ -212,23 +184,8 @@ object IngressJsonTest extends TestSuite {
             |                "serviceName" : "friendservice",
             |                "servicePort" : 1234
             |              }
-            |            }
-            |          ]
-            |        }
-            |      },
-            |      {
-            |        "host" : "world.io",
-            |        "http" : {
-            |          "paths" : [
-            |            {
-            |              "path" : "/api/friend.*",
-            |              "backend" : {
-            |                "serviceName" : "friendservice",
-            |                "servicePort" : 1234
-            |              }
             |            },
             |            {
-            |              "path" : "/api/enemy.*",
             |              "backend" : {
             |                "serviceName" : "friendservice",
             |                "servicePort" : 1234
@@ -242,23 +199,110 @@ object IngressJsonTest extends TestSuite {
             |}
           """.stripMargin.parse.right.get
 
-        assert(generatedJson.contains(Ingress("friendservice", expectedJson, None)))
+        assert(generatedJson.get.json == expectedJson)
       }
 
       "should fail if application name is not defined" - {
-        assert(Ingress.generate(annotations.copy(appName = None), "extensions/v1beta1", Map.empty, Option.empty, None).toOption.isEmpty)
+        assert(Ingress.generate(annotations.copy(appName = None), "extensions/v1beta1", None, Map.empty, None, Option.empty).toOption.isEmpty)
       }
 
       "jq" - {
         Ingress
-          .generate(annotations.copy(appName = Some("test")), "extensions/v1beta1", Map.empty, Option.empty, Some(".jqTest = \"test\""))
+          .generate(annotations.copy(appName = Some("test")), "extensions/v1beta1", None, Map.empty, Some(".jqTest = \"test\""), Option.empty)
           .toOption
           .get
           .get
           .payload
           .map(j => assert((j.hcursor --\ "jqTest").focus.contains(jString("test"))))
       }
-    }
 
+      "merge" - {
+        val a = Ingress.generate(
+          annotations,
+          "extensions/v1beta1",
+          Some(Vector("test.com")),
+          ingressAnnotations = Map("kubernetes.io/ingress.class" -> "istio"),
+          None,
+          None).toOption.get.get
+
+        val b = Ingress.generate(
+          createAnnotations("enemyservice", "/ac/other/path", "/ab/other/path"),
+          "extensions/v1beta1",
+          Some(Vector("test.com")),
+          ingressAnnotations = Map("kubernetes.io/ingress.class" -> "istio2"),
+          None,
+          None).toOption.get.get
+
+        val expectedJson =
+          """
+            {
+              "apiVersion" : "extensions/v1beta1",
+              "kind" : "Ingress",
+              "metadata" : {
+                "name" : "testing",
+                "annotations" : {
+                  "kubernetes.io/ingress.class" : "istio2"
+                },
+                "namespace" : "chirper"
+              },
+              "spec" : {
+                "rules" : [
+                  {
+                    "host" : "test.com",
+                    "http" : {
+                      "paths" : [
+                        {
+                          "path" : "/ab/other/path",
+                          "backend" : {
+                            "serviceName" : "enemyservice",
+                            "servicePort" : 1234
+                          }
+                        },
+                        {
+                          "path" : "/ac/other/path",
+                          "backend" : {
+                            "serviceName" : "enemyservice",
+                            "servicePort" : 1234
+                          }
+                        },
+                        {
+                          "path" : "/api/friend",
+                          "backend" : {
+                            "serviceName" : "friendservice",
+                            "servicePort" : 1234
+                          }
+                        },
+                        {
+                          "path" : "/api/enemy",
+                          "backend" : {
+                            "serviceName" : "friendservice",
+                            "servicePort" : 1234
+                          }
+                        },
+                        {
+                          "backend" : {
+                            "serviceName" : "enemyservice",
+                            "servicePort" : 1234
+                          }
+                        },
+                        {
+                          "backend" : {
+                            "serviceName" : "friendservice",
+                            "servicePort" : 1234
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          """.parse.right.get.spaces2
+
+        val generatedJson = Ingress.merge("testing", a, b).json.spaces2
+
+        assert(generatedJson == expectedJson)
+      }
+    }
   }
 }
