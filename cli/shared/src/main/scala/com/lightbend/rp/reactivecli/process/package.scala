@@ -21,5 +21,8 @@ import slogging._
 
 package object process extends LazyLogging {
   def exec(args: String*): Future[(Int, String)] =
-    Platform.processExec(args: _*)
+    Platform.processExec(Seq(args: _*))
+
+  def execWithStdinFile(args: Seq[String], stdinFile: Option[String]) : Future[(Int, String)] =
+    Platform.processExec(args, stdinFile)
 }

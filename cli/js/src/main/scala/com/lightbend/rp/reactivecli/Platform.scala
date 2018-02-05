@@ -123,20 +123,7 @@ object Platform extends LazyLogging {
     else
       Path.join(components.head, components.tail: _*)
 
-  def processExec(args: String*): Future[(Int, String)] = {
-
-    // Handles very special case where we want to redirect file contents
-    // as stdin for the process. Returns a pair with two elements:
-    // Option of stdin file and remaining arguments.
-    def handleStdinFile(args: Seq[String]): (Option[String], Vector[String]) = {
-      val vargs = args.toVector
-      val len = vargs.length
-      if ((len >= 3) && (vargs(len-2) == "<"))
-        (Some(vargs(len-1)), vargs.slice(0, len-2))
-      else
-        (None, vargs)
-    }
-
+  def processExec(args: Seq[String], stdinFile: Option[String] = None): Future[(Int, String)] = {
     if (args.isEmpty) {
       Future.successful(1 -> "")
     } else {
@@ -146,8 +133,7 @@ object Platform extends LazyLogging {
 
       val processOptions = js.Dynamic.literal(windowsHide = false)
 
-      val (stdinFile, nargs) = handleStdinFile(args)
-      val process = ChildProcess.spawn(nargs.head, nargs.tail.toJSArray, processOptions).asInstanceOf[js.Dynamic]
+      val process = ChildProcess.spawn(args.head, args.tail.toJSArray, processOptions).asInstanceOf[js.Dynamic]
 
       if (stdinFile.isDefined) {
         process.stdin.setEncoding("utf-8")

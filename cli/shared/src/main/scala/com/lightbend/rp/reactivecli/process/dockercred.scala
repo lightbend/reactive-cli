@@ -69,7 +69,7 @@ object dockercred extends LazyLogging {
     withTempFile { inputFile =>
       writeFile(inputFile, server)
       for {
-        (code, output) <- exec(s"docker-credential-$kind", "get", "<", inputFile)
+        (code, output) <- execWithStdinFile(Seq(s"docker-credential-$kind", "get"), Some(inputFile))
       } yield {
         if (code == 0) {
           val json = Parse.parseOption(output)

@@ -85,8 +85,8 @@ object Platform extends LazyLogging {
     else
       Paths.get(components.head, components.tail: _*).toString
 
-  def processExec(args: String*): Future[(Int, String)] =
-    process.NativeProcess.exec(args: _*)
+  def processExec(args: Seq[String], stdinFile: Option[String] = None): Future[(Int, String)] =
+    process.NativeProcess.exec(args, stdinFile)
 
   def readFile(path: String): String =
     new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8)
