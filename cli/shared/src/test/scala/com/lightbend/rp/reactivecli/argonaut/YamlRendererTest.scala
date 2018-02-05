@@ -24,7 +24,7 @@ import Argonaut._
 object YamlRendererTest extends TestSuite {
   import YamlRenderer.render
 
-  val tests = this {
+  val tests = this{
     def equal[A, B](a: A, b: B) = assert(a == b)
 
     "render" - {
@@ -47,8 +47,7 @@ object YamlRendererTest extends TestSuite {
 
         """|- 1
            |- 2
-           |- 3""".stripMargin
-      )
+           |- 3""".stripMargin)
 
       "numeric string" - equal(render(jString("12345")), "\"12345\"")
 
@@ -58,49 +57,39 @@ object YamlRendererTest extends TestSuite {
 
       "simple object" - equal(
         render(jObjectFields("name" -> jString("jason"), "age" -> jNumber(100))),
-        "name: jason\nage: 100"
-      )
+        "name: jason\nage: 100")
 
       "array of objects" - equal(
         render(
           jArrayElements(
             jObjectFields("name" -> jString("john!"), "age" -> jNumber(100), "present?" -> jFalse),
-            jObjectFields("name" -> jString("jessica"), "age" -> jNumber(101), "present?" -> jTrue)
-          )
-        ),
+            jObjectFields("name" -> jString("jessica"), "age" -> jNumber(101), "present?" -> jTrue))),
 
         """|- name: "john!"
            |  age: 100
            |  "present?": false
            |- name: jessica
            |  age: 101
-           |  "present?": true""".stripMargin
-      )
+           |  "present?": true""".stripMargin)
 
       "object containing array of objects" - equal(
         render(
           jObjectFields("people" -> jArrayElements(
             jObjectFields("name" -> jString("john"), "age" -> jNumber(100)),
-            jObjectFields("name" -> jString("jessica"), "age" -> jNumber(101))
-          ))
-        ),
+            jObjectFields("name" -> jString("jessica"), "age" -> jNumber(101))))),
 
         """|people:
            |  - name: john
            |    age: 100
            |  - name: jessica
-           |    age: 101""".stripMargin
-      )
+           |    age: 101""".stripMargin)
 
       "nested arrays" - equal(
         render(
           jArrayElements(
             jArrayElements(jNumber(1), jNumber(2), jNumber(3)),
             jArrayElements(jNumber(4), jNumber(5), jNumber(6)),
-            jArrayElements(jNumber(7), jNumber(8), jNumber(9))
-          )
-        ),
-
+            jArrayElements(jNumber(7), jNumber(8), jNumber(9)))),
 
         """|- - 1
            |  - 2
@@ -110,8 +99,7 @@ object YamlRendererTest extends TestSuite {
            |  - 6
            |- - 7
            |  - 8
-           |  - 9""".stripMargin
-      )
+           |  - 9""".stripMargin)
 
       "nested objects" - equal(
         render(
@@ -122,12 +110,7 @@ object YamlRendererTest extends TestSuite {
                 "two" -> jNumber(2),
                 "three" -> jObjectFields(
                   "a" -> jArrayElements(jFalse),
-                  "b" -> jArrayElements(jTrue)
-                )
-              )
-            )
-          ))
-        ),
+                  "b" -> jArrayElements(jTrue))))))),
 
         """|spec:
            |  template:
@@ -138,8 +121,7 @@ object YamlRendererTest extends TestSuite {
            |        a:
            |          - false
            |        b:
-           |          - true""".stripMargin
-      )
+           |          - true""".stripMargin)
     }
   }
 }

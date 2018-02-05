@@ -16,21 +16,93 @@
 
 package com.lightbend.rp.reactivecli.docker
 
+import argonaut._
 import com.lightbend.rp.reactivecli.files._
+import com.lightbend.rp.reactivecli.process._
+import com.lightbend.rp.reactivecli.concurrent._
 import scala.collection.immutable.Seq
+import scala.concurrent.Future
+import scala.concurrent.duration._
+import slogging._
 
-case class DockerCredentials(registry: String, username: String, password: String)
+import Argonaut._
 
 /**
- * Parses a file for credentials
+ * Holds Docker credentials
+ * @param registry registry credentials are for
+ * @param credentials Left(base64 encoded Basic Auth string) or Right((username, password))
  */
-object DockerCredentials {
+case class DockerCredentials(registry: String, credentials: Either[String, (String, String)])
+
+/**
+ * Finds docker credentials in multiple places:
+ * ~/.lightbend/docker.credentials
+ * ~/.docker/config.json
+ * OS-specific storage (OS X Keychan, Windows credential store, etc.)
+ */
+object DockerCredentials extends LazyLogging {
   private val Registry = "registry"
   private val Username = "username"
   private val Password = "password"
 
-  def parse(path: String): Seq[DockerCredentials] =
-    decode(readFile(path))
+  def get(credsFilePath: Option[String], configFilePath: Option[String]): Future[Seq[DockerCredentials]] = {
+    // Credential priorities:
+    // 1. Lightbend credential file
+    // 2. Docker credential helpers
+    // 3. Docker config file
+    val fromCreds = credsFilePath.map(parseCredsFile).getOrElse(Seq.empty)
+    val futureFromHelpers = dockercred.getCredentials().recover {
+      case t: Throwable =>
+        logger.debug("Failed to find any Docker credential helpers", t)
+        Seq.empty
+    }
+    val fromConfig = configFilePath.map(parseDockerConfig).getOrElse(Seq.empty)
+
+    def credsToMap(creds: Seq[DockerCredentials]): Map[String, DockerCredentials] = {
+      creds.map(c => c.registry -> c).toMap
+    }
+
+    futureFromHelpers.map { fromHelpers =>
+      // Build maps indexed by registry and combine their keys according to priority.
+      (credsToMap(fromConfig) ++ credsToMap(fromHelpers) ++ credsToMap(fromCreds))
+        .values.toVector
+    }
+  }
+
+  def parseDockerConfig(configFilePath: String): Seq[DockerCredentials] =
+    decodeConfig(readFile(configFilePath))
+
+  def parseCredsFile(credsFilePath: String): Seq[DockerCredentials] =
+    decodeCreds(readFile(credsFilePath))
+
+  /**
+   * Decodes ~/.docker/config.json, where authentication tokens may be stored.
+   * Example:
+   *  {
+   *     "auths": {
+   *       "https://index.docker.io/v1/": {
+   *          "auth": "0123abcdef="
+   *       }
+   *     },
+   *     "HttpHeaders": {
+   *       "User-Agent": "Docker-Client/17.12.0-ce (linux)"
+   *     }
+   *  }
+   */
+  def decodeConfig(content: String): Seq[DockerCredentials] = {
+    val auths = Parse.parseOption(content).flatMap(_.hcursor.downField("auths").focus)
+    val fields = auths.flatMap(_.hcursor.fields)
+    if (auths.isDefined && fields.isDefined) {
+      fields.get.flatMap { field =>
+        val auth = auths.flatMap(_.hcursor.downField(field).downField("auth").focus)
+        auth match {
+          case Some(token) if token.isString =>
+            Some(DockerCredentials(field, Left(token.string.get)))
+          case _ => None
+        }
+      }
+    } else Seq.empty
+  }
 
   /**
    * Decodes a Docker credential file. This is a simplistic format with a number of
@@ -54,34 +126,34 @@ object DockerCredentials {
    *   DockerCredentials("lightbend-docker-registry.bintray.io", "hello", "there"),
    *   DockerCredentials("registry.hub.docker.com", "foo", "bar"))
    */
-  def decode(content: String): Seq[DockerCredentials] =
+  def decodeCreds(content: String): Seq[DockerCredentials] =
     lines(content)
       .foldLeft(List.empty[DockerCredentials]) {
         case (accum, next) =>
           val modify =
             accum.nonEmpty && (
               accum.head.registry.isEmpty ||
-              accum.head.username.isEmpty ||
-              accum.head.password.isEmpty)
+              accum.head.credentials.fold(_ => false, _._1.isEmpty) ||
+              accum.head.credentials.fold(_ => false, _._2.isEmpty))
 
           parseLine(next) match {
             case (Registry, registry) =>
               if (modify)
                 accum.head.copy(registry = registry) :: accum.tail
               else
-                DockerCredentials(registry, "", "") :: accum
+                DockerCredentials(registry, Right("" -> "")) :: accum
 
             case (Username, username) =>
               if (modify)
-                accum.head.copy(username = username) :: accum.tail
+                accum.head.copy(credentials = accum.head.credentials.fold(Left(_), right => Right(username -> right._2))) :: accum.tail
               else
-                DockerCredentials("", username, "") :: accum
+                DockerCredentials("", Right("username" -> "")) :: accum
 
             case (Password, password) =>
               if (modify)
-                accum.head.copy(password = password) :: accum.tail
+                accum.head.copy(credentials = accum.head.credentials.fold(Left(_), right => Right(right._1 -> password))) :: accum.tail
               else
-                DockerCredentials("", "", password) :: accum
+                DockerCredentials("", Right("password" -> "")) :: accum
 
             case _ =>
               accum

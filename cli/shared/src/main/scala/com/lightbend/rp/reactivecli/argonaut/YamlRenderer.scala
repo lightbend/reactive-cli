@@ -68,16 +68,17 @@ object YamlRenderer {
       else
         obj
           .toList
-          .map { case (field, value) =>
-            val renderedField = string(field)
-            val rendered = render(value, level + 1)
-            val separator =
-              if (nonEmptyArrayOrObject(value))
-                ":\n"
-              else
-                ": "
+          .map {
+            case (field, value) =>
+              val renderedField = string(field)
+              val rendered = render(value, level + 1)
+              val separator =
+                if (nonEmptyArrayOrObject(value))
+                  ":\n"
+                else
+                  ": "
 
-            spaces(level) + renderedField + separator + rendered
+              spaces(level) + renderedField + separator + rendered
           }
           .mkString("\n")
 

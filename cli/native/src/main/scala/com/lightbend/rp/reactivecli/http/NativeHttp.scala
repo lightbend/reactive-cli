@@ -59,8 +59,7 @@ object NativeHttp {
     doHttp(
       request.requestMethod,
       request.requestUrl,
-      request.requestHeaders.headers,
-      request.auth,
+      request.headersWithAuth.headers,
       request.requestBody,
       request.tlsValidationEnabled,
       Nil)
@@ -69,28 +68,17 @@ object NativeHttp {
     method: String,
     url: String,
     headers: Map[String, String],
-    auth: Option[HttpRequest.Auth],
     requestBody: Option[String],
     tlsValidationEnabled: Option[Boolean],
     visitedUrls: List[String])(implicit settings: HttpSettings): Try[HttpResponse] =
     native.Zone { implicit z =>
       val isTlsValidationEnabled = tlsValidationEnabled.getOrElse(settings.tlsValidationEnabled)
 
-      val headersWithAuth = auth.foldLeft(headers) {
-        case (hs, HttpRequest.BasicAuth(username, password)) =>
-          hs.updated(
-            "Authorization",
-            s"Basic ${Base64Encoder(s"$username:$password")}")
-
-        case (hs, HttpRequest.BearerToken(bearer)) =>
-          hs.updated("Authorization", s"Bearer $bearer")
-      }
-
       val response = nativebinding.http.do_http(
         validate_tls = if (isTlsValidationEnabled) 1 else 0,
         method,
         url,
-        httpHeadersToDelimitedString(headersWithAuth),
+        httpHeadersToDelimitedString(headers),
         requestBody.getOrElse(""),
         settings.tlsCacertsPath.fold("")(_.toString),
         settings.tlsCertPath.fold("")(_.toString),

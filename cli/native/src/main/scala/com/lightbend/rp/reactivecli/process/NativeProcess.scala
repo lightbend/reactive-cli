@@ -22,10 +22,15 @@ import scalanative.native._
 import slogging._
 
 object NativeProcess extends LazyLogging {
-  def exec(args: String*): Future[(Int, String)] =
+  def exec(args: Seq[String], stdinFile: Option[String] = None): Future[(Int, String)] =
     withTempFile { outputFile =>
       Zone { implicit z =>
-        val code = stdlib.system(toCString(s"${command(args)} > $outputFile 2>&1"))
+        val cmd = if (stdinFile.isDefined)
+          s"${command(args)} < ${stdinFile.get} > $outputFile 2>&1"
+        else
+          s"${command(args)} > $outputFile 2>&1"
+
+        val code = stdlib.system(toCString(cmd))
         val output = readFile(outputFile)
 
         Future.successful(code -> output)
@@ -37,7 +42,8 @@ object NativeProcess extends LazyLogging {
    * the command will be processed by `sh` per POSIX specification.
    *
    * This means that we can simply enclose each argument in a single quote. However, if a single quote occurs in
-   * an argument, we special case that by enclosing it in double quotes.
+   * an argument, we special case that by enclosing it in double quotes. Also, we don't enclose "|" pipes and
+   * stdin/stdout redirects.
    */
   private[NativeProcess] def command(args: Seq[String]): String = {
     def escape(s: String): String =

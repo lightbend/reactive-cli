@@ -69,10 +69,10 @@ object Main extends LazyLogging {
     }
   }
 
-  private def credentialsFile(): Option[String] =
+  private def homeDirPath(subdir: String, filename: String): Option[String] =
     for {
       home <- sys.props.get("user.home")
-      path = files.pathFor(home, ".lightbend", "docker.credentials")
+      path = files.pathFor(home, subdir, filename)
       if files.fileExists(path)
     } yield path
 
@@ -105,23 +105,37 @@ object Main extends LazyLogging {
                   password <- generateDeploymentArgs.registryPassword
                 } yield HttpRequest.BasicAuth(username, password)
 
-              val dockerRegistryFileAuth =
+              val configFile = homeDirPath(".docker", "config.json")
+              val credsFile = homeDirPath(".lightbend", "docker.credentials")
+              val dockerCredentials =
                 for {
-                  imageName <- generateDeploymentArgs.dockerImage
-                  registry <- DockerRegistry.getRegistry(imageName)
-                  credsFile <- credentialsFile()
-                  auth = DockerCredentials.parse(credsFile)
-                  entry <- auth.find(_.registry == registry)
-                } yield HttpRequest.BasicAuth(entry.username, entry.password)
+                  creds <- DockerCredentials.get(credsFile, configFile)
+                } yield {
+                  val dockerRegistryFileAuth =
+                    for {
+                      imageName <- generateDeploymentArgs.dockerImage
+                      registry <- DockerRegistry.getRegistry(imageName)
+                      entry <- creds.find(realm => docker.registryAuthNameMatches(registry, realm.registry))
+                    } yield entry.credentials match {
+                      case Left(raw) => HttpRequest.EncodedBasicAuth(raw)
+                      case Right((username, password)) => HttpRequest.BasicAuth(username, password)
+                    }
 
-              val dockerRegistryAuth = dockerRegistryArgsAuth.orElse(dockerRegistryFileAuth)
+                  val dockerRegistryAuth = dockerRegistryArgsAuth.orElse(dockerRegistryFileAuth)
 
-              dockerRegistryAuth match {
-                case None =>
-                  logger.debug("Attempting to pull manifest while unauthenticated")
-                case Some(HttpRequest.BasicAuth(username, _)) =>
-                  logger.debug(s"Attempting to pull manifest as $username")
-              }
+                  dockerRegistryAuth match {
+                    case None =>
+                      logger.debug("Attempting to pull manifest while unauthenticated")
+                    case Some(HttpRequest.BasicAuth(username, _)) =>
+                      logger.debug(s"Attempting to pull manifest as $username")
+                    case Some(HttpRequest.EncodedBasicAuth(_)) =>
+                      logger.debug("Attempting to pull manifest with encoded basic auth (config.json)")
+                    case Some(HttpRequest.BearerToken(t)) =>
+                      logger.debug("Attempting to pull manifest with bearer token authentication")
+                  }
+
+                  dockerRegistryAuth
+                }
 
               def getDockerHostConfig(imageName: String): Future[Option[Config]] = {
                 implicit val httpSettingsWithDockerCredentials: HttpSettings = DockerEngine.applyDockerHostSettings(httpSettings, environment)
@@ -132,11 +146,13 @@ object Main extends LazyLogging {
               }
 
               def getDockerRegistryConfig(imageName: String): Future[Config] =
-                DockerRegistry.getConfig(
-                  http,
-                  dockerRegistryAuth,
-                  generateDeploymentArgs.registryUseHttps,
-                  generateDeploymentArgs.registryValidateTls)(imageName, token = None).map(_._1)
+                dockerCredentials.flatMap { creds =>
+                  DockerRegistry.getConfig(
+                    http,
+                    creds,
+                    generateDeploymentArgs.registryUseHttps,
+                    generateDeploymentArgs.registryValidateTls)(imageName, token = None).map(_._1)
+                }
 
               def getDockerConfig(imageName: String): Future[Config] = {
                 def validateConfig(config: Config): Future[Config] = {

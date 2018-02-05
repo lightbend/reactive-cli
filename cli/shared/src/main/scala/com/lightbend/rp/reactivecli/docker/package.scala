@@ -21,4 +21,15 @@ package object docker {
   val DockerDefaultRegistry = "registry.hub.docker.com"
   val DockerDefaultLibrary = "library"
   val DockerDefaultTag = "latest"
+
+  // Sometimes authentication credentials store different address than our default server,
+  // this function handles these discrepancies.
+  def registryAuthNameMatches(registry: String, authRealm: String): Boolean = {
+    if (registry == authRealm)
+      true
+    else if (registry == DockerDefaultRegistry && authRealm == "https://index.docker.io/v1/")
+      true
+    else
+      false
+  }
 }

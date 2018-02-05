@@ -123,7 +123,7 @@ object Platform extends LazyLogging {
     else
       Path.join(components.head, components.tail: _*)
 
-  def processExec(args: String*): Future[(Int, String)] = {
+  def processExec(args: Seq[String], stdinFile: Option[String] = None): Future[(Int, String)] = {
     if (args.isEmpty) {
       Future.successful(1 -> "")
     } else {
@@ -134,6 +134,12 @@ object Platform extends LazyLogging {
       val processOptions = js.Dynamic.literal(windowsHide = false)
 
       val process = ChildProcess.spawn(args.head, args.tail.toJSArray, processOptions).asInstanceOf[js.Dynamic]
+
+      if (stdinFile.isDefined) {
+        process.stdin.setEncoding("utf-8")
+        process.stdin.write(readFile(stdinFile.get))
+        process.stdin.end()
+      }
 
       process.stdout.on("data", { (data: js.Array[Byte]) =>
         output ++= data
