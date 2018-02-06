@@ -193,9 +193,13 @@ object InputArgs {
             .text("Appends the expression specified to the paths of the generated Ingress resources")
             .action(IngressArgs.set((v, c) => c.copy(pathAppend = Some(v)))),
 
-          opt[Unit]("join-existing-akka-cluster")
+          opt[Unit]("akka-cluster-join-existing")
             .text("When provided, the pod controller will only join an already formed Akka Cluster")
-            .action(GenerateDeploymentArgs.set((_, args) => args.copy(joinExistingAkkaCluster = true))),
+            .action(GenerateDeploymentArgs.set((_, args) => args.copy(akkaClusterJoinExisting = true))),
+
+          opt[Unit]("akka-cluster-skip-validation")
+            .hidden()
+            .action(GenerateDeploymentArgs.set((_, args) => args.copy(akkaClusterSkipValidation = true))),
 
           opt[String]("name")
             .text("Uses specified name for generated resources instead of name in the Docker image")
@@ -226,7 +230,7 @@ object InputArgs {
             .action(PodControllerArgs.set((v, args) => args.copy(imagePullPolicy = v))),
 
           opt[Int]("pod-controller-replicas")
-            .text("Sets the number of replicas for the Pod Controller resources. If Akka Cluster Bootstrap is enabled, this must be set to 2 or greater unless `--join-existing-akka-cluster` is provided")
+            .text("Sets the number of replicas for the Pod Controller resources. If Akka Cluster Bootstrap is enabled, this must be set to 2 or greater unless `--akka-cluster-join-existing` is provided")
             .validate(v => if (v >= 0) success else failure("Number of replicas must be zero or more"))
             .action(PodControllerArgs.set((v, args) => args.copy(numberOfReplicas = v))),
 

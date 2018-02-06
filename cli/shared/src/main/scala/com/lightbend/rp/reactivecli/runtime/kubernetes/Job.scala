@@ -40,7 +40,7 @@ object Job {
     externalServices: Map[String, Seq[String]],
     deploymentType: DeploymentType,
     jqExpression: Option[String],
-    joinExistingAkkaCluster: Boolean): ValidationNel[String, Job] =
+    akkaClusterJoinExisting: Boolean): ValidationNel[String, Job] =
 
     (annotations.applicationValidation(application) |@| annotations.appNameValidation |@| annotations.versionValidation) { (applicationArgs, rawAppName, version) =>
       val appName = serviceName(rawAppName)
@@ -61,7 +61,7 @@ object Job {
           RestartPolicy.OnFailure,
           externalServices,
           deploymentType,
-          joinExistingAkkaCluster,
+          akkaClusterJoinExisting,
           applicationArgs,
           appName,
           appNameVersion,

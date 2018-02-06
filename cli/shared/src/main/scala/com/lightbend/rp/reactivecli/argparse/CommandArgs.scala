@@ -64,6 +64,8 @@ case object RollingDeploymentType extends DeploymentType
  */
 case class GenerateDeploymentArgs(
   application: Option[String] = None,
+  akkaClusterJoinExisting: Boolean = false,
+  akkaClusterSkipValidation: Boolean = false,
   deploymentType: DeploymentType = CanaryDeploymentType,
   dockerImages: Seq[String] = Seq.empty,
   name: Option[String] = None,
@@ -72,7 +74,6 @@ case class GenerateDeploymentArgs(
   cpu: Option[Double] = None,
   memory: Option[Long] = None,
   diskSpace: Option[Long] = None,
-  joinExistingAkkaCluster: Boolean = false,
   targetRuntimeArgs: Option[TargetRuntimeArgs] = None,
   registryUsername: Option[String] = None,
   registryPassword: Option[String] = None,

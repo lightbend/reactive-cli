@@ -40,7 +40,7 @@ object Deployment {
     externalServices: Map[String, Seq[String]],
     deploymentType: DeploymentType,
     jqExpression: Option[String],
-    joinExistingAkkaCluster: Boolean): ValidationNel[String, Deployment] =
+    akkaClusterJoinExisting: Boolean): ValidationNel[String, Deployment] =
 
     (annotations.applicationValidation(application) |@| annotations.appNameValidation |@| annotations.versionValidation) { (applicationArgs, rawAppName, version) =>
       val appName = serviceName(rawAppName)
@@ -61,7 +61,7 @@ object Deployment {
           RestartPolicy.Always,
           externalServices,
           deploymentType,
-          joinExistingAkkaCluster,
+          akkaClusterJoinExisting,
           applicationArgs,
           appName,
           appNameVersion,

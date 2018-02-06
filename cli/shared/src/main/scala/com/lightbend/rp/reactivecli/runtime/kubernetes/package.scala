@@ -91,7 +91,7 @@ package object kubernetes extends LazyLogging {
               generateDeploymentArgs.externalServices,
               generateDeploymentArgs.deploymentType,
               kubernetesArgs.transformPodControllers,
-              generateDeploymentArgs.joinExistingAkkaCluster)
+              generateDeploymentArgs.akkaClusterJoinExisting)
 
           case PodControllerArgs.ControllerType.Job =>
             Job.generate(
@@ -104,7 +104,7 @@ package object kubernetes extends LazyLogging {
               generateDeploymentArgs.externalServices,
               generateDeploymentArgs.deploymentType,
               kubernetesArgs.transformPodControllers,
-              generateDeploymentArgs.joinExistingAkkaCluster)
+              generateDeploymentArgs.akkaClusterJoinExisting)
         }
 
       val services = Service.generate(
@@ -125,8 +125,8 @@ package object kubernetes extends LazyLogging {
         kubernetesArgs.ingressArgs.pathAppend)
 
       val validateAkkaCluster =
-        if (annotations.modules.contains(Module.AkkaClusterBootstrapping) && kubernetesArgs.podControllerArgs.numberOfReplicas < AkkaClusterMinimumReplicas && !generateDeploymentArgs.joinExistingAkkaCluster && kubernetesArgs.generatePodControllers)
-          s"Akka Cluster Bootstrapping is enabled so you must specify `--pod-controller-replicas 2` (or greater), or provide `--join-existing-akka-cluster` to only join already formed clusters".failureNel
+        if (annotations.modules.contains(Module.AkkaClusterBootstrapping) && !generateDeploymentArgs.akkaClusterSkipValidation && kubernetesArgs.podControllerArgs.numberOfReplicas < AkkaClusterMinimumReplicas && !generateDeploymentArgs.akkaClusterJoinExisting && kubernetesArgs.generatePodControllers)
+          s"Akka Cluster Bootstrapping is enabled so you must specify `--pod-controller-replicas 2` (or greater), or provide `--akka-cluster-join-existing` to only join already formed clusters".failureNel
         else
           ().successNel[String]
 
