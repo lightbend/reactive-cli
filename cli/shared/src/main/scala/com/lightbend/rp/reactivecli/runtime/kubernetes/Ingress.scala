@@ -25,7 +25,14 @@ import Argonaut._
 import Scalaz._
 
 object Ingress {
-  def encodeEndpoints(appName: String, endpoints: Map[String, Endpoint], pathAppend: Option[String]): List[Json] = {
+  case class EncodedEndpoint(serviceName: String, servicePort: Int, paths: Seq[String], host: Option[String])
+
+  def encodeEndpoints(
+    appName: String,
+    endpoints: Map[String, Endpoint],
+    pathAppend: Option[String],
+    hostsOverride: Option[Seq[String]]): List[EncodedEndpoint] = {
+
     val ports = AssignedPort.assignPorts(endpoints)
 
     val httpEndpoints =
@@ -38,32 +45,68 @@ object Ingress {
     for {
       endpoint <- httpEndpoints
       port <- ports.find(_.endpoint == endpoint).toVector
-      backend = Json("serviceName" -> appName.asJson, "servicePort" -> port.port.asJson)
       ingress <- endpoint.ingress
-      host <- if (ingress.hosts.isEmpty) Seq("") else ingress.hosts
+      host <- hostsOverride.getOrElse(if (ingress.hosts.isEmpty) Seq("") else ingress.hosts)
       paths = if (ingress.paths.isEmpty) Seq("") else ingress.paths
     } yield {
-      val base =
-        if (host.isEmpty)
-          Map.empty[String, Json]
-        else
-          Map("host" -> jString(host))
-
       val pathEntries =
         for {
           path <- paths
-        } yield {
-          val backendBase =
-            if (path.isEmpty)
-              Map.empty[String, Json]
-            else
-              Map("path" -> jString(path + pathAppend.getOrElse("")))
+        } yield if (path.isEmpty)
+          ""
+        else
+          path + pathAppend.getOrElse("")
 
-          jObjectAssocList(backendBase.updated("backend", backend).toList)
+      EncodedEndpoint(appName, port.port, pathEntries, if (host.isEmpty) None else Some(host))
+    }
+  }
+
+  def renderEndpoints(endpoints: Seq[EncodedEndpoint]): Json = {
+    case class Path(serviceName: String, servicePort: Int, path: String) {
+      def depthAndLength: (Int, Int) = {
+        val depth = path.split('/').length
+        val length = path.length
+        depth -> length
+      }
+    }
+
+    val byHost =
+      endpoints
+        .groupBy(_.host)
+        .toVector
+        .sortBy(_._1)
+        .map {
+          case (host, endpoints) =>
+            val paths =
+              endpoints
+                .foldLeft(Seq.empty[Path]) {
+                  case (ac, e) =>
+                    ac ++ e.paths.map(p => Path(e.serviceName, e.servicePort, p))
+                }
+                .distinct
+                .sortBy(_.depthAndLength)
+                .reverse
+
+            host -> paths
         }
 
-      jObjectAssocList(base.updated("http", jSingleObject("paths", pathEntries.toList.asJson)).toList)
-    }
+    jArray(
+      byHost.toList.map {
+        case (host, paths) =>
+          host
+            .fold(jEmptyObject)(h => jObjectFields("host" -> jString(h)))
+            .deepmerge(
+              jObjectFields("http" ->
+                jObjectFields(
+                  "paths" -> jArray(
+                    paths.toList.map(p =>
+                      (if (p.path.nonEmpty) jObjectFields("path" -> jString(p.path)) else jEmptyObject)
+                        .deepmerge(
+                          jObjectFields(
+                            "backend" -> jObjectFields(
+                              "serviceName" -> jString(p.serviceName),
+                              "servicePort" -> jNumber(p.servicePort)))))))))
+      })
   }
 
   /**
@@ -72,14 +115,15 @@ object Ingress {
   def generate(
     annotations: Annotations,
     apiVersion: String,
+    hosts: Option[Seq[String]],
     ingressAnnotations: Map[String, String],
-    pathAppend: Option[String],
-    jqExpression: Option[String]): ValidationNel[String, Option[Ingress]] =
+    jqExpression: Option[String],
+    pathAppend: Option[String]): ValidationNel[String, Option[Ingress]] = {
     annotations
       .appNameValidation
       .map { rawAppName =>
         val appName = serviceName(rawAppName)
-        val encodedEndpoints = encodeEndpoints(appName, annotations.endpoints, pathAppend)
+        val encodedEndpoints = encodeEndpoints(appName, annotations.endpoints, pathAppend, hosts)
 
         if (encodedEndpoints.isEmpty)
           None
@@ -87,6 +131,7 @@ object Ingress {
           Some(
             Ingress(
               appName,
+              encodedEndpoints,
               Json(
                 "apiVersion" -> apiVersion.asJson,
                 "kind" -> "Ingress".asJson,
@@ -95,9 +140,24 @@ object Ingress {
                   .deepmerge(generateIngressAnnotations(ingressAnnotations))
                   .deepmerge(generateNamespaceAnnotation(annotations.namespace)),
                 "spec" -> Json(
-                  "rules" -> encodedEndpoints.asJson)),
+                  "rules" -> renderEndpoints(encodedEndpoints))),
               jqExpression))
       }
+  }
+
+  def merge(name: String, a: Ingress, b: Ingress): Ingress = {
+    val endpoints = a.endpoints ++ b.endpoints
+    val appName = serviceName(name)
+
+    val merged = a.json.deepmerge(b.json)
+    val maybeUpdated = -(merged.hcursor --\ "metadata" --\ "name" := jString(appName))
+    val updated =
+      maybeUpdated
+        .getOrElse(merged)
+        .deepmerge(jObjectFields("spec" -> jObjectFields("rules" -> renderEndpoints(endpoints))))
+
+    Ingress(appName, endpoints, updated, b.jqExpression)
+  }
 
   private def generateIngressAnnotations(ingressAnnotations: Map[String, String]): Json =
     if (ingressAnnotations.isEmpty)
@@ -118,6 +178,6 @@ object Ingress {
 /**
  * Represents the generated ingress resource.
  */
-case class Ingress(name: String, json: Json, jqExpression: Option[String]) extends GeneratedKubernetesResource {
+case class Ingress(name: String, endpoints: List[Ingress.EncodedEndpoint], json: Json, jqExpression: Option[String]) extends GeneratedKubernetesResource {
   val resourceType = "ingress"
 }

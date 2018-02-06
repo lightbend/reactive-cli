@@ -26,6 +26,7 @@ import com.lightbend.rp.reactivecli.docker.Config
 import com.lightbend.rp.reactivecli.files._
 import com.lightbend.rp.reactivecli.process.jq
 import java.io.PrintStream
+import scala.collection.immutable.Seq
 import scala.concurrent.Future
 import scalaz._
 import slogging.LazyLogging
@@ -58,9 +59,9 @@ package object kubernetes extends LazyLogging {
   private val EndpointTrimChars = Set('_', '-')
 
   /**
-   * This is the main method which generates the Kubernetes resources.
+   * This is the main method which generates the Kubernetes resources (PodController/Service).
    */
-  def generateResources(config: Config, generateDeploymentArgs: GenerateDeploymentArgs, kubernetesArgs: KubernetesArgs): Future[ValidationNel[String, Seq[GeneratedKubernetesResource]]] =
+  def generateResources(dockerImage: String, config: Config, generateDeploymentArgs: GenerateDeploymentArgs, kubernetesArgs: KubernetesArgs): Future[ValidationNel[String, Seq[GeneratedKubernetesResource]]] =
     for {
       namespaceApiVersion <- KubernetesArgs.DefaultNamespaceApiVersion
       appsApiVersion <- kubernetesArgs.podControllerArgs.appsApiVersion
@@ -84,7 +85,7 @@ package object kubernetes extends LazyLogging {
               annotations,
               appsApiVersion,
               generateDeploymentArgs.application,
-              generateDeploymentArgs.dockerImage.get,
+              dockerImage,
               kubernetesArgs.podControllerArgs.imagePullPolicy,
               kubernetesArgs.podControllerArgs.numberOfReplicas,
               generateDeploymentArgs.externalServices,
@@ -97,7 +98,7 @@ package object kubernetes extends LazyLogging {
               annotations,
               batchApiVersion,
               generateDeploymentArgs.application,
-              generateDeploymentArgs.dockerImage.get,
+              dockerImage,
               kubernetesArgs.podControllerArgs.imagePullPolicy,
               kubernetesArgs.podControllerArgs.numberOfReplicas,
               generateDeploymentArgs.externalServices,
@@ -115,12 +116,16 @@ package object kubernetes extends LazyLogging {
       val ingress = Ingress.generate(
         annotations,
         ingressApiVersion,
+        if (kubernetesArgs.ingressArgs.hosts.nonEmpty)
+          Some(kubernetesArgs.ingressArgs.hosts)
+        else
+          None,
         kubernetesArgs.ingressArgs.ingressAnnotations,
-        kubernetesArgs.ingressArgs.pathAppend,
-        kubernetesArgs.transformIngress)
+        kubernetesArgs.transformIngress,
+        kubernetesArgs.ingressArgs.pathAppend)
 
       val validateAkkaCluster =
-        if (annotations.modules.contains(Module.AkkaClusterBootstrapping) && kubernetesArgs.podControllerArgs.numberOfReplicas < AkkaClusterMinimumReplicas && !generateDeploymentArgs.joinExistingAkkaCluster)
+        if (annotations.modules.contains(Module.AkkaClusterBootstrapping) && kubernetesArgs.podControllerArgs.numberOfReplicas < AkkaClusterMinimumReplicas && !generateDeploymentArgs.joinExistingAkkaCluster && kubernetesArgs.generatePodControllers)
           s"Akka Cluster Bootstrapping is enabled so you must specify `--pod-controller-replicas 2` (or greater), or provide `--join-existing-akka-cluster` to only join already formed clusters".failureNel
         else
           ().successNel[String]
@@ -134,10 +139,10 @@ package object kubernetes extends LazyLogging {
           ().successNel[String]
 
       (namespaces |@| podControllers |@| services |@| ingress |@| validateAkkaCluster |@| validateJq) { (ns, pcs, ss, is, _, _) =>
-        ns.filter(_ => kubernetesArgs.shouldGenerateNamespaces).toSeq ++
-          Seq(pcs).filter(_ => kubernetesArgs.shouldGeneratePodControllers) ++
-          ss.toSeq.filter(_ => kubernetesArgs.shouldGenerateServices) ++
-          is.toSeq.filter(_ => kubernetesArgs.shouldGenerateIngress)
+        ns.filter(_ => kubernetesArgs.generateNamespaces).toVector ++
+          Seq(pcs).filter(_ => kubernetesArgs.generatePodControllers) ++
+          ss.toSeq.filter(_ => kubernetesArgs.generateServices) ++
+          is.toSeq.filter(_ => kubernetesArgs.generateIngress)
       }
     }
 
@@ -150,6 +155,32 @@ package object kubernetes extends LazyLogging {
       case KubernetesArgs.Output.PipeToStream(out) => pipeToStream(out)
       case KubernetesArgs.Output.SaveToFile(path) => saveToFile(path)
     }
+
+  /**
+   * Merges the generated resources. Currently, Ingress annotations are flattened into one.
+   * @return
+   */
+  def mergeGeneratedResources(kubernetesArgs: KubernetesArgs, resources: Seq[GeneratedKubernetesResource]): ValidationNel[String, Seq[GeneratedKubernetesResource]] = {
+    val (other, ingress) =
+      resources.partition {
+        case Ingress(_, _, _, _) => false
+        case _ => true
+      }
+
+    val ingressTyped = ingress.collect { case i: Ingress => i }
+
+    if (ingressTyped.length < 2)
+      resources.successNel
+    else if (kubernetesArgs.ingressArgs.name.isEmpty)
+      "Ingress resources are being generated by more than one Docker image but no ingress name has been specified. Specify `--ingress-name` flag with a name to use for the Ingress resource"
+        .failureNel
+    else
+      (
+        other :+ ingressTyped.tail.foldLeft(ingressTyped.head) {
+          case (a, b) =>
+            Ingress.merge(kubernetesArgs.ingressArgs.name.get, a, b)
+        }).successNel
+  }
 
   private[kubernetes] def format(json: Json) = YamlRenderer.render(json)
 

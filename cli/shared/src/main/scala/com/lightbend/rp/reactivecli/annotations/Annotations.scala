@@ -126,7 +126,8 @@ object Annotations extends LazyLogging {
 
   private[annotations] def namespace(args: GenerateDeploymentArgs): Option[String] =
     args.targetRuntimeArgs.collect {
-      case KubernetesArgs(_, _, _, _, _, _, _, _, Some(namespace), _, _, _, _) => namespace
+      case args: KubernetesArgs if args.namespace.isDefined =>
+        args.namespace.get
     }
 
   private[annotations] def applications(applications: Seq[Map[String, String]]): Seq[(String, Seq[String])] =

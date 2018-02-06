@@ -23,6 +23,7 @@ import com.lightbend.rp.reactivecli.concurrent._
 import com.lightbend.rp.reactivecli.docker.Config
 import com.lightbend.rp.reactivecli.files._
 import java.io.{ ByteArrayOutputStream, PrintStream }
+import scala.collection.immutable.Seq
 import utest._
 
 import Argonaut._
@@ -32,9 +33,13 @@ object KubernetesPackageTest extends TestSuite {
     "generateResources" - {
       val imageName = "fsat/testimpl:1.0.0-SNAPSHOT"
 
-      val kubernetesArgs = KubernetesArgs()
+      val kubernetesArgs = KubernetesArgs(
+        generateIngress = true,
+        generateNamespaces = false,
+        generatePodControllers = true,
+        generateServices = true)
       val generateDeploymentArgs = GenerateDeploymentArgs(
-        dockerImage = Some(imageName),
+        dockerImages = Seq(imageName),
         targetRuntimeArgs = Some(kubernetesArgs))
 
       "given valid docker image" - {
@@ -77,7 +82,7 @@ object KubernetesPackageTest extends TestSuite {
         "generates kubernetes deployment + service resource" - {
           val k8sArgs = kubernetesArgs.copy(generateNamespaces = true, namespace = Some("chirper"))
 
-          generateResources(dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs)
+          generateResources(imageName, dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs)
             .map(_.toOption)
             .map { result =>
               assert(result.nonEmpty)
@@ -435,7 +440,7 @@ object KubernetesPackageTest extends TestSuite {
         "honor generate flags" - {
           "generateNamespaces" - {
             val k8sArgs = kubernetesArgs.copy(generateNamespaces = true, namespace = Some("test"))
-            generateResources(dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs)
+            generateResources(imageName, dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs)
               .map(_.toOption.get)
               .map { result =>
                 assert(result.length == 4)
@@ -444,8 +449,8 @@ object KubernetesPackageTest extends TestSuite {
           }
 
           "generateIngress" - {
-            val k8sArgs = kubernetesArgs.copy(generateIngress = true)
-            generateResources(dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs)
+            val k8sArgs = kubernetesArgs.copy(generateIngress = true, generatePodControllers = false, generateServices = false)
+            generateResources(imageName, dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs)
               .map(_.toOption.get)
               .map { result =>
                 assert(result.length == 1)
@@ -454,8 +459,8 @@ object KubernetesPackageTest extends TestSuite {
           }
 
           "generatePodControllers" - {
-            val k8sArgs = kubernetesArgs.copy(generatePodControllers = true)
-            generateResources(dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs)
+            val k8sArgs = kubernetesArgs.copy(generatePodControllers = true, generateIngress = false, generateServices = false)
+            generateResources(imageName, dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs)
               .map(_.toOption.get)
               .map { result =>
                 assert(result.length == 1)
@@ -463,9 +468,9 @@ object KubernetesPackageTest extends TestSuite {
               }
           }
 
-          "generatePodControllers" - {
-            val k8sArgs = kubernetesArgs.copy(generateServices = true)
-            generateResources(dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs)
+          "generateServices" - {
+            val k8sArgs = kubernetesArgs.copy(generateServices = true, generatePodControllers = false, generateIngress = false)
+            generateResources(imageName, dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs)
               .map(_.toOption.get)
               .map { result =>
                 assert(result.length == 1)
@@ -477,6 +482,7 @@ object KubernetesPackageTest extends TestSuite {
         "Validate Akka Clustering" - {
           "Require 2 replicas by default" - {
             generateResources(
+              imageName,
               dockerConfig.copy(config = dockerConfig.config.copy(Labels = dockerConfig.config.Labels.map(_ ++ Vector(
                 "com.lightbend.rp.modules.akka-cluster-bootstrapping.enabled" -> "true")))),
               generateDeploymentArgs,
@@ -494,6 +500,7 @@ object KubernetesPackageTest extends TestSuite {
 
           "Skip replica validation when only joining existing cluster" - {
             generateResources(
+              imageName,
               dockerConfig.copy(config = dockerConfig.config.copy(Labels = dockerConfig.config.Labels.map(_ ++ Vector(
                 "com.lightbend.rp.modules.akka-cluster-bootstrapping.enabled" -> "true")))),
               generateDeploymentArgs.copy(joinExistingAkkaCluster = true),

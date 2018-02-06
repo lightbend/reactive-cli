@@ -34,18 +34,32 @@ object InputArgsTest extends TestSuite {
     "argument parsing" - {
       "generate deployment" - {
         "kubernetes" - {
-          "minimum arguments" - {
+          "fail without generate flags" - {
             val result = parser.parse(
               Seq(
                 "generate-kubernetes-resources",
                 "dockercloud/hello-world:1.0.0-SNAPSHOT"),
               InputArgs.default)
+            assert(result.isEmpty)
+          }
+
+          "minimum arguments" - {
+            val result = parser.parse(
+              Seq(
+                "generate-kubernetes-resources",
+                "dockercloud/hello-world:1.0.0-SNAPSHOT",
+                "--generate-all"),
+              InputArgs.default)
             assert(
               result.contains(
                 InputArgs(
                   commandArgs = Some(GenerateDeploymentArgs(
-                    dockerImage = Some("dockercloud/hello-world:1.0.0-SNAPSHOT"),
-                    targetRuntimeArgs = Some(KubernetesArgs()))))))
+                    dockerImages = Seq("dockercloud/hello-world:1.0.0-SNAPSHOT"),
+                    targetRuntimeArgs = Some(
+                      KubernetesArgs(
+                        generateIngress = true,
+                        generatePodControllers = true,
+                        generateServices = true)))))))
           }
 
           "all arguments" - {
@@ -100,7 +114,7 @@ object InputArgsTest extends TestSuite {
 
                 assert(commandArgs.name == Some("test"))
                 assert(commandArgs.deploymentType == RollingDeploymentType)
-                assert(commandArgs.dockerImage == Some("dockercloud/hello-world:1.0.0-SNAPSHOT"))
+                assert(commandArgs.dockerImages == Seq("dockercloud/hello-world:1.0.0-SNAPSHOT"))
                 assert(commandArgs.environmentVariables == Map("test1" -> "test2"))
                 assert(commandArgs.registryUsername == Some("john"))
                 assert(commandArgs.registryPassword == Some("wick"))

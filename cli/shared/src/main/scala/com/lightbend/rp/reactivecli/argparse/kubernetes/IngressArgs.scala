@@ -17,6 +17,7 @@
 package com.lightbend.rp.reactivecli.argparse.kubernetes
 
 import com.lightbend.rp.reactivecli.argparse.InputArgs
+import scala.collection.immutable.Seq
 import scala.concurrent.Future
 
 object IngressArgs {
@@ -39,5 +40,7 @@ object IngressArgs {
  */
 case class IngressArgs(
   apiVersion: Future[String] = KubernetesArgs.DefaultIngressApiVersion,
+  hosts: Seq[String] = Seq.empty,
   ingressAnnotations: Map[String, String] = Map.empty,
+  name: Option[String] = None,
   pathAppend: Option[String] = None)
