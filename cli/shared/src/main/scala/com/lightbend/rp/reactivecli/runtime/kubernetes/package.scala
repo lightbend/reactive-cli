@@ -112,7 +112,9 @@ package object kubernetes extends LazyLogging {
         serviceApiVersion,
         kubernetesArgs.serviceArgs.clusterIp,
         generateDeploymentArgs.deploymentType,
-        kubernetesArgs.transformServices)
+        kubernetesArgs.transformServices,
+        kubernetesArgs.serviceArgs.loadBalancerIp,
+        kubernetesArgs.serviceArgs.serviceType)
       val ingress = Ingress.generate(
         annotations,
         ingressApiVersion,
@@ -122,6 +124,7 @@ package object kubernetes extends LazyLogging {
           None,
         kubernetesArgs.ingressArgs.ingressAnnotations,
         kubernetesArgs.transformIngress,
+        kubernetesArgs.ingressArgs.name,
         kubernetesArgs.ingressArgs.pathAppend)
 
       val validateAkkaCluster =

@@ -49,7 +49,7 @@ object ServiceJsonTest extends TestSuite {
   val tests = this{
     "json serialization" - {
       "empty" - {
-        val result = Service.generate(annotations.copy(endpoints = Map.empty), "v1", clusterIp = None, CanaryDeploymentType, None).toOption.get.isEmpty
+        val result = Service.generate(annotations.copy(endpoints = Map.empty), "v1", clusterIp = None, CanaryDeploymentType, None, None, None).toOption.get.isEmpty
 
         assert(result)
       }
@@ -57,7 +57,7 @@ object ServiceJsonTest extends TestSuite {
       "deploymentType" - {
         "Canary" - {
           Service
-            .generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, None)
+            .generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, None, None, None)
             .toOption
             .get
             .get
@@ -72,7 +72,7 @@ object ServiceJsonTest extends TestSuite {
 
         "BlueGreen" - {
           Service
-            .generate(annotations, "v1", clusterIp = None, BlueGreenDeploymentType, None)
+            .generate(annotations, "v1", clusterIp = None, BlueGreenDeploymentType, None, None, None)
             .toOption
             .get
             .get
@@ -82,7 +82,7 @@ object ServiceJsonTest extends TestSuite {
 
         "Rolling" - {
           Service
-            .generate(annotations, "v1", clusterIp = None, RollingDeploymentType, None)
+            .generate(annotations, "v1", clusterIp = None, RollingDeploymentType, None, None, None)
             .toOption
             .get
             .get
@@ -93,7 +93,7 @@ object ServiceJsonTest extends TestSuite {
 
       "jq" - {
         Service
-          .generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, Some(".jqTest = \"test\""))
+          .generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, Some(".jqTest = \"test\""), None, None)
           .toOption
           .get
           .get
@@ -101,9 +101,9 @@ object ServiceJsonTest extends TestSuite {
           .map(j => assert((j.hcursor --\ "jqTest").focus.contains(jString("test"))))
       }
 
-      "clusterIp" - {
+      "options" - {
         "not defined" - {
-          val generatedJson = Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, None).toOption.get
+          val generatedJson = Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, None, None, None).toOption.get
           val expectedJson =
             """
               |{
@@ -135,7 +135,7 @@ object ServiceJsonTest extends TestSuite {
         }
 
         "defined" - {
-          val generatedJson = Service.generate(annotations, "v1", clusterIp = Some("10.0.0.5"), CanaryDeploymentType, None).toOption.get
+          val generatedJson = Service.generate(annotations, "v1", clusterIp = Some("10.0.0.5"), CanaryDeploymentType, None, Some("10.0.0.1"), Some("NodePort")).toOption.get
           val expectedJson =
             """
               |{
@@ -149,6 +149,7 @@ object ServiceJsonTest extends TestSuite {
               |    "namespace": "chirper"
               |  },
               |  "spec": {
+              |    "loadBalancerIP": "10.0.0.1",
               |    "clusterIP": "10.0.0.5",
               |    "ports": [
               |      {
@@ -158,12 +159,14 @@ object ServiceJsonTest extends TestSuite {
               |        "targetPort": 1234
               |      }
               |    ],
+              |    "type": "NodePort",
               |    "selector": {
               |      "appName": "friendimpl"
               |    }
               |  }
               |}
             """.stripMargin.parse.right.get
+
           assert(generatedJson.get == Service("friendimpl", expectedJson, None))
         }
       }

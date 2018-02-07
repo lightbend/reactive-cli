@@ -37,4 +37,4 @@ object ServiceArgs {
 /**
  * Represents user input arguments required to build Kubernetes Service resource.
  */
-case class ServiceArgs(apiVersion: Future[String] = KubernetesArgs.DefaultServiceApiVersion, clusterIp: Option[String] = None)
+case class ServiceArgs(apiVersion: Future[String] = KubernetesArgs.DefaultServiceApiVersion, clusterIp: Option[String] = None, loadBalancerIp: Option[String] = None, serviceType: Option[String] = None)

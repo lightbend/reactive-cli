@@ -58,7 +58,9 @@ object Service {
     apiVersion: String,
     clusterIp: Option[String],
     deploymentType: DeploymentType,
-    jqExpression: Option[String]): ValidationNel[String, Option[Service]] =
+    jqExpression: Option[String],
+    loadBalancerIp: Option[String],
+    serviceType: Option[String]): ValidationNel[String, Option[Service]] =
     (annotations.appNameValidation |@| annotations.versionValidation) { (rawAppName, version) =>
       // FIXME there's a bit of code duplicate in Deployment
       val appName = serviceName(rawAppName)
@@ -88,8 +90,10 @@ object Service {
                   annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
               "spec" -> Json(
                 "ports" -> annotations.endpoints.asJson,
-                "selector" -> selector).deepmerge(
-                  clusterIp.fold(jEmptyObject)(cIp => Json("clusterIP" -> jString(cIp))))),
+                "selector" -> selector)
+                .deepmerge(clusterIp.fold(jEmptyObject)(cIp => Json("clusterIP" -> jString(cIp))))
+                .deepmerge(serviceType.fold(jEmptyObject)(svcType => Json("type" -> jString(svcType))))
+                .deepmerge(loadBalancerIp.fold(jEmptyObject)(lbIp => Json("loadBalancerIP" -> jString(lbIp))))),
             jqExpression))
     }
 }

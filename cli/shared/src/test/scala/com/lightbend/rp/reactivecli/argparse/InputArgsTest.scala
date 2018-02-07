@@ -99,7 +99,9 @@ object InputArgsTest extends TestSuite {
                     "--akka-cluster-join-existing",
                     "--akka-cluster-skip-validation",
                     "--name", "test",
-                    "--pod-controller-type", "job"),
+                    "--pod-controller-type", "job",
+                    "--service-type", "NodePort",
+                    "--service-load-balancer-ip", "10.0.0.2"),
                   InputArgs.default)
                 .get
 
@@ -136,6 +138,8 @@ object InputArgsTest extends TestSuite {
                 assert(targetRuntimeArgs.podControllerArgs.numberOfReplicas == 10)
                 assert(targetRuntimeArgs.serviceArgs.apiVersion.value.get.get == "hello3")
                 assert(targetRuntimeArgs.serviceArgs.clusterIp == Some("10.0.0.1"))
+                assert(targetRuntimeArgs.serviceArgs.loadBalancerIp == Some("10.0.0.2"))
+                assert(targetRuntimeArgs.serviceArgs.serviceType == Some("NodePort"))
                 assert(targetRuntimeArgs.ingressArgs.apiVersion.value.get.get == "hello2")
                 assert(targetRuntimeArgs.ingressArgs.ingressAnnotations == Map("ing" -> "123"))
                 assert(targetRuntimeArgs.ingressArgs.pathAppend == Some(".*"))

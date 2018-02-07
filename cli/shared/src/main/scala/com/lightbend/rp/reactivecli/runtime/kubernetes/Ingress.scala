@@ -42,6 +42,8 @@ object Ingress {
         }
         .toList
 
+    val append = pathAppend.getOrElse("")
+
     for {
       endpoint <- httpEndpoints
       port <- ports.find(_.endpoint == endpoint).toVector
@@ -55,7 +57,7 @@ object Ingress {
         } yield if (path.isEmpty)
           ""
         else
-          path + pathAppend.getOrElse("")
+          path + (if (path.endsWith("/") && append.startsWith("/")) append.drop(1) else append)
 
       EncodedEndpoint(appName, port.port, pathEntries, if (host.isEmpty) None else Some(host))
     }
@@ -118,11 +120,13 @@ object Ingress {
     hosts: Option[Seq[String]],
     ingressAnnotations: Map[String, String],
     jqExpression: Option[String],
+    name: Option[String],
     pathAppend: Option[String]): ValidationNel[String, Option[Ingress]] = {
     annotations
       .appNameValidation
       .map { rawAppName =>
         val appName = serviceName(rawAppName)
+        val actualName = name.map(serviceName(_)).getOrElse(appName)
         val encodedEndpoints = encodeEndpoints(appName, annotations.endpoints, pathAppend, hosts)
 
         if (encodedEndpoints.isEmpty)
@@ -130,13 +134,13 @@ object Ingress {
         else
           Some(
             Ingress(
-              appName,
+              actualName,
               encodedEndpoints,
               Json(
                 "apiVersion" -> apiVersion.asJson,
                 "kind" -> "Ingress".asJson,
                 "metadata" -> Json(
-                  "name" -> appName.asJson)
+                  "name" -> actualName.asJson)
                   .deepmerge(generateIngressAnnotations(ingressAnnotations))
                   .deepmerge(generateNamespaceAnnotation(annotations.namespace)),
                 "spec" -> Json(
