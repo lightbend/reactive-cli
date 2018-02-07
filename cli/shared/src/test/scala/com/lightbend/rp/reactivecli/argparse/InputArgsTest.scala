@@ -96,7 +96,8 @@ object InputArgsTest extends TestSuite {
                     "--generate-pod-controllers",
                     "--generate-services",
                     "--deployment-type", "rolling",
-                    "--join-existing-akka-cluster",
+                    "--akka-cluster-join-existing",
+                    "--akka-cluster-skip-validation",
                     "--name", "test",
                     "--pod-controller-type", "job"),
                   InputArgs.default)
@@ -121,7 +122,8 @@ object InputArgsTest extends TestSuite {
                 assert(!commandArgs.registryUseHttps)
                 assert(!commandArgs.registryValidateTls)
                 assert(commandArgs.externalServices == Map("cas1" -> Seq("1.2.3.4", "5.6.7.8"), "cas2" -> Seq("hello")))
-                assert(commandArgs.joinExistingAkkaCluster)
+                assert(commandArgs.akkaClusterJoinExisting)
+                assert(commandArgs.akkaClusterSkipValidation)
 
                 assert(targetRuntimeArgs.generateIngress)
                 assert(targetRuntimeArgs.generateNamespaces)

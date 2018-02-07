@@ -48,7 +48,7 @@ object PodTemplate {
     /**
      * Generates pod environment variables specific for RP applications.
      */
-    def envs(annotations: Annotations, serviceResourceName: String, noOfReplicas: Int, externalServices: Map[String, Seq[String]], joinExistingAkkaCluster: Boolean): Map[String, EnvironmentVariable] =
+    def envs(annotations: Annotations, serviceResourceName: String, noOfReplicas: Int, externalServices: Map[String, Seq[String]], akkaClusterJoinExisting: Boolean): Map[String, EnvironmentVariable] =
       mergeEnvs(
         PodEnvs,
         namespaceEnv(annotations.namespace),
@@ -57,7 +57,7 @@ object PodTemplate {
         appTypeEnvs(annotations.appType, annotations.modules),
         configEnvs(annotations.configResource),
         endpointEnvs(annotations.endpoints),
-        akkaClusterEnvs(annotations.modules, annotations.namespace, serviceResourceName, noOfReplicas, annotations.akkaClusterBootstrapSystemName, joinExistingAkkaCluster),
+        akkaClusterEnvs(annotations.modules, annotations.namespace, serviceResourceName, noOfReplicas, annotations.akkaClusterBootstrapSystemName, akkaClusterJoinExisting),
         externalServicesEnvs(annotations.modules, externalServices))
 
     private[kubernetes] def namespaceEnv(namespace: Option[String]): Map[String, EnvironmentVariable] =
@@ -73,7 +73,7 @@ object PodTemplate {
           if (modules.isEmpty) Seq.empty else Seq("RP_MODULES" -> LiteralEnvironmentVariable(modules.toVector.sorted.mkString(","))))
     }.toMap
 
-    private[kubernetes] def akkaClusterEnvs(modules: Set[String], namespace: Option[String], serviceResourceName: String, noOfReplicas: Int, akkaClusterBootstrapSystemName: Option[String], joinExistingAkkaCluster: Boolean): Map[String, EnvironmentVariable] =
+    private[kubernetes] def akkaClusterEnvs(modules: Set[String], namespace: Option[String], serviceResourceName: String, noOfReplicas: Int, akkaClusterBootstrapSystemName: Option[String], akkaClusterJoinExisting: Boolean): Map[String, EnvironmentVariable] =
       if (!modules.contains(Module.AkkaClusterBootstrapping))
         Map.empty
       else
@@ -85,7 +85,7 @@ object PodTemplate {
               s"-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName",
               s"-Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas",
               akkaClusterBootstrapSystemName.fold("-Dakka.discovery.kubernetes-api.pod-label-selector=appName=%s")(systemName => s"-Dakka.discovery.kubernetes-api.pod-label-selector=actorSystemName=$systemName"),
-              s"${if (joinExistingAkkaCluster) "-Dakka.management.cluster.bootstrap.form-new-cluster=false" else ""}")
+              s"${if (akkaClusterJoinExisting) "-Dakka.management.cluster.bootstrap.form-new-cluster=false" else ""}")
               .filter(_.nonEmpty)
               .mkString(" ")))
 
@@ -280,7 +280,7 @@ object PodTemplate {
     restartPolicy: RestartPolicy.Value,
     externalServices: Map[String, Seq[String]],
     deploymentType: DeploymentType,
-    joinExistingAkkaCluster: Boolean,
+    akkaClusterJoinExisting: Boolean,
     applicationArgs: Option[Seq[String]],
     appName: String,
     appNameVersion: String,
@@ -354,7 +354,7 @@ object PodTemplate {
               "imagePullPolicy" -> imagePullPolicy.asJson,
               "env" -> RpEnvironmentVariables.mergeEnvs(
                 annotations.environmentVariables ++
-                  RpEnvironmentVariables.envs(annotations, serviceResourceName, noOfReplicas, externalServices, joinExistingAkkaCluster)).asJson,
+                  RpEnvironmentVariables.envs(annotations, serviceResourceName, noOfReplicas, externalServices, akkaClusterJoinExisting)).asJson,
               "ports" -> annotations.endpoints.asJson,
               "volumeMounts" -> secretNames
                 .map {

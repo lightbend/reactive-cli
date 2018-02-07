@@ -492,7 +492,7 @@ object KubernetesPackageTest extends TestSuite {
 
                 val message = failed.head
 
-                val expected = "Akka Cluster Bootstrapping is enabled so you must specify `--pod-controller-replicas 2` (or greater), or provide `--join-existing-akka-cluster` to only join already formed clusters"
+                val expected = "Akka Cluster Bootstrapping is enabled so you must specify `--pod-controller-replicas 2` (or greater), or provide `--akka-cluster-join-existing` to only join already formed clusters"
 
                 assert(message == expected)
               }
@@ -503,7 +503,7 @@ object KubernetesPackageTest extends TestSuite {
               imageName,
               dockerConfig.copy(config = dockerConfig.config.copy(Labels = dockerConfig.config.Labels.map(_ ++ Vector(
                 "com.lightbend.rp.modules.akka-cluster-bootstrapping.enabled" -> "true")))),
-              generateDeploymentArgs.copy(joinExistingAkkaCluster = true),
+              generateDeploymentArgs.copy(akkaClusterJoinExisting = true),
               kubernetesArgs.copy(generateIngress = true))
               .map { result =>
                 assert(result.isSuccess)
