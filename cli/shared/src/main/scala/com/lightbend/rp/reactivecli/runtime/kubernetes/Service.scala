@@ -87,9 +87,9 @@ object Service {
                 .deepmerge(
                   annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
               "spec" -> Json(
-                "clusterIP" -> clusterIp.getOrElse("None").asJson,
                 "ports" -> annotations.endpoints.asJson,
-                "selector" -> selector)),
+                "selector" -> selector).deepmerge(
+                  clusterIp.fold(jEmptyObject)(cIp => Json("clusterIP" -> jString(cIp))))),
             jqExpression))
     }
 }

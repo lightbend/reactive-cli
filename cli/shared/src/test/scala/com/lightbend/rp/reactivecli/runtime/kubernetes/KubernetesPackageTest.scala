@@ -375,7 +375,6 @@ object KubernetesPackageTest extends TestSuite {
                   |    "namespace": "chirper"
                   |  },
                   |  "spec": {
-                  |    "clusterIP": "None",
                   |    "ports": [
                   |      {
                   |        "name": "ep1",
