@@ -265,8 +265,16 @@ object InputArgs {
             .action(ServiceArgs.set((v, args) => args.copy(apiVersion = Future.successful(v)))),
 
           opt[String]("service-cluster-ip")
-            .text("Sets the cluster IP for Service resources")
+            .text("Sets the clusterIP value for Service resources")
             .action(ServiceArgs.set((v, args) => args.copy(clusterIp = Some(v)))),
+
+          opt[String]("service-load-balancer-ip")
+            .text("Sets the loadBalancerIP for Service resources")
+            .action(ServiceArgs.set((v, args) => args.copy(loadBalancerIp = Some(v)))),
+
+          opt[String]("service-type")
+            .text("Sets the type for Service resources")
+            .action(ServiceArgs.set((v, args) => args.copy(serviceType = Some(v)))),
 
           opt[String]("version")
             .text("Uses specified version tag for generated resources instead of version in the docker image")

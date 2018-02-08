@@ -52,7 +52,7 @@ object IngressJsonTest extends TestSuite {
       modules = Set.empty,
       akkaClusterBootstrapSystemName = None)
 
-  val annotations = createAnnotations("friendservice", "/api/friend", "/api/enemy")
+  val annotations = createAnnotations("friendservice", "/api/friend/", "/api/enemy")
 
   val tests = this{
     "json serialization" - {
@@ -62,6 +62,7 @@ object IngressJsonTest extends TestSuite {
           "extensions/v1beta1",
           None,
           ingressAnnotations = Map.empty,
+          None,
           None,
           pathAppend = Option.empty).toOption.get
         val expectedJson =
@@ -79,7 +80,7 @@ object IngressJsonTest extends TestSuite {
             |        "http" : {
             |          "paths" : [
             |            {
-            |              "path" : "/api/friend",
+            |              "path" : "/api/friend/",
             |              "backend" : {
             |                "serviceName" : "friendservice",
             |                "servicePort" : 1234
@@ -93,7 +94,7 @@ object IngressJsonTest extends TestSuite {
             |        "http" : {
             |          "paths" : [
             |            {
-            |              "path" : "/api/friend",
+            |              "path" : "/api/friend/",
             |              "backend" : {
             |                "serviceName" : "friendservice",
             |                "servicePort" : 1234
@@ -120,7 +121,7 @@ object IngressJsonTest extends TestSuite {
             |        "http" : {
             |          "paths" : [
             |            {
-            |              "path" : "/api/friend",
+            |              "path" : "/api/friend/",
             |              "backend" : {
             |                "serviceName" : "friendservice",
             |                "servicePort" : 1234
@@ -151,7 +152,8 @@ object IngressJsonTest extends TestSuite {
           Some(Vector("test.com")),
           ingressAnnotations = Map("kubernetes.io/ingress.class" -> "istio"),
           None,
-          pathAppend = Some(".*")).toOption.get
+          None,
+          pathAppend = Some("/.*")).toOption.get
 
         val expectedJson =
           """
@@ -172,14 +174,14 @@ object IngressJsonTest extends TestSuite {
             |        "http" : {
             |          "paths" : [
             |            {
-            |              "path" : "/api/friend.*",
+            |              "path" : "/api/friend/.*",
             |              "backend" : {
             |                "serviceName" : "friendservice",
             |                "servicePort" : 1234
             |              }
             |            },
             |            {
-            |              "path" : "/api/enemy.*",
+            |              "path" : "/api/enemy/.*",
             |              "backend" : {
             |                "serviceName" : "friendservice",
             |                "servicePort" : 1234
@@ -203,12 +205,12 @@ object IngressJsonTest extends TestSuite {
       }
 
       "should fail if application name is not defined" - {
-        assert(Ingress.generate(annotations.copy(appName = None), "extensions/v1beta1", None, Map.empty, None, Option.empty).toOption.isEmpty)
+        assert(Ingress.generate(annotations.copy(appName = None), "extensions/v1beta1", None, Map.empty, None, None, Option.empty).toOption.isEmpty)
       }
 
       "jq" - {
         Ingress
-          .generate(annotations.copy(appName = Some("test")), "extensions/v1beta1", None, Map.empty, Some(".jqTest = \"test\""), Option.empty)
+          .generate(annotations.copy(appName = Some("test")), "extensions/v1beta1", None, Map.empty, Some(".jqTest = \"test\""), None, Option.empty)
           .toOption
           .get
           .get
@@ -223,6 +225,7 @@ object IngressJsonTest extends TestSuite {
           Some(Vector("test.com")),
           ingressAnnotations = Map("kubernetes.io/ingress.class" -> "istio"),
           None,
+          None,
           None).toOption.get.get
 
         val b = Ingress.generate(
@@ -230,6 +233,7 @@ object IngressJsonTest extends TestSuite {
           "extensions/v1beta1",
           Some(Vector("test.com")),
           ingressAnnotations = Map("kubernetes.io/ingress.class" -> "istio2"),
+          None,
           None,
           None).toOption.get.get
 
@@ -266,7 +270,7 @@ object IngressJsonTest extends TestSuite {
                           }
                         },
                         {
-                          "path" : "/api/friend",
+                          "path" : "/api/friend/",
                           "backend" : {
                             "serviceName" : "friendservice",
                             "servicePort" : 1234

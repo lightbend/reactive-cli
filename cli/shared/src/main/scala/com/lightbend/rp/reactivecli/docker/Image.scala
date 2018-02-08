@@ -24,4 +24,7 @@ case class Image(
   providedUrl: Option[String],
   providedNamespace: Option[String],
   providedImage: String,
-  providedTag: Option[String])
+  providedTag: Option[String]) {
+
+  def pullScope: String = s"repository:$namespace/$image:pull"
+}
