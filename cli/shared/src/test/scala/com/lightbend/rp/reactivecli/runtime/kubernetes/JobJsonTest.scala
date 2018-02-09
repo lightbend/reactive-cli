@@ -25,24 +25,25 @@ import utest._
 import Argonaut._
 
 object JobJsonTest extends TestSuite {
+  val annotations = Annotations(
+    namespace = None,
+    applications = Vector.empty,
+    appName = Some("friendimpl"),
+    appType = Some("basic"),
+    configResource = None,
+    diskSpace = None,
+    memory = None,
+    cpu = None,
+    endpoints = Map.empty,
+    secrets = Seq.empty,
+    privileged = false,
+    environmentVariables = Map.empty,
+    version = Some("3.2.1-SNAPSHOT"),
+    modules = Set.empty,
+    akkaClusterBootstrapSystemName = None)
+
   val tests = this{
     "works" - {
-      val annotations = Annotations(
-        namespace = None,
-        applications = Vector.empty,
-        appName = Some("friendimpl"),
-        appType = Some("basic"),
-        configResource = None,
-        diskSpace = None,
-        memory = None,
-        cpu = None,
-        endpoints = Map.empty,
-        secrets = Seq.empty,
-        privileged = false,
-        environmentVariables = Map.empty,
-        version = Some("3.2.1-SNAPSHOT"),
-        modules = Set.empty,
-        akkaClusterBootstrapSystemName = None)
 
       val job =
         Job.generate(
@@ -51,6 +52,7 @@ object JobJsonTest extends TestSuite {
           None,
           "test/testing:1.0.0",
           PodTemplate.ImagePullPolicy.Always,
+          PodTemplate.RestartPolicy.Default,
           noOfReplicas = 1,
           Map.empty,
           CanaryDeploymentType,
@@ -93,6 +95,24 @@ object JobJsonTest extends TestSuite {
               "volumes" -> jEmptyArray))))
 
       assert(json == expected)
+    }
+
+    "should fail when restart policy is wrong" - {
+      val job =
+        Job.generate(
+          annotations,
+          "batch/v1",
+          None,
+          "test/testing:1.0.0",
+          PodTemplate.ImagePullPolicy.Always,
+          PodTemplate.RestartPolicy.Always,
+          noOfReplicas = 1,
+          Map.empty,
+          CanaryDeploymentType,
+          None,
+          true)
+
+      assert(job.toOption.isDefined == false)
     }
   }
 }

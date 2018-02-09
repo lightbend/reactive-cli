@@ -27,6 +27,12 @@ import PodTemplate._
 import Scalaz._
 
 object Job {
+  def restartPolicyValidation(restartPolicy: RestartPolicy.Value): ValidationNel[String, RestartPolicy.Value] =
+    if (restartPolicy == RestartPolicy.Always)
+      "Restart policy Always is not valid for Job pod controller".failureNel
+    else
+      restartPolicy.successNel
+
   /**
    * Builds [[Job]] resource.
    */
@@ -36,13 +42,17 @@ object Job {
     application: Option[String],
     imageName: String,
     imagePullPolicy: ImagePullPolicy.Value,
+    restartPolicy: RestartPolicy.Value,
     noOfReplicas: Int,
     externalServices: Map[String, Seq[String]],
     deploymentType: DeploymentType,
     jqExpression: Option[String],
     akkaClusterJoinExisting: Boolean): ValidationNel[String, Job] =
 
-    (annotations.applicationValidation(application) |@| annotations.appNameValidation |@| annotations.versionValidation) { (applicationArgs, rawAppName, version) =>
+    (annotations.applicationValidation(application)
+      |@| annotations.appNameValidation
+      |@| annotations.versionValidation
+      |@| restartPolicyValidation(restartPolicy)) { (applicationArgs, rawAppName, version, restartPolicy) =>
       val appName = serviceName(rawAppName)
       val appNameVersion = serviceName(s"$appName$VersionSeparator$version")
 
@@ -58,7 +68,7 @@ object Job {
           imageName,
           imagePullPolicy,
           noOfReplicas,
-          RestartPolicy.OnFailure,
+          if (restartPolicy == RestartPolicy.Default) RestartPolicy.OnFailure else restartPolicy,
           externalServices,
           deploymentType,
           akkaClusterJoinExisting,

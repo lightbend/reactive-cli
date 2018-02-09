@@ -27,6 +27,12 @@ import PodTemplate._
 import Scalaz._
 
 object Deployment {
+  def restartPolicyValidation(restartPolicy: RestartPolicy.Value): ValidationNel[String, RestartPolicy.Value] =
+    if (restartPolicy == RestartPolicy.Never || restartPolicy == RestartPolicy.OnFailure)
+      "Restart policy Never/OnFailure is not valid for Deployment pod controller".failureNel
+    else
+      restartPolicy.successNel
+
   /**
    * Builds [[Deployment]] resource.
    */
@@ -36,13 +42,17 @@ object Deployment {
     application: Option[String],
     imageName: String,
     imagePullPolicy: ImagePullPolicy.Value,
+    restartPolicy: RestartPolicy.Value,
     noOfReplicas: Int,
     externalServices: Map[String, Seq[String]],
     deploymentType: DeploymentType,
     jqExpression: Option[String],
     akkaClusterJoinExisting: Boolean): ValidationNel[String, Deployment] =
 
-    (annotations.applicationValidation(application) |@| annotations.appNameValidation |@| annotations.versionValidation) { (applicationArgs, rawAppName, version) =>
+    (annotations.applicationValidation(application)
+      |@| annotations.appNameValidation
+      |@| annotations.versionValidation
+      |@| restartPolicyValidation(restartPolicy)) { (applicationArgs, rawAppName, version, restartPolicy) =>
       val appName = serviceName(rawAppName)
       val appNameVersion = serviceName(s"$appName$VersionSeparator$version")
 
@@ -58,7 +68,7 @@ object Deployment {
           imageName,
           imagePullPolicy,
           noOfReplicas,
-          RestartPolicy.Always,
+          RestartPolicy.Always, // The only valid RestartPolicy for Deployment
           externalServices,
           deploymentType,
           akkaClusterJoinExisting,

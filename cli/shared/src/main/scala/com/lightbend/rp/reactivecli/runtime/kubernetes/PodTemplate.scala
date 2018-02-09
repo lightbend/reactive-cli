@@ -175,7 +175,8 @@ object PodTemplate {
   }
 
   object RestartPolicy extends Enumeration {
-    val Never, OnFailure, Always = Value
+    // What is default RestartPolicy depends on pod controller type, so define extra value "Default" here
+    val Never, OnFailure, Always, Default = Value
   }
 
   case class ResourceLimits(cpu: Option[Double], memory: Option[Long])
