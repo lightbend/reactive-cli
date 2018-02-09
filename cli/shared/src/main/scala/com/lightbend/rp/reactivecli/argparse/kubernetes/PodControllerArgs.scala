@@ -61,4 +61,5 @@ case class PodControllerArgs(
   batchApiVersion: Future[String] = KubernetesArgs.DefaultBatchApiVersion,
   controllerType: PodControllerArgs.ControllerType = PodControllerArgs.ControllerType.Deployment,
   numberOfReplicas: Int = KubernetesArgs.DefaultNumberOfReplicas,
-  imagePullPolicy: PodTemplate.ImagePullPolicy.Value = KubernetesArgs.DefaultImagePullPolicy)
+  imagePullPolicy: PodTemplate.ImagePullPolicy.Value = KubernetesArgs.DefaultImagePullPolicy,
+  restartPolicy: PodTemplate.RestartPolicy.Value = PodTemplate.RestartPolicy.Default)

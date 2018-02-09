@@ -61,7 +61,7 @@ object DeploymentJsonTest extends TestSuite {
         "deploymentType" - {
           "Canary" - {
             Deployment
-              .generate(annotations, "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, CanaryDeploymentType, None, false)
+              .generate(annotations, "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, noOfReplicas = 1, Map.empty, CanaryDeploymentType, None, false)
               .toOption
               .get
               .payload
@@ -74,7 +74,7 @@ object DeploymentJsonTest extends TestSuite {
 
           "BlueGreen" - {
             Deployment
-              .generate(annotations, "v1", None, imageName, PodTemplate.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, BlueGreenDeploymentType, None, false)
+              .generate(annotations, "v1", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, noOfReplicas = 1, Map.empty, BlueGreenDeploymentType, None, false)
               .toOption
               .get
               .payload
@@ -87,7 +87,7 @@ object DeploymentJsonTest extends TestSuite {
 
           "Rolling" - {
             Deployment
-              .generate(annotations, "v1", None, imageName, PodTemplate.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, RollingDeploymentType, None, false)
+              .generate(annotations, "v1", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, noOfReplicas = 1, Map.empty, RollingDeploymentType, None, false)
               .toOption
               .get
               .payload
@@ -351,7 +351,7 @@ object DeploymentJsonTest extends TestSuite {
             """.stripMargin.parse.right.get
 
           val result = Deployment.generate(annotations, "apps/v1beta2", None, imageName,
-            PodTemplate.ImagePullPolicy.Never, noOfReplicas = 1, Map.empty, CanaryDeploymentType, None, false).toOption.get
+            PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, noOfReplicas = 1, Map.empty, CanaryDeploymentType, None, false).toOption.get
 
           // @TODO uncomment this test when we actually have the right format generated
           // @TODO i am proposing keeping them updated for now is counter-productive
@@ -360,13 +360,16 @@ object DeploymentJsonTest extends TestSuite {
 
         "should fail if application name is not defined" - {
           val invalid = annotations.copy(appName = None)
-          assert(Deployment.generate(invalid, "apps/v1beta2", None, imageName,
-            PodTemplate.ImagePullPolicy.Never, 1, Map.empty, CanaryDeploymentType, None, false).toOption.isEmpty)
+          assert(Deployment.generate(invalid, "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, 1, Map.empty, CanaryDeploymentType, None, false).toOption.isEmpty)
+        }
+
+        "should fail when restart policy is wrong" - {
+          assert(Deployment.generate(annotations, "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Never, 1, Map.empty, CanaryDeploymentType, None, false).toOption.isEmpty)
         }
 
         "jq" - {
           Deployment
-            .generate(annotations, "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, 1, Map.empty, CanaryDeploymentType, Some(".jqTest = \"test\""), false)
+            .generate(annotations, "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, 1, Map.empty, CanaryDeploymentType, Some(".jqTest = \"test\""), false)
             .toOption
             .get
             .payload
@@ -376,7 +379,7 @@ object DeploymentJsonTest extends TestSuite {
         "applications" - {
           "should select default given no application" - {
             Deployment
-              .generate(annotations.copy(applications = Vector("test" -> Vector("arg1", "arg2"), "default" -> Vector("def1"))), "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, 1, Map.empty, CanaryDeploymentType, None, false)
+              .generate(annotations.copy(applications = Vector("test" -> Vector("arg1", "arg2"), "default" -> Vector("def1"))), "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, 1, Map.empty, CanaryDeploymentType, None, false)
               .toOption
               .get
               .payload
@@ -394,7 +397,7 @@ object DeploymentJsonTest extends TestSuite {
 
           "should select requested application given an application" - {
             Deployment
-              .generate(annotations.copy(applications = Vector("test" -> Vector("arg1", "arg2"), "default" -> Vector("def1"))), "apps/v1beta2", Some("test"), imageName, PodTemplate.ImagePullPolicy.Never, 1, Map.empty, CanaryDeploymentType, None, false)
+              .generate(annotations.copy(applications = Vector("test" -> Vector("arg1", "arg2"), "default" -> Vector("def1"))), "apps/v1beta2", Some("test"), imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, 1, Map.empty, CanaryDeploymentType, None, false)
               .toOption
               .get
               .payload
@@ -428,7 +431,7 @@ object DeploymentJsonTest extends TestSuite {
 
           val generatedJson =
             Deployment
-              .generate(annotations, "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, 1, Map.empty, CanaryDeploymentType, None, false)
+              .generate(annotations, "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, 1, Map.empty, CanaryDeploymentType, None, false)
               .toOption
               .get
               .payload

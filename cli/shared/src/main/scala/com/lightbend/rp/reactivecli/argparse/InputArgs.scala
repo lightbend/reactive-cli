@@ -18,7 +18,7 @@ package com.lightbend.rp.reactivecli.argparse
 
 import com.lightbend.rp.reactivecli.argparse.kubernetes._
 import com.lightbend.rp.reactivecli.files._
-import com.lightbend.rp.reactivecli.runtime.kubernetes.PodTemplate.ImagePullPolicy
+import com.lightbend.rp.reactivecli.runtime.kubernetes.PodTemplate.{ImagePullPolicy, RestartPolicy}
 import scala.collection.immutable.Seq
 import scala.concurrent.Future
 import scopt.OptionParser
@@ -47,6 +47,9 @@ object InputArgs {
 
   implicit val imagePullPolicyRead: scopt.Read[ImagePullPolicy.Value] =
     scopt.Read.reads(ImagePullPolicy.withName)
+
+  implicit val resatartPolicyRead: scopt.Read[RestartPolicy.Value] =
+    scopt.Read.reads(RestartPolicy.withName)
 
   implicit val podControllerTypeRead: scopt.Read[PodControllerArgs.ControllerType] =
     scopt.Read.reads {
@@ -228,6 +231,11 @@ object InputArgs {
           opt[ImagePullPolicy.Value]("pod-controller-image-pull-policy")
             .text(s"Sets the Docker image pull policy for Pod Controller resources. Supported: ${ImagePullPolicy.values.mkString(", ")}")
             .action(PodControllerArgs.set((v, args) => args.copy(imagePullPolicy = v))),
+
+          opt[RestartPolicy.Value]("pod-controller-restart-policy")
+            .text(s"Sets restart policy for Pod Controller resources. Supported: ${RestartPolicy.values.mkString(", ")}")
+            .optional()
+            .action(PodControllerArgs.set((v, args) => args.copy(restartPolicy = v))),
 
           opt[Int]("pod-controller-replicas")
             .text("Sets the number of replicas for the Pod Controller resources. If Akka Cluster Bootstrap is enabled, this must be set to 2 or greater unless `--akka-cluster-join-existing` is provided")
