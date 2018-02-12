@@ -121,7 +121,8 @@ object Ingress {
     ingressAnnotations: Map[String, String],
     jqExpression: Option[String],
     name: Option[String],
-    pathAppend: Option[String]): ValidationNel[String, Option[Ingress]] = {
+    pathAppend: Option[String],
+    tlsSecrets: Seq[String]): ValidationNel[String, Option[Ingress]] = {
     annotations
       .appNameValidation
       .map { rawAppName =>
@@ -144,7 +145,9 @@ object Ingress {
                   .deepmerge(generateIngressAnnotations(ingressAnnotations))
                   .deepmerge(generateNamespaceAnnotation(annotations.namespace)),
                 "spec" -> Json(
-                  "rules" -> renderEndpoints(encodedEndpoints))),
+                  "rules" -> renderEndpoints(encodedEndpoints)).deepmerge(
+                    if (tlsSecrets.isEmpty) jEmptyObject else jObjectFields("tls" -> jArray(
+                      tlsSecrets.toList.map(s => jObjectFields("secretName" -> jString(s))))))),
               jqExpression))
       }
   }

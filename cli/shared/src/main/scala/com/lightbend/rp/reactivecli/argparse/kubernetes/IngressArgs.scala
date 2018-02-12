@@ -43,4 +43,5 @@ case class IngressArgs(
   hosts: Seq[String] = Seq.empty,
   ingressAnnotations: Map[String, String] = Map.empty,
   name: Option[String] = None,
-  pathAppend: Option[String] = None)
+  pathAppend: Option[String] = None,
+  tlsSecrets: Seq[String] = Seq.empty)
