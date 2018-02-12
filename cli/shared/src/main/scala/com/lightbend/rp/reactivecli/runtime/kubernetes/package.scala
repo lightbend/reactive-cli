@@ -127,7 +127,8 @@ package object kubernetes extends LazyLogging {
         kubernetesArgs.ingressArgs.ingressAnnotations,
         kubernetesArgs.transformIngress,
         kubernetesArgs.ingressArgs.name,
-        kubernetesArgs.ingressArgs.pathAppend)
+        kubernetesArgs.ingressArgs.pathAppend,
+        kubernetesArgs.ingressArgs.tlsSecrets)
 
       val validateAkkaCluster =
         if (annotations.modules.contains(Module.AkkaClusterBootstrapping) && !generateDeploymentArgs.akkaClusterSkipValidation && kubernetesArgs.podControllerArgs.numberOfReplicas < AkkaClusterMinimumReplicas && !generateDeploymentArgs.akkaClusterJoinExisting && kubernetesArgs.generatePodControllers)

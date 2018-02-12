@@ -80,6 +80,8 @@ object InputArgsTest extends TestSuite {
                     "--ingress-annotation", "ing=123",
                     "--ingress-path-suffix", ".*",
                     "--ingress-api-version", "hello2",
+                    "--ingress-tls-secret", "hello1",
+                    "--ingress-tls-secret", "hello2",
                     "--env", "test1=test2",
                     "--output", "/tmp/foo",
                     "--registry-username", "john",
@@ -143,6 +145,7 @@ object InputArgsTest extends TestSuite {
                 assert(targetRuntimeArgs.ingressArgs.apiVersion.value.get.get == "hello2")
                 assert(targetRuntimeArgs.ingressArgs.ingressAnnotations == Map("ing" -> "123"))
                 assert(targetRuntimeArgs.ingressArgs.pathAppend == Some(".*"))
+                assert(targetRuntimeArgs.ingressArgs.tlsSecrets == Seq("hello1", "hello2"))
                 assert(targetRuntimeArgs.podControllerArgs.controllerType == PodControllerArgs.ControllerType.Job)
               }
             }

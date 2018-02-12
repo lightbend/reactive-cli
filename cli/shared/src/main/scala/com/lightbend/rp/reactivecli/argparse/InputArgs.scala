@@ -18,7 +18,7 @@ package com.lightbend.rp.reactivecli.argparse
 
 import com.lightbend.rp.reactivecli.argparse.kubernetes._
 import com.lightbend.rp.reactivecli.files._
-import com.lightbend.rp.reactivecli.runtime.kubernetes.PodTemplate.{ImagePullPolicy, RestartPolicy}
+import com.lightbend.rp.reactivecli.runtime.kubernetes.PodTemplate.{ ImagePullPolicy, RestartPolicy }
 import scala.collection.immutable.Seq
 import scala.concurrent.Future
 import scopt.OptionParser
@@ -195,6 +195,12 @@ object InputArgs {
           opt[String]("ingress-path-suffix")
             .text("Appends the expression specified to the paths of the generated Ingress resources")
             .action(IngressArgs.set((v, c) => c.copy(pathAppend = Some(v)))),
+
+          opt[String]("ingress-tls-secret")
+            .minOccurs(0)
+            .unbounded()
+            .text("Add a TLS secret to the generated Ingress resources ")
+            .action(IngressArgs.set((v, c) => c.copy(tlsSecrets = c.tlsSecrets :+ v))),
 
           opt[Unit]("akka-cluster-join-existing")
             .text("When provided, the pod controller will only join an already formed Akka Cluster")

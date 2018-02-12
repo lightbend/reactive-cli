@@ -53,58 +53,58 @@ object Deployment {
       |@| annotations.appNameValidation
       |@| annotations.versionValidation
       |@| restartPolicyValidation(restartPolicy)) { (applicationArgs, rawAppName, version, restartPolicy) =>
-      val appName = serviceName(rawAppName)
-      val appNameVersion = serviceName(s"$appName$VersionSeparator$version")
+        val appName = serviceName(rawAppName)
+        val appNameVersion = serviceName(s"$appName$VersionSeparator$version")
 
-      val labels = Map(
-        "appName" -> appName,
-        "appNameVersion" -> appNameVersion) ++ annotations.akkaClusterBootstrapSystemName.fold(Map.empty[String, String])(system => Map("actorSystemName" -> system))
+        val labels = Map(
+          "appName" -> appName,
+          "appNameVersion" -> appNameVersion) ++ annotations.akkaClusterBootstrapSystemName.fold(Map.empty[String, String])(system => Map("actorSystemName" -> system))
 
-      val podTemplate =
-        PodTemplate.generate(
-          annotations,
-          apiVersion,
-          application,
-          imageName,
-          imagePullPolicy,
-          noOfReplicas,
-          RestartPolicy.Always, // The only valid RestartPolicy for Deployment
-          externalServices,
-          deploymentType,
-          akkaClusterJoinExisting,
-          applicationArgs,
-          appName,
-          appNameVersion,
-          labels)
+        val podTemplate =
+          PodTemplate.generate(
+            annotations,
+            apiVersion,
+            application,
+            imageName,
+            imagePullPolicy,
+            noOfReplicas,
+            RestartPolicy.Always, // The only valid RestartPolicy for Deployment
+            externalServices,
+            deploymentType,
+            akkaClusterJoinExisting,
+            applicationArgs,
+            appName,
+            appNameVersion,
+            labels)
 
-      val (deploymentName, deploymentMatchLabels) =
-        deploymentType match {
-          case CanaryDeploymentType =>
-            (appNameVersion, Json("appNameVersion" -> appNameVersion.asJson))
+        val (deploymentName, deploymentMatchLabels) =
+          deploymentType match {
+            case CanaryDeploymentType =>
+              (appNameVersion, Json("appNameVersion" -> appNameVersion.asJson))
 
-          case BlueGreenDeploymentType =>
-            (appNameVersion, Json("appNameVersion" -> appNameVersion.asJson))
+            case BlueGreenDeploymentType =>
+              (appNameVersion, Json("appNameVersion" -> appNameVersion.asJson))
 
-          case RollingDeploymentType =>
-            (appName, Json("appName" -> appName.asJson))
-        }
+            case RollingDeploymentType =>
+              (appName, Json("appName" -> appName.asJson))
+          }
 
-      Deployment(
-        deploymentName,
-        Json(
-          "apiVersion" -> apiVersion.asJson,
-          "kind" -> "Deployment".asJson,
-          "metadata" -> Json(
-            "name" -> deploymentName.asJson,
-            "labels" -> labels.asJson)
-            .deepmerge(
-              annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
-          "spec" -> Json(
-            "replicas" -> noOfReplicas.asJson,
-            "selector" -> Json("matchLabels" -> deploymentMatchLabels),
-            "template" -> podTemplate.json)),
-        jqExpression)
-    }
+        Deployment(
+          deploymentName,
+          Json(
+            "apiVersion" -> apiVersion.asJson,
+            "kind" -> "Deployment".asJson,
+            "metadata" -> Json(
+              "name" -> deploymentName.asJson,
+              "labels" -> labels.asJson)
+              .deepmerge(
+                annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
+            "spec" -> Json(
+              "replicas" -> noOfReplicas.asJson,
+              "selector" -> Json("matchLabels" -> deploymentMatchLabels),
+              "template" -> podTemplate.json)),
+          jqExpression)
+      }
 }
 
 /**
