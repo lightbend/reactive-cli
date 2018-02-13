@@ -1,12 +1,15 @@
 # reactive-cli
 
-This project implements a CLI tool that can inspect Docker images created by [sbt-reactive-app](https://github.com/lightbend/sbt-reactive-app) and generate resources for Kubernetes and potentially other target platforms.
+[![GitHub version](https://img.shields.io/badge/version-0.9.0-blue.svg)](https://github.com/lightbend/reactive-cli/releases)
+[![Build Status](https://api.travis-ci.org/lightbend/reactive-cli.png?branch=master)](https://travis-ci.org/lightbend/reactive-cli)
 
-This is one component of Lightbend's Platform Tooling that makes it easy to deploy Akka, Lagom, and Play applications to Kubernetes.
+This project is a component of [Lightbend Reactive Platform Tooling](https://developer.lightbend.com/docs/reactive-platform-tooling/latest/). Refer to its documentation for usage, examples, and reference information.
+
+`reactive-cli` is a CLI tool, `rp`, that can inspect Docker images created by [sbt-reactive-app](https://github.com/lightbend/sbt-reactive-app) and generate resources for Kubernetes and potentially other target platforms.
 
 ## Installation
 
-Consult the [Platform Tooling](https://s3-us-west-2.amazonaws.com/rp-tooling-temp-docs/deployment-setup.html#install-the-cli) documentation.
+Consult the [Lightbend Reactive Platform Tooling](https://s3-us-west-2.amazonaws.com/rp-tooling-temp-docs/deployment-setup.html#install-the-cli) documentation.
 
 ## Developer
 
