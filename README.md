@@ -7,9 +7,9 @@ This project is a component of [Lightbend Reactive Platform Tooling](https://dev
 
 `reactive-cli` is a CLI tool, `rp`, that can inspect Docker images created by [sbt-reactive-app](https://github.com/lightbend/sbt-reactive-app) and generate resources for Kubernetes and potentially other target platforms.
 
-## Installation
+## Installation / Usage
 
-Consult the [Lightbend Reactive Platform Tooling](https://developer.lightbend.com/docs/reactive-platform-tooling/latest/cli-installation.html#install-the-cli) documentation.
+Consult the [Lightbend Reactive Platform Tooling](https://developer.lightbend.com/docs/reactive-platform-tooling/latest/cli-installation.html#install-the-cli) documentation for setup and configuration.
 
 ## Developer
 
