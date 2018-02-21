@@ -9,7 +9,7 @@ This project is a component of [Lightbend Orchestration for Kubernetes](https://
 
 ## Installation / Usage
 
-Consult the [Lightbend Orchestration for Kubernetes](https://developer.lightbend.com/docs/lightbend-orchestration-kubernetes/latest/) documentation for setup and configuration.
+Consult the [Lightbend Orchestration for Kubernetes](https://developer.lightbend.com/docs/lightbend-orchestration-kubernetes/latest/cli-installation.html#install-the-cli) documentation for setup and configuration.
 
 ## Developer
 
