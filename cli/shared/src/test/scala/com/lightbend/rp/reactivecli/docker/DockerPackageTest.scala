@@ -19,7 +19,7 @@ package com.lightbend.rp.reactivecli.docker
 import utest._
 
 object DockerPackageTest extends TestSuite {
-  val tests = this {
+  val tests = this{
     "exact match" - {
       assert(registryAuthNameMatches("test.registry.com", "test.registry.com"))
     }
