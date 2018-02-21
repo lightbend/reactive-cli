@@ -22,14 +22,18 @@ package object docker {
   val DockerDefaultLibrary = "library"
   val DockerDefaultTag = "latest"
 
-  // Sometimes authentication credentials store different address than our default server,
-  // this function handles these discrepancies.
+  /**
+   * Normalizes authentication realms and determines if they match a supplied registry.
+   */
   def registryAuthNameMatches(registry: String, authRealm: String): Boolean = {
-    if (registry == authRealm)
-      true
-    else if (registry == DockerDefaultRegistry && authRealm == "https://index.docker.io/v1/")
-      true
-    else
-      false
+    val protocol = "https://"
+
+    val authRealmToTest =
+      if (authRealm.startsWith(protocol))
+        authRealm.drop(protocol.length)
+      else
+        authRealm
+
+    registry == authRealmToTest || (registry == DockerDefaultRegistry && authRealmToTest == "index.docker.io/v1/")
   }
 }
