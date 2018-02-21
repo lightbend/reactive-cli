@@ -9,7 +9,7 @@ This project is a component of [Lightbend Orchestration for Kubernetes](https://
 
 ## Installation / Usage
 
-Consult the [Lightbend Reactive Platform Tooling](https://developer.lightbend.com/docs/reactive-platform-tooling/latest/cli-installation.html#install-the-cli) documentation for setup and configuration.
+Consult the [Lightbend Orchestration for Kubernetes](https://developer.lightbend.com/docs/lightbend-orchestration-kubernetes/latest/) documentation for setup and configuration.
 
 ## Developer
 
@@ -120,7 +120,7 @@ Once built, you can find the packages in `target/stage/<name>/output`.
 
 ## Releasing
 
-Consult the _Platform Tooling Release Process_ document in Google Drive.
+Consult the _Lightbend Orchestration for Kubernetes_ document in Google Drive.
 
 ## Maintenance
 
