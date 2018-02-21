@@ -61,6 +61,14 @@ object InputArgs {
 
   val default = InputArgs()
 
+  // This helper function converts a successful Future[String] to a printable
+  // format - you get "Value" instead of "Future(Success(Value))"
+  private def printFuture(f: Future[String]): String =
+    if (f.isCompleted && f.value.get.isSuccess)
+      f.value.get.get
+    else
+      f.toString
+
   /**
    * Builds the Scopt parser which is able to parse user input arguments into the CLI.
    */
@@ -174,7 +182,7 @@ object InputArgs {
             }),
 
           opt[String]("ingress-api-version")
-            .text(s"Sets the Ingress API version. Default: ${KubernetesArgs.DefaultIngressApiVersion}")
+            .text(s"Sets the Ingress API version. Default: ${printFuture(KubernetesArgs.DefaultIngressApiVersion)}")
             .optional()
             .action(IngressArgs.set((v, args) => args.copy(apiVersion = Future.successful(v)))),
 
@@ -225,12 +233,12 @@ object InputArgs {
             .action(KubernetesArgs.set((v, args) => args.copy(output = KubernetesArgs.Output.SaveToFile(v)))),
 
           opt[String]("apps-api-version")
-            .text(s"Sets the apps (e.g. Deployment) API version. Default: ${KubernetesArgs.DefaultAppsApiVersion}")
+            .text(s"Sets the apps (e.g. Deployment) API version. Default: ${printFuture(KubernetesArgs.DefaultAppsApiVersion)}")
             .optional()
             .action(PodControllerArgs.set((v, args) => args.copy(appsApiVersion = Future.successful(v)))),
 
           opt[String]("batch-api-version")
-            .text(s"Sets the batch (e.g. Job) API version. Default: ${KubernetesArgs.DefaultBatchApiVersion}")
+            .text(s"Sets the batch (e.g. Job) API version. Default: ${printFuture(KubernetesArgs.DefaultBatchApiVersion)}")
             .optional()
             .action(PodControllerArgs.set((v, args) => args.copy(batchApiVersion = Future.successful(v)))),
 
@@ -274,7 +282,7 @@ object InputArgs {
             .action(GenerateDeploymentArgs.set((v, c) => c.copy(registryPassword = Some(v)))),
 
           opt[String]("service-api-version")
-            .text(s"Sets the Service API version. Default: ${KubernetesArgs.DefaultServiceApiVersion}")
+            .text(s"Sets the Service API version. Default: ${printFuture(KubernetesArgs.DefaultServiceApiVersion)}")
             .optional()
             .action(ServiceArgs.set((v, args) => args.copy(apiVersion = Future.successful(v)))),
 
