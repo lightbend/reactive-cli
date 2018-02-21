@@ -192,7 +192,7 @@ object Main extends LazyLogging {
                 val outputHandler = kubernetes.handleGeneratedResources(kubernetesArgs.output)
 
                 def configFailure(img: String, t: Throwable) =
-                  s"Failed to obtain Docker config for ${generateDeploymentArgs.dockerImages.mkString(", ")}, ${t.getMessage}"
+                  s"Failed to obtain Docker config for $img, ${t.getMessage}"
 
                 val output =
                   Future
