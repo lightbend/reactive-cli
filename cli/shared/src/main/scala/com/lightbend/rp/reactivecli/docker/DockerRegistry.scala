@@ -97,9 +97,9 @@ object DockerRegistry extends LazyLogging {
     } yield (
       r._1.statusCode match {
         case x if x >= 200 && x <= 299 => Right(())
-        case 404 => Left("Unable to find repository or registry")
-        case 401 => Left("Unable to access repository or registry; check authentication")
-        case c => Left(s"Unable to find repository or registry [$c]")
+        case 404 => Left("unable to find repository or registry")
+        case 401 => Left("unable to access repository or registry; check authentication")
+        case c => Left(s"unable to find repository or registry [$c]")
       },
       r._2)
 
@@ -112,8 +112,8 @@ object DockerRegistry extends LazyLogging {
         case Right(_) => Future.successful(())
       }
       failureMessages = Map(
-        404L -> s"Unable to find image with ${img.ref.name} ${img.ref.value}",
-        401L -> "Unable to access image; check authentication")
+        404L -> s"unable to find image with ${img.ref.name} ${img.ref.value}",
+        401L -> "unable to access image; check authentication")
       manifest <- getManifest(http, credentials, useHttps, validateTls)(img, token = validRepository._2, failureMessages)
       blob <- getBlob(http, credentials, useHttps, validateTls)(img, manifest._1.config.digest, token = validRepository._2)
       config <- Future.fromTry(getDecoded[Config](blob._1, Map.empty))
@@ -140,7 +140,7 @@ object DockerRegistry extends LazyLogging {
         new IllegalArgumentException(
           failureMessages.getOrElse(
             response.statusCode,
-            s"Expected code 200, received ${response.statusCode}")))
+            s"expected code 200, received ${response.statusCode}")))
 
   private def getWithAuth(http: HttpExchange, auth: Option[HttpRequest.Auth], validateTls: Boolean, url: String, headers: HttpHeaders, overrideToken: Option[HttpRequest.BearerToken], fallbackScope: Option[String]): Future[(HttpResponse, Option[HttpRequest.BearerToken])] = {
     auth match {
