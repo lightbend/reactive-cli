@@ -33,7 +33,7 @@ object DockerRegistry extends LazyLogging {
     encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/blobs/$digest")
 
   private[docker] def manifestUrl(img: Image, useHttps: Boolean): String =
-    encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/manifests/${img.tag}")
+    encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/manifests/${img.ref.value}")
 
   private[docker] def tagsUrl(img: Image, useHttps: Boolean): String =
     encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/tags/list")
@@ -52,16 +52,23 @@ object DockerRegistry extends LazyLogging {
     val providedNs = (parts.length > 2).option(parts(1))
       .orElse((parts.length > 1).option(parts(0)))
 
-    val imageParts = (parts.length > 2).option(parts(2))
+    val imageWithTagOrDigest = (parts.length > 2).option(parts(2))
       .orElse((parts.length > 1).option(parts(1)))
       .getOrElse(parts(0))
-      .split(":", 2)
 
-    val image = imageParts(0)
+    val firstColon = imageWithTagOrDigest.indexOf(":")
 
-    val providedTag = (imageParts.length > 1).option(imageParts(1))
+    val firstAt = imageWithTagOrDigest.indexOf("@")
 
-    if (image.isEmpty || providedTag.fold(false)(_.isEmpty))
+    val (image, providedRef) =
+      if (firstColon >= 0 && firstAt >= 0)
+        imageWithTagOrDigest.take(firstAt) -> Some(ImageDigest(imageWithTagOrDigest.substring(firstAt + 1)))
+      else if (firstColon >= 0)
+        imageWithTagOrDigest.take(firstColon) -> Some(ImageTag(imageWithTagOrDigest.substring(firstColon + 1)))
+      else
+        imageWithTagOrDigest -> None
+
+    if (image.isEmpty || providedRef.fold(false)(_.value.isEmpty))
       Failure(new IllegalArgumentException(s"""Cannot parse uri "$uri"""))
     else
       Success(
@@ -69,11 +76,11 @@ object DockerRegistry extends LazyLogging {
           url = providedUrl.getOrElse(DockerDefaultRegistry),
           namespace = providedNs.getOrElse(DockerDefaultLibrary),
           image = image,
-          tag = providedTag.getOrElse(DockerDefaultTag),
+          ref = providedRef.getOrElse(ImageTag(DockerDefaultTag)),
           providedUrl = providedUrl,
           providedNamespace = providedNs,
           providedImage = image,
-          providedTag = providedTag))
+          providedRef = providedRef))
   }
 
   private def getBlob(http: HttpExchange, credentials: Option[HttpRequest.Auth], useHttps: Boolean, validateTls: Boolean)(img: Image, digest: String, token: Option[HttpRequest.BearerToken]): Future[(HttpResponse, Option[HttpRequest.BearerToken])] =
@@ -81,35 +88,35 @@ object DockerRegistry extends LazyLogging {
       r <- getWithAuth(http, credentials, validateTls, blobUrl(img, digest, useHttps), HttpHeaders(Map.empty), token, Some(img.pullScope))
     } yield r
 
-  private def getTags(http: HttpExchange, credentials: Option[HttpRequest.Auth], useHttps: Boolean, validateTls: Boolean)(img: Image, token: Option[HttpRequest.BearerToken])(implicit settings: HttpSettings): Future[(Option[String], Option[HttpRequest.BearerToken])] =
+  private def checkRepositoryValid(http: HttpExchange, credentials: Option[HttpRequest.Auth], useHttps: Boolean, validateTls: Boolean)(img: Image, token: Option[HttpRequest.BearerToken])(implicit settings: HttpSettings): Future[(Either[String, Unit], Option[HttpRequest.BearerToken])] =
     for {
-      r <- getWithAuth(http, credentials, validateTls, tagsUrl(img, useHttps), HttpHeaders(Map()), token, Some(img.pullScope))
-    } yield r._1.body -> r._2
+      // We only fetch a single tag (?n=1) because we only care about status codes, and this saves data transfer for
+      // large repositories.
 
-  private def imgValid(tags: Option[String], img: Image): Try[Boolean] = {
-    tags match {
-      case None =>
-        Failure(new IllegalArgumentException(s"got unexpected docker registry response"))
-      case Some(str) =>
-        val tags = Parse.parseOption(str).flatMap(_.hcursor.downField("tags").focus)
-        val foundTag = tags.flatMap(j =>
-          j.hcursor.downArray.find(tag => tag.isString && tag.string == Some(img.tag)).focus)
-        (tags, foundTag) match {
-          case (None, None) => Failure(new IllegalArgumentException(s"image doesn't seem to exist in docker registry"))
-          case (Some(_), None) => Failure(new IllegalArgumentException(s"image ${img.image} doesn't have tag named ${img.tag}"))
-          case _ => Success(true)
-        }
-    }
-  }
+      r <- getWithAuth(http, credentials, validateTls, s"${tagsUrl(img, useHttps)}?n=1", HttpHeaders(Map()), token, Some(img.pullScope))
+    } yield (
+      r._1.statusCode match {
+        case x if x >= 200 && x <= 299 => Right(())
+        case 404 => Left("unable to find repository or registry")
+        case 401 => Left("unable to access repository or registry; check authentication")
+        case c => Left(s"unable to find repository or registry [$c]")
+      },
+      r._2)
 
   def getConfig(http: HttpExchange, credentials: Option[HttpRequest.Auth], useHttps: Boolean, validateTls: Boolean)(uri: String, token: Option[HttpRequest.BearerToken])(implicit settings: HttpSettings): Future[(Config, Option[HttpRequest.BearerToken])] =
     for {
       img <- Future.fromTry(parseImageUri(uri))
-      tags <- getTags(http, credentials, useHttps, validateTls)(img, token)
-      valid <- Future.fromTry(imgValid(tags._1, img))
-      manifest <- getManifest(http, credentials, useHttps, validateTls)(img, token = tags._2)
-      blob <- getBlob(http, credentials, useHttps, validateTls)(img, manifest._1.config.digest, token = tags._2)
-      config <- Future.fromTry(getDecoded[Config](blob._1))
+      validRepository <- checkRepositoryValid(http, credentials, useHttps, validateTls)(img, token)
+      _ <- validRepository._1 match {
+        case Left(errorMessage) => Future.failed(new IllegalArgumentException(errorMessage))
+        case Right(_) => Future.successful(())
+      }
+      failureMessages = Map(
+        404L -> s"unable to find image with ${img.ref.name} ${img.ref.value}",
+        401L -> "unable to access image; check authentication")
+      manifest <- getManifest(http, credentials, useHttps, validateTls)(img, token = validRepository._2, failureMessages)
+      blob <- getBlob(http, credentials, useHttps, validateTls)(img, manifest._1.config.digest, token = validRepository._2)
+      config <- Future.fromTry(getDecoded[Config](blob._1, Map.empty))
     } yield config -> blob._2
 
   def getRegistry(image: String): Option[String] =
@@ -117,19 +124,23 @@ object DockerRegistry extends LazyLogging {
       .toOption
       .map(_.url)
 
-  private def getManifest(http: HttpExchange, credentials: Option[HttpRequest.Auth], useHttps: Boolean, validateTls: Boolean)(img: Image, token: Option[HttpRequest.BearerToken]): Future[(Manifest, Option[HttpRequest.BearerToken])] =
+  private def getManifest(http: HttpExchange, credentials: Option[HttpRequest.Auth], useHttps: Boolean, validateTls: Boolean)(img: Image, token: Option[HttpRequest.BearerToken], failureMessages: Map[Long, String]): Future[(Manifest, Option[HttpRequest.BearerToken])] =
     for {
       r <- getWithAuth(http, credentials, validateTls, manifestUrl(img, useHttps), HttpHeaders(Map("Accept" -> DockerAcceptManifestHeader)), token, Some(img.pullScope))
-      v <- Future.fromTry(getDecoded[Manifest](r._1))
+      v <- Future.fromTry(getDecoded[Manifest](r._1, failureMessages))
     } yield v -> r._2
 
-  private def getDecoded[T](response: HttpResponse)(implicit decode: DecodeJson[T]): Try[T] =
-    if (response.statusCode == 200)
+  private def getDecoded[T](response: HttpResponse, failureMessages: Map[Long, String])(implicit decode: DecodeJson[T]): Try[T] =
+    if (response.statusCode == 200L)
       response.body.getOrElse("").decodeEither[T].fold(
         err => Failure(new IllegalArgumentException(s"Decode Failure: $err")),
         Success.apply)
     else
-      Failure(new IllegalArgumentException(s"Expected code 200, received ${response.statusCode}"))
+      Failure(
+        new IllegalArgumentException(
+          failureMessages.getOrElse(
+            response.statusCode,
+            s"expected code 200, received ${response.statusCode}")))
 
   private def getWithAuth(http: HttpExchange, auth: Option[HttpRequest.Auth], validateTls: Boolean, url: String, headers: HttpHeaders, overrideToken: Option[HttpRequest.BearerToken], fallbackScope: Option[String]): Future[(HttpResponse, Option[HttpRequest.BearerToken])] = {
     auth match {

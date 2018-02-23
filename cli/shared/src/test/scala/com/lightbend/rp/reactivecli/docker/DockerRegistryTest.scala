@@ -29,11 +29,11 @@ object DockerRegistryTest extends TestSuite {
               DockerDefaultRegistry,
               DockerDefaultLibrary,
               "alpine",
-              "3.5",
+              ImageTag("3.5"),
               None,
               None,
               "alpine",
-              Some("3.5")), "abc123", useHttps = true) == s"https://$DockerDefaultRegistry/v2/$DockerDefaultLibrary/alpine/blobs/abc123")
+              Some(ImageTag("3.5"))), "abc123", useHttps = true) == s"https://$DockerDefaultRegistry/v2/$DockerDefaultLibrary/alpine/blobs/abc123")
       }
 
       "with http" - {
@@ -43,11 +43,11 @@ object DockerRegistryTest extends TestSuite {
               DockerDefaultRegistry,
               DockerDefaultLibrary,
               "alpine",
-              "3.5",
+              ImageTag("3.5"),
               None,
               None,
               "alpine",
-              Some("3.5")), "abc123", useHttps = false) == s"http://$DockerDefaultRegistry/v2/$DockerDefaultLibrary/alpine/blobs/abc123")
+              Some(ImageTag("3.5"))), "abc123", useHttps = false) == s"http://$DockerDefaultRegistry/v2/$DockerDefaultLibrary/alpine/blobs/abc123")
       }
     }
 
@@ -59,11 +59,11 @@ object DockerRegistryTest extends TestSuite {
               DockerDefaultRegistry,
               DockerDefaultLibrary,
               "alpine",
-              "3.5",
+              ImageTag("3.5"),
               None,
               None,
               "alpine",
-              Some("3.5")), useHttps = true) == s"https://$DockerDefaultRegistry/v2/$DockerDefaultLibrary/alpine/manifests/3.5")
+              Some(ImageTag("3.5"))), useHttps = true) == s"https://$DockerDefaultRegistry/v2/$DockerDefaultLibrary/alpine/manifests/3.5")
       }
 
       "with http" - {
@@ -73,11 +73,11 @@ object DockerRegistryTest extends TestSuite {
               DockerDefaultRegistry,
               DockerDefaultLibrary,
               "alpine",
-              "3.5",
+              ImageTag("3.5"),
               None,
               None,
               "alpine",
-              Some("3.5")), useHttps = false) == s"http://$DockerDefaultRegistry/v2/$DockerDefaultLibrary/alpine/manifests/3.5")
+              Some(ImageTag("3.5"))), useHttps = false) == s"http://$DockerDefaultRegistry/v2/$DockerDefaultLibrary/alpine/manifests/3.5")
       }
     }
 
@@ -89,7 +89,7 @@ object DockerRegistryTest extends TestSuite {
               DockerDefaultRegistry,
               DockerDefaultLibrary,
               "alpine",
-              "latest",
+              ImageTag("latest"),
               None,
               None,
               "alpine",
@@ -102,11 +102,11 @@ object DockerRegistryTest extends TestSuite {
               DockerDefaultRegistry,
               DockerDefaultLibrary,
               "alpine",
-              "3.5",
+              ImageTag("3.5"),
               None,
               None,
               "alpine",
-              Some("3.5"))))
+              Some(ImageTag("3.5")))))
 
       assert(
         DockerRegistry.parseImageUri("lightbend-docker.registry.bintray.io/conductr/oci-in-docker") ==
@@ -115,7 +115,7 @@ object DockerRegistryTest extends TestSuite {
               "lightbend-docker.registry.bintray.io",
               "conductr",
               "oci-in-docker",
-              "latest",
+              ImageTag("latest"),
               Some("lightbend-docker.registry.bintray.io"),
               Some("conductr"),
               "oci-in-docker",
@@ -128,11 +128,24 @@ object DockerRegistryTest extends TestSuite {
               "lightbend-docker.registry.bintray.io",
               "conductr",
               "oci-in-docker",
-              "0.1",
+              ImageTag("0.1"),
               Some("lightbend-docker.registry.bintray.io"),
               Some("conductr"),
               "oci-in-docker",
-              Some("0.1"))))
+              Some(ImageTag("0.1")))))
+
+      assert(
+        DockerRegistry.parseImageUri("lightbend-docker.registry.bintray.io/conductr/oci-in-docker@sha256:asdfdfasaw123") ==
+          Success(
+            Image(
+              "lightbend-docker.registry.bintray.io",
+              "conductr",
+              "oci-in-docker",
+              ImageDigest("sha256:asdfdfasaw123"),
+              Some("lightbend-docker.registry.bintray.io"),
+              Some("conductr"),
+              "oci-in-docker",
+              Some(ImageDigest("sha256:asdfdfasaw123")))))
 
       assert(DockerRegistry.parseImageUri("").isFailure)
       assert(DockerRegistry.parseImageUri("test:").isFailure)
