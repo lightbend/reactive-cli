@@ -150,6 +150,10 @@ object DeploymentJsonTest extends TestSuite {
               |              "value": "-Dakka.cluster.bootstrap.contact-point-discovery.discovery-method=akka.discovery.reactive-lib-kubernetes -Dconfig.resource=my-config.conf -Dakka.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=1"
               |            },
               |            {
+              |              "name": "RP_DYN_JAVA_OPTS",
+              |              "value": "-Dakka.discovery.kubernetes-api.pod-namespace=chirper"
+              |            },
+              |            {
               |              "name": "RP_ENDPOINTS",
               |              "value": "EP1,EP2,EP3"
               |            },
@@ -319,7 +323,11 @@ object DeploymentJsonTest extends TestSuite {
               |            },
               |            {
               |              "name": "RP_NAMESPACE",
-              |              "value": "chirper"
+              |              "valueFrom": {
+              |                "fieldRef": {
+              |                  "fieldPath": "metadata.namespace"
+              |                }
+              |              }
               |            },
               |            {
               |              "name": "RP_PLATFORM",
@@ -628,21 +636,6 @@ object DeploymentJsonTest extends TestSuite {
     }
 
     "RP environment variables" - {
-      "namespace" - {
-        "when present" - {
-          val result = RpEnvironmentVariables.namespaceEnv(Some("ns"))
-          val expectedResult = Map(
-            "RP_NAMESPACE" -> LiteralEnvironmentVariable("ns"))
-          assert(result == expectedResult)
-        }
-
-        "when not present" - {
-          val result = RpEnvironmentVariables.namespaceEnv(None)
-          assert(result.isEmpty)
-
-        }
-      }
-
       "app name" - {
         "when present" - {
           val result = RpEnvironmentVariables.appNameEnvs(Some("app"))

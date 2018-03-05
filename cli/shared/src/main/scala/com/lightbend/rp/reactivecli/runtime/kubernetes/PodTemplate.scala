@@ -43,7 +43,8 @@ object PodTemplate {
     private val PodEnvs = Map(
       "RP_PLATFORM" -> LiteralEnvironmentVariable("kubernetes"),
       "RP_KUBERNETES_POD_NAME" -> FieldRefEnvironmentVariable("metadata.name"),
-      "RP_KUBERNETES_POD_IP" -> FieldRefEnvironmentVariable("status.podIP"))
+      "RP_KUBERNETES_POD_IP" -> FieldRefEnvironmentVariable("status.podIP"),
+      "RP_NAMESPACE" -> FieldRefEnvironmentVariable("metadata.namespace"))
 
     /**
      * Generates pod environment variables specific for RP applications.
@@ -51,7 +52,6 @@ object PodTemplate {
     def envs(annotations: Annotations, serviceResourceName: String, noOfReplicas: Int, externalServices: Map[String, Seq[String]], akkaClusterJoinExisting: Boolean): Map[String, EnvironmentVariable] =
       mergeEnvs(
         PodEnvs,
-        namespaceEnv(annotations.namespace),
         appNameEnvs(annotations.appName),
         annotations.version.fold(Map.empty[String, EnvironmentVariable])(versionEnvs),
         appTypeEnvs(annotations.appType, annotations.modules),
@@ -59,9 +59,6 @@ object PodTemplate {
         endpointEnvs(annotations.endpoints),
         akkaClusterEnvs(annotations.modules, annotations.namespace, serviceResourceName, noOfReplicas, annotations.akkaClusterBootstrapSystemName, akkaClusterJoinExisting),
         externalServicesEnvs(annotations.modules, externalServices))
-
-    private[kubernetes] def namespaceEnv(namespace: Option[String]): Map[String, EnvironmentVariable] =
-      namespace.fold(Map.empty[String, EnvironmentVariable])(v => Map("RP_NAMESPACE" -> LiteralEnvironmentVariable(v)))
 
     private[kubernetes] def appNameEnvs(appName: Option[String]): Map[String, EnvironmentVariable] =
       appName.fold(Map.empty[String, EnvironmentVariable])(v => Map("RP_APP_NAME" -> LiteralEnvironmentVariable(v)))
@@ -81,11 +78,15 @@ object PodTemplate {
           "RP_JAVA_OPTS" -> LiteralEnvironmentVariable(
             Seq(
               s"-Dakka.discovery.method=kubernetes-api",
-              namespace.fold("")(ns => s"-Dakka.discovery.kubernetes-api.pod-namespace=$ns"),
               s"-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName",
               s"-Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas",
               akkaClusterBootstrapSystemName.fold("-Dakka.discovery.kubernetes-api.pod-label-selector=appName=%s")(systemName => s"-Dakka.discovery.kubernetes-api.pod-label-selector=actorSystemName=$systemName"),
               s"${if (akkaClusterJoinExisting) "-Dakka.management.cluster.bootstrap.form-new-cluster=false" else ""}")
+              .filter(_.nonEmpty)
+              .mkString(" ")),
+          "RP_DYN_JAVA_OPTS" -> LiteralEnvironmentVariable(
+            Seq(
+              "-Dakka.discovery.kubernetes-api.pod-namespace=$RP_NAMESPACE")
               .filter(_.nonEmpty)
               .mkString(" ")))
 
