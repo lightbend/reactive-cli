@@ -91,6 +91,7 @@ object JobJsonTest extends TestSuite {
                     jObjectFields("name" -> jString("RP_ENDPOINTS_COUNT"), "value" -> jString("0")),
                     jObjectFields("name" -> jString("RP_KUBERNETES_POD_IP"), "valueFrom" -> jObjectFields("fieldRef" -> jObjectFields("fieldPath" -> jString("status.podIP")))),
                     jObjectFields("name" -> jString("RP_KUBERNETES_POD_NAME"), "valueFrom" -> jObjectFields("fieldRef" -> jObjectFields("fieldPath" -> jString("metadata.name")))),
+                    jObjectFields("name" -> jString("RP_NAMESPACE"), "valueFrom" -> jObjectFields("fieldRef" -> jObjectFields("fieldPath" -> jString("metadata.namespace")))),
                     jObjectFields("name" -> jString("RP_PLATFORM"), "value" -> jString("kubernetes"))))),
               "volumes" -> jEmptyArray))))
 
