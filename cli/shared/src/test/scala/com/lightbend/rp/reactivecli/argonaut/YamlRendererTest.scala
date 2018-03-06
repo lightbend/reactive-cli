@@ -42,6 +42,16 @@ object YamlRendererTest extends TestSuite {
 
       "false" - equal(render(jFalse), "false")
 
+      "true string" - equal(render(jString("true")), "\"true\"")
+
+      "True string" - equal(render(jString("True")), "\"True\"")
+
+      "false string" - equal(render(jString("false")), "\"false\"")
+
+      "False string" - equal(render(jString("False")), "\"False\"")
+
+      "null string" - equal(render(jString("null")), "\"null\"")
+
       "numeric arrays" - equal(
         render(jArrayElements(jNumber(1), jNumber(2), jNumber(3))),
 

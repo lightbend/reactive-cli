@@ -104,6 +104,9 @@ object YamlRenderer {
 
   private def spaces(level: Int): String = Indent * level
 
-  private def needsQuotes(string: String) =
-    string.isEmpty || string.trim != string || !string.matches("^[A-Za-z][A-Za-z0-9 ]*$")
+  private def needsQuotes(string: String) = {
+    val alwaysQuote = Set("null", "true", "false")
+
+    string.isEmpty || string.trim != string || !string.matches("^[A-Za-z][A-Za-z0-9 ]*$") || alwaysQuote.contains(string.toLowerCase)
+  }
 }
