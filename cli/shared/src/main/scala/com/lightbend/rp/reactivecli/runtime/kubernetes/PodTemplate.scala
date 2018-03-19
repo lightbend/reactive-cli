@@ -169,6 +169,14 @@ object PodTemplate {
   }
 
   /**
+   * CLI (depending on args) will generate config that causes akka-management to use one of these label names.
+   *
+   * If the akkaClusterJoinExisting flag is provided, these labels are removed from the pod template so that
+   * it isn't used for bootstrap.
+   */
+  private[kubernetes] val PodDiscoveryLabels = Set("appName", "actorSystemName")
+
+  /**
    * Represents possible values for imagePullPolicy field within the Kubernetes pod template.
    */
   object ImagePullPolicy extends Enumeration {
@@ -344,9 +352,15 @@ object PodTemplate {
               "args" -> jArray(c.tail.map(jString).toList))
       }
 
+    val labelsToUse =
+      if (akkaClusterJoinExisting)
+        PodDiscoveryLabels.foldLeft(labels)(_ - _)
+      else
+        labels
+
     PodTemplate(
       Json(
-        "metadata" -> Json("labels" -> labels.asJson),
+        "metadata" -> Json("labels" -> labelsToUse.asJson),
         "spec" -> Json(
           "restartPolicy" -> restartPolicy.asJson,
           "containers" -> jArrayElements(

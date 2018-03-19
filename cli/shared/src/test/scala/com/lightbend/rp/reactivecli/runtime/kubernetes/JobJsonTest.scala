@@ -73,7 +73,6 @@ object JobJsonTest extends TestSuite {
           "template" -> jObjectFields(
             "metadata" -> jObjectFields(
               "labels" -> jObjectFields(
-                "appName" -> jString("friendimpl"),
                 "appNameVersion" -> jString("friendimpl-v3-2-1-snapshot"))),
             "spec" -> jObjectFields(
               "restartPolicy" -> jString("OnFailure"),
@@ -113,7 +112,7 @@ object JobJsonTest extends TestSuite {
           None,
           true)
 
-      assert(job.toOption.isDefined == false)
+      assert(!job.toOption.isDefined)
     }
   }
 }
