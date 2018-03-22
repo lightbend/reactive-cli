@@ -25,6 +25,8 @@ package object files {
 
   def mkDirs(path: String): Unit = Platform.mkDirs(path)
 
+  def parentFor(path: String): String = Platform.parentFor(path)
+
   def pathFor(components: String*): String = Platform.pathFor(components: _*)
 
   def readFile(path: String): String = Platform.readFile(path)

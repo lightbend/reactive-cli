@@ -30,13 +30,13 @@ import Scalaz._
 
 object DockerRegistry extends LazyLogging {
   private[docker] def blobUrl(img: Image, digest: String, useHttps: Boolean): String =
-    encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/blobs/$digest")
+    encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace.fold("")(n => s"$n/")}${img.image}/blobs/$digest")
 
   private[docker] def manifestUrl(img: Image, useHttps: Boolean): String =
-    encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/manifests/${img.ref.value}")
+    encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace.fold("")(n => s"$n/")}${img.image}/manifests/${img.ref.value}")
 
   private[docker] def tagsUrl(img: Image, useHttps: Boolean): String =
-    encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace}/${img.image}/tags/list")
+    encodeURI(s"${protocol(useHttps)}://${img.url}/v2/${img.namespace.fold("")(n => s"$n/")}${img.image}/tags/list")
 
   private def tokenUrl(realm: String, service: String, scope: Option[String], clientId: String) =
     encodeURI(s"$realm?service=$service&client_id=$clientId${scope.fold("")(s => s"&scope=$s")}")
@@ -47,10 +47,10 @@ object DockerRegistry extends LazyLogging {
   private[docker] def parseImageUri(uri: String): Try[Image] = {
     val parts = uri.split("/", 3).toVector
 
-    val providedUrl = (parts.length > 2).option(parts(0))
+    val providedUrl = (parts.length > 2 || parts(0).contains(":")).option(parts(0))
 
     val providedNs = (parts.length > 2).option(parts(1))
-      .orElse((parts.length > 1).option(parts(0)))
+      .orElse((parts.length > 1 && !parts(0).contains(":")).option(parts(0)))
 
     val imageWithTagOrDigest = (parts.length > 2).option(parts(2))
       .orElse((parts.length > 1).option(parts(1)))
@@ -74,7 +74,7 @@ object DockerRegistry extends LazyLogging {
       Success(
         Image(
           url = providedUrl.getOrElse(DockerDefaultRegistry),
-          namespace = providedNs.getOrElse(DockerDefaultLibrary),
+          namespace = providedNs.orElse(providedUrl.fold(DockerDefaultLibrary.some)(_ => None)),
           image = image,
           ref = providedRef.getOrElse(ImageTag(DockerDefaultTag)),
           providedUrl = providedUrl,
@@ -106,6 +106,7 @@ object DockerRegistry extends LazyLogging {
   def getConfig(http: HttpExchange, credentials: Option[HttpRequest.Auth], useHttps: Boolean, validateTls: Boolean)(uri: String, token: Option[HttpRequest.BearerToken])(implicit settings: HttpSettings): Future[(Config, Option[HttpRequest.BearerToken])] =
     for {
       img <- Future.fromTry(parseImageUri(uri))
+      _ = logger.debug("Image: {}", img)
       validRepository <- checkRepositoryValid(http, credentials, useHttps, validateTls)(img, token)
       _ <- validRepository._1 match {
         case Left(errorMessage) => Future.failed(new IllegalArgumentException(errorMessage))
@@ -143,6 +144,8 @@ object DockerRegistry extends LazyLogging {
             s"expected code 200, received ${response.statusCode}")))
 
   private def getWithAuth(http: HttpExchange, auth: Option[HttpRequest.Auth], validateTls: Boolean, url: String, headers: HttpHeaders, overrideToken: Option[HttpRequest.BearerToken], fallbackScope: Option[String]): Future[(HttpResponse, Option[HttpRequest.BearerToken])] = {
+    logger.debug("Request URL: {}", url)
+
     auth match {
       case None =>
         // No authentication, will get temporary token

@@ -17,8 +17,10 @@
 package com.lightbend.rp.reactivecli.argparse
 
 import com.lightbend.rp.reactivecli.argparse.kubernetes._
+import com.lightbend.rp.reactivecli.argparse.marathon.MarathonArgs
 import com.lightbend.rp.reactivecli.files._
 import com.lightbend.rp.reactivecli.runtime.kubernetes.PodTemplate.{ ImagePullPolicy, RestartPolicy }
+
 import scala.collection.immutable.Seq
 import scala.concurrent.Future
 import scopt.OptionParser
@@ -318,6 +320,112 @@ object InputArgs {
           opt[String]("transform-services")
             .text("A jq expression that will be applied to Service resources. jq must be installed")
             .action(KubernetesArgs.set((v, args) => args.copy(transformServices = Some(v)))))
+
+      cmd("generate-marathon-configuration")
+        .text("Generate DC/OS Marathon configuration")
+        .action((_, inputArgs) => inputArgs.copy(commandArgs = Some(GenerateDeploymentArgs(targetRuntimeArgs = Some(marathon.MarathonArgs())))))
+        .children(
+          arg[String]("docker-images") /* note: this argument will apply for other targets */
+            .text("Docker images to be deployed. Format: [<registry host>/][<repo>/]image[:tag]")
+            .unbounded()
+            .minOccurs(1)
+            .action(GenerateDeploymentArgs.set((v, args) => args.copy(dockerImages = args.dockerImages :+ v))),
+
+          opt[String]("application") /* note: this argument will apply for other targets */
+            .text("Application to generate resources for. If omitted, resources are generated for the default application. If generating for an alternate application, its name will be part of the generated configuration")
+            .optional()
+            .action(GenerateDeploymentArgs.set((v, args) => args.copy(application = Some(v)))),
+
+          opt[DeploymentType]("deployment-type")
+            .text(s"Sets the deployment type. Default: ${DeploymentType.Canary}; Available: ${DeploymentType.All.mkString(", ")}")
+            .optional()
+            .action(GenerateDeploymentArgs.set((t, args) => args.copy(deploymentType = t))),
+
+          opt[String]("env") /* note: this argument will apply for other targets */
+            .text("Sets an environment variable. Format: NAME=value")
+            .minOccurs(0)
+            .unbounded()
+            .action(GenerateDeploymentArgs.set {
+              (v, c) =>
+                val parts = v.split("=", 2).lift
+                c.copy(
+                  environmentVariables = c.environmentVariables.updated(
+                    parts(0).get,
+                    parts(1).getOrElse("")))
+            }),
+
+          opt[String]("external-service") /* note: this argument will apply for other targets */
+            .text("Declares an external service address. Format: NAME=value")
+            .optional()
+            .minOccurs(0)
+            .unbounded()
+            .action(GenerateDeploymentArgs.set {
+              (v, c) =>
+                val parts = v.split("=", 2)
+
+                if (parts.length == 2) {
+                  val current = c.externalServices.getOrElse(parts(0), Seq.empty)
+
+                  c.copy(externalServices = c.externalServices.updated(parts(0), current :+ parts(1)))
+                } else {
+                  c
+                }
+            }),
+
+          opt[Unit]("akka-cluster-join-existing")
+            .text("When provided, the pod controller will only join an already formed Akka Cluster")
+            .action(GenerateDeploymentArgs.set((_, args) => args.copy(akkaClusterJoinExisting = true))),
+
+          opt[Unit]("akka-cluster-skip-validation")
+            .hidden()
+            .action(GenerateDeploymentArgs.set((_, args) => args.copy(akkaClusterSkipValidation = true))),
+
+          opt[String]("name")
+            .text("Uses specified name for generated resources instead of name in the Docker image")
+            .optional()
+            .action(GenerateDeploymentArgs.set((v, args) => args.copy(name = Some(v)))),
+
+          opt[String]("namespace")
+            .text("Resources will be generated with the supplied namespace (marathon group)")
+            .action(MarathonArgs.set((v, args) => args.copy(namespace = Some(v)))),
+
+          opt[String]('o', "output")
+            .text("Specify the output file for the generated configuration")
+            .optional()
+            .action(MarathonArgs.set((v, args) => args.copy(output = MarathonArgs.Output.SaveToFile(v)))),
+
+          opt[Unit]("registry-disable-https") /* note: this argument will apply for other targets */
+            .text("Disables HTTPS when accessing docker registry")
+            .optional()
+            .action(GenerateDeploymentArgs.set((_, c) => c.copy(registryUseHttps = false))),
+
+          opt[Unit]("registry-disable-tls-validation") /* note: this argument will apply for other targets */
+            .text("Disables TLS cert validation when accessing docker registry through HTTPS")
+            .optional()
+            .action(GenerateDeploymentArgs.set((_, c) => c.copy(registryValidateTls = false))),
+
+          opt[Boolean]("registry-force-pull")
+            .text(s"When provided, Marathon will be configured to always pull from the Docker registry before running the container")
+            .action(MarathonArgs.set((v, args) => args.copy(registryForcePull = true))),
+
+          opt[String]("registry-password") /* note: this argument will apply for other targets */
+            .text("Specify password to access docker registry. Username must be specified also.")
+            .optional()
+            .action(GenerateDeploymentArgs.set((v, c) => c.copy(registryPassword = Some(v)))),
+
+          opt[String]("registry-username") /* note: this argument will apply for other targets */
+            .text("Specify username to access docker registry. Password must be specified also.")
+            .optional()
+            .action(GenerateDeploymentArgs.set((v, c) => c.copy(registryUsername = Some(v)))),
+
+          opt[String]("transform-output")
+            .text("A jq expression that will be applied to the configuration output. jq must be installed")
+            .action(MarathonArgs.set((v, args) => args.copy(transformOutput = Some(v)))),
+
+          opt[String]("version")
+            .text("Uses specified version tag for generated resources instead of version in the docker image")
+            .optional()
+            .action(GenerateDeploymentArgs.set((v, args) => args.copy(version = Some(v)))))
 
       checkConfig { inputArgs =>
         inputArgs.commandArgs match {

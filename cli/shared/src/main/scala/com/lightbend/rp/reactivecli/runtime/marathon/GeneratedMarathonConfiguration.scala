@@ -14,29 +14,10 @@
  * limitations under the License.
  */
 
-package com.lightbend.rp.reactivecli.docker
+package com.lightbend.rp.reactivecli.runtime.marathon
 
-sealed trait ImageRef {
-  def name: String
-  def value: String
-}
+import argonaut.Json
+import com.lightbend.rp.reactivecli.runtime.GeneratedResource
+import scala.concurrent.Future
 
-case class ImageDigest(value: String) extends ImageRef {
-  def name: String = "digest"
-}
-
-case class ImageTag(value: String) extends ImageRef {
-  def name: String = "tag"
-}
-
-case class Image(
-  url: String,
-  namespace: Option[String],
-  image: String,
-  ref: ImageRef,
-  providedUrl: Option[String],
-  providedNamespace: Option[String],
-  providedImage: String,
-  providedRef: Option[ImageRef]) {
-  def pullScope: String = s"repository:$namespace/$image:pull"
-}
+case class GeneratedMarathonConfiguration(resourceType: String, name: String, payload: Future[Json]) extends GeneratedResource[Json]
