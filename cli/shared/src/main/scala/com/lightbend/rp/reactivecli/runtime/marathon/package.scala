@@ -32,9 +32,9 @@ import Argonaut._
 import Scalaz._
 
 package object marathon {
-  private[reactivecli] val HealthGracePeriodSeconds = 60
-  private[reactivecli] val HealthIntervalSeconds = 60
-  private[reactivecli] val StatusGracePeriodSeconds = 60
+  private[reactivecli] val HealthGracePeriodSeconds = 120
+  private[reactivecli] val HealthIntervalSeconds = 15
+  private[reactivecli] val StatusGracePeriodSeconds = 120
   private[reactivecli] val StatusIntervalSeconds = 15
 
   def generateConfiguration(dockerImagesConfigs: Seq[(String, Config)], generateDeploymentArgs: GenerateDeploymentArgs, marathonArgs: MarathonArgs): Future[ValidationNel[String, GeneratedMarathonConfiguration]] =
@@ -80,12 +80,15 @@ package object marathon {
                       .sortBy(pathDepthAndLength)
                       .reverse
 
-                  val endpointLabels =
+                  val sortedEndpoints =
                     annotations
                       .endpoints
                       .values
                       .toList
                       .sortBy(_.index)
+
+                  val endpointLabels =
+                    sortedEndpoints
                       .flatMap {
                         case HttpEndpoint(_, name, port, ingress) =>
                           ingress
@@ -122,12 +125,22 @@ package object marathon {
                   val enableChecks =
                     annotations.modules.contains(Module.Status) && annotations.modules.contains(Module.AkkaManagement)
 
+                  val checkPortName =
+                    portName(AkkaManagementPortName)
+
+                  val checkPortIndex =
+                    sortedEndpoints
+                      .find(_.name == AkkaManagementPortName)
+                      .map(_.index)
+                      .getOrElse(0)
+
                   val healthChecks =
                     if (enableChecks)
                       jObjectFields("healthChecks" -> jArrayElements(
                         jObjectFields(
                           "path" -> jString("/platform-tooling/healthy"),
-                          "portName" -> jString(portName(AkkaManagementPortName)),
+                          "portName" -> jString(checkPortName),
+                          "portIndex" -> jNumber(checkPortIndex),
                           "protocol" -> jString("HTTP"),
                           "gracePeriodSeconds" -> jNumber(HealthGracePeriodSeconds),
                           "intervalSeconds" -> jNumber(HealthIntervalSeconds))))
@@ -139,7 +152,8 @@ package object marathon {
                       jObjectFields("readinessChecks" -> jArrayElements(
                         jObjectFields(
                           "path" -> jString("/platform-tooling/ready"),
-                          "portName" -> jString(portName(AkkaManagementPortName)),
+                          "portName" -> jString(checkPortName),
+                          "portIndex" -> jNumber(checkPortIndex),
                           "protocol" -> jString("HTTP"),
                           "gracePeriodSeconds" -> jNumber(StatusGracePeriodSeconds),
                           "intervalSeconds" -> jNumber(StatusIntervalSeconds))))
@@ -166,11 +180,7 @@ package object marathon {
                         "forcePullImage" -> jBool(marathonArgs.registryForcePull),
                         "network" -> jString("BRIDGE"),
                         "portMappings" -> jArray(
-                          annotations
-                            .endpoints
-                            .values
-                            .toList
-                            .sortBy(_.index)
+                          sortedEndpoints
                             .flatMap {
                               case HttpEndpoint(_, name, port, ingress) =>
                                 Some(
