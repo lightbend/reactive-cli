@@ -18,6 +18,7 @@ package com.lightbend.rp.reactivecli.argparse.marathon
 
 import com.lightbend.rp.reactivecli.argparse.{ GenerateDeploymentArgs, InputArgs, TargetRuntimeArgs }
 import java.io.PrintStream
+import scala.collection.immutable.Seq
 
 object MarathonArgs {
   object Output {
@@ -62,6 +63,7 @@ object MarathonArgs {
 case class MarathonArgs(
   instances: Int = 1,
   marathonLbHaproxyGroup: String = "external",
+  marathonLbHaproxyHosts: Seq[String] = Seq.empty,
   namespace: Option[String] = None,
   output: MarathonArgs.Output = MarathonArgs.Output.PipeToStream(System.out),
   registryForcePull: Boolean = false,

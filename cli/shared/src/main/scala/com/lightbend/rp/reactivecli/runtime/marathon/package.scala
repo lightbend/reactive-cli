@@ -95,8 +95,10 @@ package object marathon {
                             .flatMap { ingress =>
                               val paths = normalizePaths(ingress.paths)
 
-                              if (ingress.hosts.nonEmpty)
-                                ingress.hosts.map { host =>
+                              val allHosts = (ingress.hosts ++ marathonArgs.marathonLbHaproxyHosts).distinct
+
+                              if (allHosts.nonEmpty)
+                                allHosts.map { host =>
                                   Some(host) -> paths
                                 }
                               else if (ingress.paths.nonEmpty)

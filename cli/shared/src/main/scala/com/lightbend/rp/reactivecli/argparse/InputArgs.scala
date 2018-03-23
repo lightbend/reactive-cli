@@ -385,10 +385,19 @@ object InputArgs {
             .validate(v => if (v >= 0) success else failure("Number of instances must be zero or more"))
             .action(MarathonArgs.set((v, args) => args.copy(instances = v))),
 
-          opt[String]("marathon-lb-haproxy-group")
+          opt[String]("marathon-lb-group")
             .text("Specify the `HAPROXY_GROUP` value for any marathon-lb configuration")
             .optional()
             .action(MarathonArgs.set((v, args) => args.copy(marathonLbHaproxyGroup = v))),
+
+          opt[String]("marathon-lb-host")
+            .text("Add a host to the generated marathon-lb configuration")
+            .minOccurs(0)
+            .unbounded()
+            .action(MarathonArgs.set {
+              (v, c) =>
+                c.copy(marathonLbHaproxyHosts = c.marathonLbHaproxyHosts :+ v)
+            }),
 
           opt[String]("name")
             .text("Uses specified name for generated resources instead of name in the Docker image")
