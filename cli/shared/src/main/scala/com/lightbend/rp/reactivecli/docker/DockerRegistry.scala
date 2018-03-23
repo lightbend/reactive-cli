@@ -47,7 +47,7 @@ object DockerRegistry extends LazyLogging {
   private[docker] def parseImageUri(uri: String): Try[Image] = {
     val parts = uri.split("/", 3).toVector
 
-    val providedUrl = (parts.length > 2 || parts(0).contains(":")).option(parts(0))
+    val providedUrl = (parts.length > 2 || (parts.length > 1 && parts(0).contains(":"))).option(parts(0))
 
     val providedNs = (parts.length > 2).option(parts(1))
       .orElse((parts.length > 1 && !parts(0).contains(":")).option(parts(0)))

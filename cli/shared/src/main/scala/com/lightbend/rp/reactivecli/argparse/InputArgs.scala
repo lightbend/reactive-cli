@@ -380,6 +380,11 @@ object InputArgs {
             .hidden()
             .action(GenerateDeploymentArgs.set((_, args) => args.copy(akkaClusterSkipValidation = true))),
 
+          opt[Int]("instances")
+            .text("Sets the number of instances for the app. If Akka Cluster Bootstrap is enabled, this must be set to 2 or greater unless `--akka-cluster-join-existing` is provided")
+            .validate(v => if (v >= 0) success else failure("Number of instances must be zero or more"))
+            .action(MarathonArgs.set((v, args) => args.copy(instances = v))),
+
           opt[String]("name")
             .text("Uses specified name for generated resources instead of name in the Docker image")
             .optional()
