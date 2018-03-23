@@ -54,7 +54,7 @@ package object marathon {
 
               def validateAkkaCluster =
                 if (annotations.modules.contains(Module.AkkaClusterBootstrapping) && !generateDeploymentArgs.akkaClusterSkipValidation && marathonArgs.instances < AkkaClusterMinimumReplicas && !generateDeploymentArgs.akkaClusterJoinExisting)
-                  s"Akka Cluster Bootstrapping is enabled so you must specify `--pod-controller-replicas 2` (or greater), or provide `--akka-cluster-join-existing` to only join already formed clusters".failureNel
+                  s"Akka Cluster Bootstrapping is enabled so you must specify `--instances 2` (or greater), or provide `--akka-cluster-join-existing` to only join already formed clusters".failureNel
                 else
                   ().successNel[String]
 
@@ -74,10 +74,50 @@ package object marathon {
 
                   val appId = marathonArgs.namespace.fold(s"/$configId")(ns => s"/$ns/$configId")
 
+                  def normalizePaths(paths: Seq[String]): Seq[String] =
+                    paths
+                      .distinct
+                      .sortBy(pathDepthAndLength)
+                      .reverse
+
+                  val endpointLabels =
+                    annotations
+                      .endpoints
+                      .values
+                      .toList
+                      .sortBy(_.index)
+                      .flatMap {
+                        case HttpEndpoint(_, name, port, ingress) =>
+                          ingress
+                            .flatMap { ingress =>
+                              val paths = normalizePaths(ingress.paths)
+
+                              if (ingress.hosts.nonEmpty)
+                                ingress.hosts.map { host =>
+                                  Some(host) -> paths
+                                }
+                              else if (ingress.paths.nonEmpty)
+                                Seq(None -> paths)
+                              else
+                                Seq.empty
+                            }
+                        case _ =>
+                          Seq.empty
+                      }
+                      .zipWithIndex
+                      .flatMap { case ((maybeHost, sortedPaths), i) =>
+                        Seq(
+                          Some("HAPROXY_GROUP" -> jString(marathonArgs.marathonLbHaproxyGroup)),
+                          maybeHost.map(h => s"HAPROXY_${i}_VHOST" -> jString(h)),
+                          sortedPaths.nonEmpty.option(s"HAPROXY_${i}_PATH" -> jString(sortedPaths.mkString(" ")))
+                        ).flatten
+                      }
+
                   val labels = List(
                     "APP_NAME" -> jString(appName),
                     "APP_NAME_VERSION" -> jString(appNameVersion)) ++
-                    annotations.akkaClusterBootstrapSystemName.fold(List.empty[(String, Json)])(system => List("ACTOR_SYSTEM_NAME" -> jString(system)))
+                    annotations.akkaClusterBootstrapSystemName.fold(List.empty[(String, Json)])(system => List("ACTOR_SYSTEM_NAME" -> jString(system))) ++
+                    endpointLabels
 
                   val enableChecks =
                     annotations.modules.contains(Module.Status) && annotations.modules.contains(Module.AkkaManagement)
@@ -207,7 +247,7 @@ package object marathon {
           else
             jEmptyObject
 
-        GeneratedMarathonConfiguration("", "", Future.successful(jsonConfig))
+        GeneratedMarathonConfiguration("", "", jsonConfig, marathonArgs.transformOutput)
       }
     }
 

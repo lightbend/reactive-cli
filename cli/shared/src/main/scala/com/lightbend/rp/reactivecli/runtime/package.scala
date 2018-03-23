@@ -18,4 +18,10 @@ package com.lightbend.rp.reactivecli
 
 package object runtime {
   private[reactivecli] val AkkaClusterMinimumReplicas = 2
+
+  def pathDepthAndLength(path: String): (Int, Int) = {
+    val depth = path.split('/').length
+    val length = path.length
+    depth -> length
+  }
 }

@@ -16,8 +16,21 @@
 
 package com.lightbend.rp.reactivecli.runtime.marathon
 
-import argonaut.Json
+import argonaut._
+import com.lightbend.rp.reactivecli.concurrent._
+import com.lightbend.rp.reactivecli.process.jq
 import com.lightbend.rp.reactivecli.runtime.GeneratedResource
 import scala.concurrent.Future
 
-case class GeneratedMarathonConfiguration(resourceType: String, name: String, payload: Future[Json]) extends GeneratedResource[Json]
+import Argonaut._
+
+case class GeneratedMarathonConfiguration(resourceType: String, name: String, json: Json, jqExpression: Option[String]) extends GeneratedResource[Json] {
+  def payload: Future[Json] = jqExpression.fold(Future.successful(json))(
+    jq(_, json.nospaces)
+      .map(
+        _
+          .parse
+          .fold(
+            error => throw new RuntimeException(s"Unable to parse output from jq: $error"),
+            identity)))
+}

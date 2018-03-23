@@ -61,6 +61,7 @@ object MarathonArgs {
  */
 case class MarathonArgs(
   instances: Int = 1,
+  marathonLbHaproxyGroup: String = "external",
   namespace: Option[String] = None,
   output: MarathonArgs.Output = MarathonArgs.Output.PipeToStream(System.out),
   registryForcePull: Boolean = false,
