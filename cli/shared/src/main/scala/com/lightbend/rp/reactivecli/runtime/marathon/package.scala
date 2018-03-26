@@ -110,12 +110,12 @@ package object marathon {
                           Seq.empty
                       }
                       .zipWithIndex
-                      .flatMap { case ((maybeHost, sortedPaths), i) =>
-                        Seq(
-                          Some("HAPROXY_GROUP" -> jString(marathonArgs.marathonLbHaproxyGroup)),
-                          maybeHost.map(h => s"HAPROXY_${i}_VHOST" -> jString(h)),
-                          sortedPaths.nonEmpty.option(s"HAPROXY_${i}_PATH" -> jString(sortedPaths.mkString(" ")))
-                        ).flatten
+                      .flatMap {
+                        case ((maybeHost, sortedPaths), i) =>
+                          Seq(
+                            Some("HAPROXY_GROUP" -> jString(marathonArgs.marathonLbHaproxyGroup)),
+                            maybeHost.map(h => s"HAPROXY_${i}_VHOST" -> jString(h)),
+                            sortedPaths.nonEmpty.option(s"HAPROXY_${i}_PATH" -> jString(sortedPaths.mkString(" ")))).flatten
                       }
 
                   val labels = List(
@@ -140,7 +140,7 @@ package object marathon {
                     if (enableChecks)
                       jObjectFields("healthChecks" -> jArrayElements(
                         jObjectFields(
-                          "path" -> jString("/platform-tooling/healthy"),
+                          "path" -> jString(HealthCheckUrl),
                           "portName" -> jString(checkPortName),
                           "portIndex" -> jNumber(checkPortIndex),
                           "protocol" -> jString("HTTP"),
@@ -153,7 +153,7 @@ package object marathon {
                     if (enableChecks)
                       jObjectFields("readinessChecks" -> jArrayElements(
                         jObjectFields(
-                          "path" -> jString("/platform-tooling/ready"),
+                          "path" -> jString(ReadyCheckUrl),
                           "portName" -> jString(checkPortName),
                           "portIndex" -> jNumber(checkPortIndex),
                           "protocol" -> jString("HTTP"),
@@ -209,20 +209,19 @@ package object marathon {
                     "instances" -> jNumber(marathonArgs.instances),
                     "upgradeStrategy" -> jObjectFields(
                       "maximumOverCapacity" -> jNumber(0),
-                      "minimumHealthCapacity" -> jNumber(0.5)
-                    ),
+                      "minimumHealthCapacity" -> jNumber(0.5)),
                     "killSelection" -> jString("YOUNGEST_FIRST"),
                     "env" -> jObjectAssocList(
                       (
                         annotations
-                          .environmentVariables
-                          .collect {
-                            case (k, LiteralEnvironmentVariable(v)) => k -> v
-                          }
+                        .environmentVariables
+                        .collect {
+                          case (k, LiteralEnvironmentVariable(v)) => k -> v
+                        }
 
-                          ++
+                        ++
                         RpEnvironmentVariables
-                          .envs(marathonArgs.namespace, annotations, serviceResourceName, marathonArgs.instances, generateDeploymentArgs.externalServices, generateDeploymentArgs.akkaClusterJoinExisting))
+                        .envs(marathonArgs.namespace, annotations, serviceResourceName, marathonArgs.instances, generateDeploymentArgs.externalServices, generateDeploymentArgs.akkaClusterJoinExisting))
                         .toList
                         .map { case (k, v) => k -> jString(v) }),
                     "labels" -> jObjectAssocList(labels))
@@ -271,8 +270,6 @@ package object marathon {
         case MarathonArgs.Output.PipeToStream(out) =>
           out.println(data)
         case MarathonArgs.Output.SaveToFile(path) =>
-          mkDirs(parentFor(path))
-
           if (fileExists(path)) {
             deleteFile(path)
           }

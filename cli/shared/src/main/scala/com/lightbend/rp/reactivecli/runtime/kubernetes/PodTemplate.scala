@@ -20,6 +20,7 @@ import argonaut._
 import com.lightbend.rp.reactivecli.annotations.kubernetes.{ ConfigMapEnvironmentVariable, FieldRefEnvironmentVariable, SecretKeyRefEnvironmentVariable }
 import com.lightbend.rp.reactivecli.annotations._
 import com.lightbend.rp.reactivecli.argparse._
+import com.lightbend.rp.reactivecli.runtime._
 import scala.collection.immutable.Seq
 import scalaz._
 
@@ -320,7 +321,7 @@ object PodTemplate {
         Json("livenessProbe" ->
           Json(
             "httpGet" -> Json(
-              "path" -> jString("/platform-tooling/healthy"),
+              "path" -> jString(HealthCheckUrl),
               "port" -> jString(AkkaManagementPortName)),
             "periodSeconds" -> jNumber(StatusPeriodSeconds),
             "initialDelaySeconds" -> jNumber(LivenessInitialDelaySeconds)))
@@ -332,7 +333,7 @@ object PodTemplate {
         Json("readinessProbe" ->
           Json(
             "httpGet" -> Json(
-              "path" -> jString("/platform-tooling/ready"),
+              "path" -> jString(ReadyCheckUrl),
               "port" -> jString(AkkaManagementPortName)),
             "periodSeconds" -> jNumber(StatusPeriodSeconds)))
       else

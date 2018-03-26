@@ -18,6 +18,8 @@ package com.lightbend.rp.reactivecli
 
 package object runtime {
   private[reactivecli] val AkkaClusterMinimumReplicas = 2
+  private[reactivecli] val ReadyCheckUrl = "/platform-tooling/ready"
+  private[reactivecli] val HealthCheckUrl = "/platform-tooling/healthy"
 
   def pathDepthAndLength(path: String): (Int, Int) = {
     val depth = path.split('/').length

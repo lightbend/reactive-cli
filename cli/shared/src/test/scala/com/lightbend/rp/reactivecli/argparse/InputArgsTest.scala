@@ -16,9 +16,11 @@
 
 package com.lightbend.rp.reactivecli.argparse
 
-import com.lightbend.rp.reactivecli.argparse.kubernetes.{ PodControllerArgs, IngressArgs, KubernetesArgs, ServiceArgs }
+import com.lightbend.rp.reactivecli.argparse.kubernetes.{ IngressArgs, KubernetesArgs, PodControllerArgs, ServiceArgs }
+import com.lightbend.rp.reactivecli.argparse.marathon.MarathonArgs
 import com.lightbend.rp.reactivecli.files._
 import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment
+
 import scala.collection.immutable.Seq
 import scala.concurrent.Future
 import slogging.LogLevel
@@ -172,6 +174,76 @@ object InputArgsTest extends TestSuite {
                 InputArgs.default)
 
               assert(result.isEmpty)
+            }
+          }
+        }
+
+        "marathon" - {
+          withTempFile { mockCacerts =>
+            val expected =
+              InputArgs(
+                logLevel = LogLevel.DEBUG,
+                tlsCacertsPath = Some(mockCacerts),
+                commandArgs = Some(GenerateDeploymentArgs(
+                  application = Some("test"),
+                  akkaClusterJoinExisting = true,
+                  akkaClusterSkipValidation = true,
+                  deploymentType = CanaryDeploymentType,
+                  dockerImages = Seq("dockercloud/hello-world:1.0.0-SNAPSHOT"),
+                  name = Some("test"),
+                  version = Some("1.0.0"),
+                  environmentVariables = Map("test1" -> "test2"),
+                  cpu = None,
+                  memory = None,
+                  diskSpace = None,
+                  targetRuntimeArgs = Some(
+                    MarathonArgs(
+                      instances = 10,
+                      marathonLbHaproxyGroup = "external2",
+                      marathonLbHaproxyHosts = Seq("test.com"),
+                      namespace = Some("chirper"),
+                      output = MarathonArgs.Output.SaveToFile("/tmp/foo"),
+                      registryForcePull = true,
+                      transformOutput = Some(".test = 123"))),
+                  registryUsername = Some("john"),
+                  registryPassword = Some("wick"),
+                  registryUseHttps = false,
+                  registryValidateTls = false,
+                  externalServices = Map("cas1" -> Seq("1.2.3.4", "5.6.7.8"), "cas2" -> Seq("hello")))))
+
+            val actual = parser
+              .parse(
+                Seq(
+                  "generate-marathon-configuration",
+                  "--loglevel", "debug",
+                  "--application", "test",
+                  "--cainfo", mockCacerts,
+                  "dockercloud/hello-world:1.0.0-SNAPSHOT",
+                  "--namespace", "chirper",
+                  "--instances", "10",
+                  "--registry-force-pull", "true",
+                  "--env", "test1=test2",
+                  "--output", "/tmp/foo",
+                  "--registry-username", "john",
+                  "--registry-password", "wick",
+                  "--registry-disable-https",
+                  "--registry-disable-tls-validation",
+                  "--external-service", "cas1=1.2.3.4",
+                  "--external-service", "cas1=5.6.7.8",
+                  "--external-service", "cas2=hello",
+                  "--transform-output", ".test = 123",
+                  "--deployment-type", "canary",
+                  "--akka-cluster-join-existing",
+                  "--akka-cluster-skip-validation",
+                  "--name", "test",
+                  "--version", "1.0.0",
+                  "--marathon-lb-group", "external2",
+                  "--marathon-lb-host", "test.com"),
+                InputArgs.default)
+              .get
+
+            Future.successful {
+              assert(expected == actual)
             }
           }
         }

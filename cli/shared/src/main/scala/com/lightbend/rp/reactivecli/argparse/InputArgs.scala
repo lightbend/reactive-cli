@@ -323,7 +323,7 @@ object InputArgs {
 
       cmd("generate-marathon-configuration")
         .text("Generate DC/OS Marathon configuration")
-        .action((_, inputArgs) => inputArgs.copy(commandArgs = Some(GenerateDeploymentArgs(targetRuntimeArgs = Some(marathon.MarathonArgs())))))
+        .action((_, inputArgs) => inputArgs.copy(commandArgs = Some(GenerateDeploymentArgs(deploymentType = RollingDeploymentType, targetRuntimeArgs = Some(marathon.MarathonArgs())))))
         .children(
           arg[String]("docker-images") /* note: this argument will apply for other targets */
             .text("Docker images to be deployed. Format: [<registry host>/][<repo>/]image[:tag]")
@@ -337,7 +337,7 @@ object InputArgs {
             .action(GenerateDeploymentArgs.set((v, args) => args.copy(application = Some(v)))),
 
           opt[DeploymentType]("deployment-type")
-            .text(s"Sets the deployment type. Default: ${DeploymentType.Canary}; Available: ${DeploymentType.All.mkString(", ")}")
+            .text(s"Sets the deployment type. Default: ${DeploymentType.Rolling}; Available: ${DeploymentType.All.mkString(", ")}")
             .optional()
             .action(GenerateDeploymentArgs.set((t, args) => args.copy(deploymentType = t))),
 
