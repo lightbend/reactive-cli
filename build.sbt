@@ -285,7 +285,6 @@ lazy val cli = crossProject(JSPlatform, NativePlatform)
             |  }
             |};
             |
-            |require("${output.getAbsolutePath.replaceAllLiterally("\\", "\\\\")}");
             |"""
           .stripMargin
           .replaceAllLiterally("\n", System.lineSeparator)
@@ -294,7 +293,7 @@ lazy val cli = crossProject(JSPlatform, NativePlatform)
 
       val entryFile = targetDir / "rp.js"
 
-      IO.write(entryFile, entry)
+      IO.write(entryFile, entry + IO.read(output))
 
       entryFile
     }
