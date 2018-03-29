@@ -61,6 +61,7 @@ $ sudo apt-get install -y -qq \
     libgc-dev \
     libunwind8-dev \
     libre2-dev \
+    libcurl4-openssl-dev \
     jq
 ```
 
@@ -69,14 +70,14 @@ $ sudo apt-get install -y -qq \
 Use the following SBT command to create the native executable:
 
 ```bash
-$ sbt cli/nativeLink
+$ sbt nativeLink
 ```
 
 Once built, the native executable can be found in the `cli/target/scala-2.11/rp` path, i.e.
 
 ```bash
-$ cli/target/scala-2.11/reactive-cli-out --help
-reactive-cli 0.1.0
+$ cli/native/target/scala-2.11/reactive-cli-out --help
+reactive-cli 1.0.0
 Usage: reactive-cli [options]
 
   --help             Print this help text
