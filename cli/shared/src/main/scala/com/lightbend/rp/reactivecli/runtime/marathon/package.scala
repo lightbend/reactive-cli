@@ -90,7 +90,7 @@ package object marathon {
                   val endpointLabels =
                     sortedEndpoints
                       .flatMap {
-                        case HttpEndpoint(_, name, port, ingress) =>
+                        case HttpEndpoint(index, name, port, ingress) =>
                           ingress
                             .flatMap { ingress =>
                               val paths = normalizePaths(ingress.paths)
@@ -99,23 +99,22 @@ package object marathon {
 
                               if (allHosts.nonEmpty)
                                 allHosts.map { host =>
-                                  Some(host) -> paths
+                                  (index, Some(host), paths)
                                 }
                               else if (ingress.paths.nonEmpty)
-                                Seq(None -> paths)
+                                Seq((index, None, paths))
                               else
                                 Seq.empty
                             }
                         case _ =>
                           Seq.empty
                       }
-                      .zipWithIndex
                       .flatMap {
-                        case ((maybeHost, sortedPaths), i) =>
+                        case (i, maybeHost, sortedPaths) =>
                           Seq(
-                            Some("HAPROXY_GROUP" -> jString(marathonArgs.marathonLbHaproxyGroup)),
-                            maybeHost.map(h => s"HAPROXY_${i}_VHOST" -> jString(h)),
-                            sortedPaths.nonEmpty.option(s"HAPROXY_${i}_PATH" -> jString(sortedPaths.mkString(" ")))).flatten
+                            Seq("HAPROXY_GROUP" -> jString(marathonArgs.marathonLbHaproxyGroup)),
+                            maybeHost.toVector.map(h => s"HAPROXY_${i}_VHOST" -> jString(h)),
+                            sortedPaths.nonEmpty.option(Seq(s"HAPROXY_${i}_PATH" -> jString(sortedPaths.mkString(" ")), s"HAPROXY_${i}_HTTP_BACKEND_PROXYPASS_PATH" -> jString(sortedPaths.mkString(" ")))).getOrElse(Seq.empty)).flatten
                       }
 
                   val labels = List(
