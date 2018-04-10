@@ -273,7 +273,7 @@ object PodTemplate {
         Json(
           "resources" -> Json(
             "limits" -> cpuJson.deepmerge(memoryJson),
-            "request" -> cpuJson.deepmerge(memoryJson)))
+            "requests" -> cpuJson.deepmerge(memoryJson)))
       }
   }
 

@@ -430,7 +430,7 @@ object DeploymentJsonTest extends TestSuite {
               |    "cpu": 0.500000,
               |    "memory": 8192
               |  },
-              |  "request": {
+              |  "requests": {
               |    "cpu": 0.500000,
               |    "memory": 8192
               |  }
@@ -569,7 +569,7 @@ object DeploymentJsonTest extends TestSuite {
               |      "cpu":0.100000,
               |      "memory":200
               |    },
-              |    "request": {
+              |    "requests": {
               |      "cpu":0.100000,
               |      "memory":200
               |    }
@@ -591,7 +591,7 @@ object DeploymentJsonTest extends TestSuite {
               |    "limits": {
               |      "memory":200
               |    },
-              |    "request": {
+              |    "requests": {
               |      "memory":200
               |    }
               |   }
@@ -612,7 +612,7 @@ object DeploymentJsonTest extends TestSuite {
               |    "limits": {
               |      "cpu":2.50000
               |    },
-              |    "request": {
+              |    "requests": {
               |      "cpu":2.50000
               |    }
               |   }
