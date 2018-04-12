@@ -18,6 +18,7 @@ package com.lightbend.rp.reactivecli.runtime.kubernetes
 
 import argonaut._
 import com.lightbend.rp.reactivecli.annotations._
+import com.lightbend.rp.reactivecli.runtime._
 import scala.collection.immutable.Seq
 import scalaz._
 
@@ -65,11 +66,7 @@ object Ingress {
 
   def renderEndpoints(endpoints: Seq[EncodedEndpoint]): Json = {
     case class Path(serviceName: String, servicePort: Int, path: String) {
-      def depthAndLength: (Int, Int) = {
-        val depth = path.split('/').length
-        val length = path.length
-        depth -> length
-      }
+      def depthAndLength: (Int, Int) = pathDepthAndLength(path)
     }
 
     val byHost =

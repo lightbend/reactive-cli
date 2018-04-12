@@ -117,6 +117,9 @@ object Platform extends LazyLogging {
   def mkDirs(path: String): Unit =
     Fs.mkdirSync(path)
 
+  def parentFor(path: String): String =
+    Path.dirname(path)
+
   def pathFor(components: String*): String =
     if (components.isEmpty)
       ""

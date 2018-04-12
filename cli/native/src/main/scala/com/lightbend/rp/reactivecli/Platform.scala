@@ -79,6 +79,9 @@ object Platform extends LazyLogging {
   def mkDirs(path: String): Unit =
     Files.createDirectories(Paths.get(path))
 
+  def parentFor(path: String): String =
+    Paths.get(path).getParent.toString
+
   def pathFor(components: String*): String =
     if (components.isEmpty)
       ""

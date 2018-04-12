@@ -17,11 +17,13 @@
 package com.lightbend.rp.reactivecli
 
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
+import com.lightbend.rp.reactivecli.argparse.marathon.MarathonArgs
 import com.lightbend.rp.reactivecli.argparse.{ GenerateDeploymentArgs, InputArgs, VersionArgs }
 import com.lightbend.rp.reactivecli.concurrent._
 import com.lightbend.rp.reactivecli.docker.{ Config, DockerCredentials, DockerEngine, DockerRegistry }
 import com.lightbend.rp.reactivecli.process.jq
 import com.lightbend.rp.reactivecli.runtime.kubernetes
+import com.lightbend.rp.reactivecli.runtime.marathon
 import com.lightbend.rp.reactivecli.http.{ Http, HttpRequest, HttpSettings }
 import com.lightbend.rp.reactivecli.http.Http.HttpExchange
 import scala.annotation.tailrec
@@ -99,7 +101,7 @@ object Main extends LazyLogging {
                   System.out.println(s"jq support: ${if (jqAvail) "Available" else "Unavailable"}")
                 }
 
-              case generateDeploymentArgs @ GenerateDeploymentArgs(_, _, _, _, _, _, _, _, _, _, _, Some(kubernetesArgs: KubernetesArgs), _, _, _, _, _) =>
+              case generateDeploymentArgs @ GenerateDeploymentArgs(_, _, _, _, _, _, _, _, _, _, _, Some(targetRuntimeArgs), _, _, _, _, _) =>
                 implicit val httpSettings: HttpSettings =
                   inputArgs.tlsCacertsPath.fold(HttpSettings.default)(v => HttpSettings.default.copy(tlsCacertsPath = Some(v)))
 
@@ -189,43 +191,52 @@ object Main extends LazyLogging {
                   } yield validConfig
                 }
 
-                val outputHandler = kubernetes.handleGeneratedResources(kubernetesArgs.output)
-
                 def configFailure(img: String, t: Throwable) =
                   s"Failed to obtain Docker config for $img, ${t.getMessage}"
 
-                val output =
-                  Future
-                    .sequence(generateDeploymentArgs.dockerImages.map(img => attempt(getDockerConfig(img)).map(c => img -> c)))
-                    .flatMap { tryConfigs =>
-                      val (failures, successes) = tryConfigs.partition(_._2.isFailure)
+                Future
+                  .sequence(generateDeploymentArgs.dockerImages.map(img => attempt(getDockerConfig(img)).map(c => img -> c)))
+                  .flatMap { tryConfigs =>
+                    val (failures, successes) = tryConfigs.partition(_._2.isFailure)
 
-                      if (failures.isEmpty) {
-                        val futureValidationResources =
-                          successes.map {
-                            case (image, tryConfig) =>
-                              kubernetes.generateResources(image, tryConfig.get, generateDeploymentArgs, kubernetesArgs)
-                          }
+                    if (failures.isEmpty) {
+                      targetRuntimeArgs match {
+                        case kubernetesArgs: KubernetesArgs =>
+                          val futureValidationResources =
+                            successes.map {
+                              case (image, tryConfig) =>
+                                kubernetes.generateResources(image, tryConfig.get, generateDeploymentArgs, kubernetesArgs)
+                            }
 
-                        Future
-                          .sequence(futureValidationResources)
-                          .map { validations =>
-                            validations
-                              .foldLeft(Vector.empty[kubernetes.GeneratedKubernetesResource].successNel[String]) {
-                                case (acc, v) => (acc |@| v)(_ ++ _)
-                              }
-                              .flatMap(kubernetes.mergeGeneratedResources(kubernetesArgs, _))
+                          Future
+                            .sequence(futureValidationResources)
+                            .map { validations =>
+                              validations
+                                .foldLeft(Vector.empty[kubernetes.GeneratedKubernetesResource].successNel[String]) {
+                                  case (acc, v) => (acc |@| v)(_ ++ _)
+                                }
+                                .flatMap(kubernetes.mergeGeneratedResources(kubernetesArgs, _))
+                                .map(resources => kubernetes.handleGeneratedResources(kubernetesArgs.output)(resources))
+                            }
+                            .recover { case t: Throwable => s"Failed to generate Kubernetes resources for ${generateDeploymentArgs.dockerImages.mkString(", ")}, ${t.getMessage}".failureNel }
+                        case marathonArgs: MarathonArgs =>
+                          val futureConfiguration =
+                            marathon.generateConfiguration(
+                              successes.map(t => t._1 -> t._2.get),
+                              generateDeploymentArgs,
+                              marathonArgs)
+
+                          futureConfiguration.map { validations =>
+                            validations.map(config => marathon.outputConfiguration(config, marathonArgs.output))
                           }
-                          .recover { case t: Throwable => s"Failed to generate Kubernetes resources for ${generateDeploymentArgs.dockerImages.mkString(", ")}, ${t.getMessage}".failureNel }
-                      } else {
-                        val failureMessages =
-                          failures
-                            .map { case (img, f) => configFailure(img, f.failed.get) }
-                        Future.successful(NonEmptyList(failureMessages.head, failureMessages.tail: _*).failure)
                       }
+                    } else {
+                      val failureMessages =
+                        failures
+                          .map { case (img, f) => configFailure(img, f.failed.get) }
+                      Future.successful(NonEmptyList(failureMessages.head, failureMessages.tail: _*).failure)
                     }
-
-                output
+                  }
                   .foreach { validation =>
                     validation.fold(
                       { errors =>
@@ -237,8 +248,8 @@ object Main extends LazyLogging {
 
                         System.exit(1)
                       },
-                      resources =>
-                        outputHandler(resources).onComplete {
+                      whenDone =>
+                        whenDone.onComplete {
                           case v if v.isSuccess => System.exit(0)
                           case v => System.exit(2)
                         })

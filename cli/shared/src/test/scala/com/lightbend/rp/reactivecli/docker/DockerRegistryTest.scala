@@ -27,7 +27,7 @@ object DockerRegistryTest extends TestSuite {
           DockerRegistry.blobUrl(
             Image(
               DockerDefaultRegistry,
-              DockerDefaultLibrary,
+              Some(DockerDefaultLibrary),
               "alpine",
               ImageTag("3.5"),
               None,
@@ -41,7 +41,7 @@ object DockerRegistryTest extends TestSuite {
           DockerRegistry.blobUrl(
             Image(
               DockerDefaultRegistry,
-              DockerDefaultLibrary,
+              Some(DockerDefaultLibrary),
               "alpine",
               ImageTag("3.5"),
               None,
@@ -57,7 +57,7 @@ object DockerRegistryTest extends TestSuite {
           DockerRegistry.manifestUrl(
             Image(
               DockerDefaultRegistry,
-              DockerDefaultLibrary,
+              Some(DockerDefaultLibrary),
               "alpine",
               ImageTag("3.5"),
               None,
@@ -71,7 +71,7 @@ object DockerRegistryTest extends TestSuite {
           DockerRegistry.manifestUrl(
             Image(
               DockerDefaultRegistry,
-              DockerDefaultLibrary,
+              Some(DockerDefaultLibrary),
               "alpine",
               ImageTag("3.5"),
               None,
@@ -87,7 +87,7 @@ object DockerRegistryTest extends TestSuite {
           Success(
             Image(
               DockerDefaultRegistry,
-              DockerDefaultLibrary,
+              Some(DockerDefaultLibrary),
               "alpine",
               ImageTag("latest"),
               None,
@@ -100,10 +100,23 @@ object DockerRegistryTest extends TestSuite {
           Success(
             Image(
               DockerDefaultRegistry,
-              DockerDefaultLibrary,
+              Some(DockerDefaultLibrary),
               "alpine",
               ImageTag("3.5"),
               None,
+              None,
+              "alpine",
+              Some(ImageTag("3.5")))))
+
+      assert(
+        DockerRegistry.parseImageUri("my-registry:5000/alpine:3.5") ==
+          Success(
+            Image(
+              "my-registry:5000",
+              None,
+              "alpine",
+              ImageTag("3.5"),
+              Some("my-registry:5000"),
               None,
               "alpine",
               Some(ImageTag("3.5")))))
@@ -113,7 +126,7 @@ object DockerRegistryTest extends TestSuite {
           Success(
             Image(
               "lightbend-docker.registry.bintray.io",
-              "conductr",
+              Some("conductr"),
               "oci-in-docker",
               ImageTag("latest"),
               Some("lightbend-docker.registry.bintray.io"),
@@ -126,7 +139,7 @@ object DockerRegistryTest extends TestSuite {
           Success(
             Image(
               "lightbend-docker.registry.bintray.io",
-              "conductr",
+              Some("conductr"),
               "oci-in-docker",
               ImageTag("0.1"),
               Some("lightbend-docker.registry.bintray.io"),
@@ -139,7 +152,7 @@ object DockerRegistryTest extends TestSuite {
           Success(
             Image(
               "lightbend-docker.registry.bintray.io",
-              "conductr",
+              Some("conductr"),
               "oci-in-docker",
               ImageDigest("sha256:asdfdfasaw123"),
               Some("lightbend-docker.registry.bintray.io"),

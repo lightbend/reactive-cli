@@ -14,29 +14,16 @@
  * limitations under the License.
  */
 
-package com.lightbend.rp.reactivecli.docker
+package com.lightbend.rp.reactivecli
 
-sealed trait ImageRef {
-  def name: String
-  def value: String
-}
+package object runtime {
+  private[reactivecli] val AkkaClusterMinimumReplicas = 2
+  private[reactivecli] val ReadyCheckUrl = "/platform-tooling/ready"
+  private[reactivecli] val HealthCheckUrl = "/platform-tooling/healthy"
 
-case class ImageDigest(value: String) extends ImageRef {
-  def name: String = "digest"
-}
-
-case class ImageTag(value: String) extends ImageRef {
-  def name: String = "tag"
-}
-
-case class Image(
-  url: String,
-  namespace: Option[String],
-  image: String,
-  ref: ImageRef,
-  providedUrl: Option[String],
-  providedNamespace: Option[String],
-  providedImage: String,
-  providedRef: Option[ImageRef]) {
-  def pullScope: String = s"repository:$namespace/$image:pull"
+  def pathDepthAndLength(path: String): (Int, Int) = {
+    val depth = path.split('/').length
+    val length = path.length
+    depth -> length
+  }
 }
