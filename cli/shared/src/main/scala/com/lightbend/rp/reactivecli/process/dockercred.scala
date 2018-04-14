@@ -20,7 +20,7 @@ import java.util.NoSuchElementException
 import com.lightbend.rp.reactivecli.concurrent._
 import com.lightbend.rp.reactivecli.docker.DockerCredentials
 import com.lightbend.rp.reactivecli.files._
-import scala.collection.immutable.Seq
+import scala.collection.immutable.{Seq, Map}
 import scala.concurrent.Future
 import slogging._
 import argonaut._
@@ -31,23 +31,25 @@ object dockercred extends LazyLogging {
     exec(s"docker-credential-$kind", "list").map(_._1 == 0)
   }
 
-  private def chooseKind(): Future[String] = {
-    def step(ks: Seq[String]): Future[String] =
+  // Returns a prioritized sequence of available credential helpers
+  private def chooseHelpers(): Future[Seq[String]] = {
+    def step(ks: Seq[String]): Future[List[String]] =
       if (ks.isEmpty)
-        Future.failed(new NoSuchElementException("No docker credential helper found"))
+        Future.successful(List.empty)
       else
         isAvailable(ks.head).flatMap {
-          case true => Future.successful(ks.head)
+          case true => step(ks.tail).map(ks.head :: _)
           case false => step(ks.tail)
         }
 
-    step(Seq("osxkeychain", "wincred", "pass", "secretservice"))
+    // Helper sequence here corresponds to priority
+    step(Seq("gcloud", "osxkeychain", "wincred", "pass", "secretservice"))
   }
 
   private def getJsonField(json: Json, field: String): Option[String] =
     json.hcursor.downField(field).focus.flatMap(_.string)
 
-  // Returns seq of pairs server -> username
+  // Returns seq of pairs server -> username from a single helper
   private def list(kind: String): Future[Seq[(String, String)]] = {
     for {
       (code, output) <- exec(s"docker-credential-$kind", "list")
@@ -62,6 +64,22 @@ object dockercred extends LazyLogging {
         Seq.empty
       }
     }
+  }
+
+  // Returns seq of tuples (server, username, helper) merged from multiple helpers
+  private def listAll(ks: Seq[String]) : Future[Seq[(String, String, String)]] = {
+    def step(ks: Seq[String]): Future[Map[String, (String, String)]] =
+      if (ks.isEmpty)
+        Future.successful(Map.empty)
+      else
+        list(ks.head).flatMap { creds =>
+          step(ks.tail).map(_ ++ creds.map(c => c._1 -> (c._2, ks.head)).toMap)
+        }
+
+    step(ks).map(m => m.to[Seq].map { cred =>
+      val (server, (username, kind)) = cred
+      (server, username, kind)
+    })
   }
 
   // Returns pair username -> password
@@ -86,23 +104,23 @@ object dockercred extends LazyLogging {
   }
 
   def getCredentials(): Future[Seq[DockerCredentials]] = {
-    def step(kind: String, cs: Seq[(String, String)]): Future[List[DockerCredentials]] = {
+    def step(cs: Seq[(String, String, String)]): Future[List[DockerCredentials]] = {
       if (cs.isEmpty) Future.successful(List.empty)
       else {
-        val (server, username) = cs.head
+        val (server, username, kind) = cs.head
         get(kind, server).flatMap {
-          case Some((username, password)) => step(kind, cs.tail).map { seq =>
+          case Some((username, password)) => step(cs.tail).map { seq =>
             DockerCredentials(server, Right(username -> password)) :: seq
           }
-          case None => step(kind, cs.tail)
+          case None => step(cs.tail)
         }
       }
     }
 
     for {
-      kind <- chooseKind()
-      creds <- list(kind)
-      result <- step(kind, creds)
+      helpers <- chooseHelpers()
+      creds <- listAll(helpers)
+      result <- step(creds)
     } yield result
   }
 }
