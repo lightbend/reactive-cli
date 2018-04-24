@@ -83,17 +83,17 @@ object DockerRegistry extends LazyLogging {
           providedRef = providedRef))
   }
 
-  private def getBlob(http: HttpExchange, credentials: Option[HttpRequest.Auth], useHttps: Boolean, validateTls: Boolean)(img: Image, digest: String, token: Option[HttpRequest.BearerToken]): Future[(HttpResponse, Option[HttpRequest.BearerToken])] =
+  private def getBlob(http: HttpExchange, credentials: Option[HttpRequest.Auth], useHttps: Boolean, validateTls: Boolean, img: Image, digest: String): Future[(HttpResponse, Option[HttpRequest.BearerToken])] =
     for {
-      r <- getWithToken(http, credentials, validateTls)(blobUrl(img, digest, useHttps), HttpHeaders(Map.empty), true, token, Some(img.pullScope))
+      r <- getWithToken(http, credentials, validateTls, blobUrl(img, digest, useHttps), HttpHeaders(Map.empty), true, Some(img.pullScope))
     } yield r
 
-  private def checkRepositoryValid(http: HttpExchange, credentials: Option[HttpRequest.Auth], useHttps: Boolean, validateTls: Boolean)(img: Image, token: Option[HttpRequest.BearerToken])(implicit settings: HttpSettings): Future[(Either[String, Unit], Option[HttpRequest.BearerToken])] =
+  private def checkRepositoryValid(http: HttpExchange, credentials: Option[HttpRequest.Auth], useHttps: Boolean, validateTls: Boolean, img: Image)(implicit settings: HttpSettings): Future[(Either[String, Unit], Option[HttpRequest.BearerToken])] =
     for {
       // We only fetch a single tag (?n=1) because we only care about status codes, and this saves data transfer for
       // large repositories.
 
-      r <- getWithToken(http, credentials, validateTls)(s"${tagsUrl(img, useHttps)}?n=1", HttpHeaders(Map()), true, token, Some(img.pullScope))
+      r <- getWithToken(http, credentials, validateTls, s"${tagsUrl(img, useHttps)}?n=1", HttpHeaders(Map()), true, Some(img.pullScope))
     } yield (
       r._1.statusCode match {
         case x if x >= 200 && x <= 299 => Right(())
@@ -103,20 +103,21 @@ object DockerRegistry extends LazyLogging {
       },
       r._2)
 
-  def getConfig(http: HttpExchange, credentials: Option[HttpRequest.Auth], useHttps: Boolean, validateTls: Boolean)(uri: String, token: Option[HttpRequest.BearerToken])(implicit settings: HttpSettings): Future[(Config, Option[HttpRequest.BearerToken])] =
+  def getConfig(http: HttpExchange, credentials: Option[HttpRequest.Auth], useHttps: Boolean, validateTls: Boolean, uri: String)(implicit settings: HttpSettings): Future[(Config, Option[HttpRequest.BearerToken])] =
     for {
       img <- Future.fromTry(parseImageUri(uri))
       _ = logger.debug("Image: {}", img)
-      validRepository <- checkRepositoryValid(http, credentials, useHttps, validateTls)(img, token)
+      validRepository <- checkRepositoryValid(http, credentials, useHttps, validateTls, img)
       _ <- validRepository._1 match {
         case Left(errorMessage) => Future.failed(new IllegalArgumentException(errorMessage))
         case Right(_) => Future.successful(())
       }
+      token = validRepository._2
       failureMessages = Map(
         404L -> s"unable to find image with ${img.ref.name} ${img.ref.value}",
         401L -> "unable to access image; check authentication")
-      manifest <- getManifest(http, credentials, useHttps, validateTls)(img, token = validRepository._2, failureMessages)
-      blob <- getBlob(http, credentials, useHttps, validateTls)(img, manifest._1.config.digest, token = validRepository._2)
+      manifest <- getManifest(http, token, useHttps, validateTls, img, failureMessages)
+      blob <- getBlob(http, token, useHttps, validateTls, img, manifest._1.config.digest)
       config <- Future.fromTry(getDecoded[Config](blob._1, Map.empty))
     } yield config -> blob._2
 
@@ -125,9 +126,9 @@ object DockerRegistry extends LazyLogging {
       .toOption
       .map(_.url)
 
-  private def getManifest(http: HttpExchange, credentials: Option[HttpRequest.Auth], useHttps: Boolean, validateTls: Boolean)(img: Image, token: Option[HttpRequest.BearerToken], failureMessages: Map[Long, String]): Future[(Manifest, Option[HttpRequest.BearerToken])] =
+  private def getManifest(http: HttpExchange, credentials: Option[HttpRequest.Auth], useHttps: Boolean, validateTls: Boolean, img: Image, failureMessages: Map[Long, String]): Future[(Manifest, Option[HttpRequest.BearerToken])] =
     for {
-      r <- getWithToken(http, credentials, validateTls)(manifestUrl(img, useHttps), HttpHeaders(Map("Accept" -> DockerAcceptManifestHeader)), true, token, Some(img.pullScope))
+      r <- getWithToken(http, credentials, validateTls, manifestUrl(img, useHttps), HttpHeaders(Map("Accept" -> DockerAcceptManifestHeader)), true, Some(img.pullScope))
       v <- Future.fromTry(getDecoded[Manifest](r._1, failureMessages))
     } yield v -> r._2
 
@@ -143,39 +144,18 @@ object DockerRegistry extends LazyLogging {
             response.statusCode,
             s"expected code 200, received ${response.statusCode}")))
 
-  private def getWithAuth(http: HttpExchange, auth: Option[HttpRequest.Auth], validateTls: Boolean, url: String, headers: HttpHeaders, overrideToken: Option[HttpRequest.BearerToken], fallbackScope: Option[String]): Future[(HttpResponse, Option[HttpRequest.BearerToken])] = {
-
-    auth match {
-      case None =>
-        // No authentication, will get temporary token
-        getWithToken(http, None, validateTls)(url, headers, true, overrideToken, fallbackScope)
-
-      case Some(basic: HttpRequest.BasicAuth) =>
-        // Username and password authentication
-        getWithToken(http, Some(basic), validateTls)(url, headers, true, overrideToken, fallbackScope)
-
-      case Some(basic: HttpRequest.EncodedBasicAuth) =>
-        // Username and password auth, already base64 encoded (docker config.json)
-        getWithToken(http, Some(basic), validateTls)(url, headers, true, overrideToken, fallbackScope)
-
-      case Some(token: HttpRequest.BearerToken) =>
-        // Bearer token authentication
-        getWithToken(http, auth, validateTls)(url, headers, true, overrideToken, fallbackScope)
-    }
-  }
-
-  private def getWithToken(http: HttpExchange, credentials: Option[HttpRequest.Auth], validateTls: Boolean)(url: String, headers: HttpHeaders, tryNewToken: Boolean = true, token: Option[HttpRequest.BearerToken], fallbackScope: Option[String]): Future[(HttpResponse, Option[HttpRequest.BearerToken])] = {
+  private def getWithToken(http: HttpExchange, credentials: Option[HttpRequest.Auth], validateTls: Boolean, url: String, headers: HttpHeaders, tryNewToken: Boolean = true, fallbackScope: Option[String]): Future[(HttpResponse, Option[HttpRequest.BearerToken])] = {
     logger.debug("Request URL: {}", url)
 
     // If given credentials has a bearer token, just use it instead of round-tripping to get a new token back
-    val currentToken = credentials match {
+    val token = credentials match {
       case Some(a: HttpRequest.BearerToken) => Some(a)
-      case _ => token
+      case _ => None
     }
 
     val request =
       HttpRequest(url)
-        .headers(currentToken.fold(headers)(t => headers.updated("Authorization", s"Bearer ${t.value}")))
+        .headers(token.fold(headers)(t => headers.updated("Authorization", s"Bearer ${t.value}")))
         .copy(tlsValidationEnabled = Some(validateTls))
 
     http.apply(request).flatMap {
@@ -200,7 +180,7 @@ object DockerRegistry extends LazyLogging {
             json <- optionToFuture(JsonParser.parse(body).right.toOption, "Cannot parse body as JSON")
             token <- optionToFuture(json.field("token"), "Missing token")
             tokenStr <- optionToFuture(token.string, "Token not a string")
-            result <- getWithToken(http, credentials, validateTls)(url, headers, tryNewToken = false, token = Some(HttpRequest.BearerToken(tokenStr)), fallbackScope = fallbackScope)
+            result <- getWithToken(http, Some(HttpRequest.BearerToken(tokenStr)), validateTls, url, headers, tryNewToken = false, fallbackScope = fallbackScope)
           } yield result
 
         maybeResponse.recover {

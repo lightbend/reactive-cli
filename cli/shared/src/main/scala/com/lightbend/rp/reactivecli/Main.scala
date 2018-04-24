@@ -166,7 +166,7 @@ object Main extends LazyLogging {
                       http,
                       creds,
                       generateDeploymentArgs.registryUseHttps,
-                      generateDeploymentArgs.registryValidateTls)(imageName, token = None).map(_._1)
+                      generateDeploymentArgs.registryValidateTls, imageName).map(_._1)
                   }
 
                 def getDockerConfig(imageName: String): Future[Config] = {
