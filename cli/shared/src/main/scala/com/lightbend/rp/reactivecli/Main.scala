@@ -126,7 +126,13 @@ object Main extends LazyLogging {
                         entry <- creds.find(realm => docker.registryAuthNameMatches(registry, realm.registry))
                       } yield entry.credentials match {
                         case Left(raw) => HttpRequest.EncodedBasicAuth(raw)
-                        case Right((username, password)) => HttpRequest.BasicAuth(username, password)
+                        case Right((username, password)) => {
+                          if (username == "oauth2accesstoken")
+                            HttpRequest.BearerToken(password)
+                          else
+                            HttpRequest.BasicAuth(username, password)
+                        }
+
                       }
 
                     val dockerRegistryAuth = dockerRegistryArgsAuth.orElse(dockerRegistryFileAuth)

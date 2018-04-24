@@ -166,10 +166,16 @@ object DockerRegistry extends LazyLogging {
 
   private def getWithToken(http: HttpExchange, credentials: Option[HttpRequest.Auth], validateTls: Boolean)(url: String, headers: HttpHeaders, tryNewToken: Boolean = true, token: Option[HttpRequest.BearerToken], fallbackScope: Option[String]): Future[(HttpResponse, Option[HttpRequest.BearerToken])] = {
     logger.debug("Request URL: {}", url)
+
+    // If given credentials has a bearer token, just use it instead of round-tripping to get a new token back
+    val currentToken = credentials match {
+      case Some(a: HttpRequest.BearerToken) => Some(a)
+      case _ => token
+    }
+
     val request =
       HttpRequest(url)
-        .headers(token.fold(headers)(t => headers.updated("Authorization", s"Bearer ${t.value}")))
-
+        .headers(currentToken.fold(headers)(t => headers.updated("Authorization", s"Bearer ${t.value}")))
         .copy(tlsValidationEnabled = Some(validateTls))
 
     http.apply(request).flatMap {
