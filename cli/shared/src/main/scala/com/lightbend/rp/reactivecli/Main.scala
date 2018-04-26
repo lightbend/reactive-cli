@@ -95,13 +95,17 @@ object Main extends LazyLogging {
     val maybePluginVersion = config.config.Labels.flatMap(_.get(plugin.label))
     val maybeValid = maybePluginVersion.map(isVersionValid(_, plugin.major, plugin.minor))
 
-    // Only fail if plugin version is defined and it's too old
+    // Only succeed if plugin version is defined and it's not too old
     maybeValid match {
-      case Some(false) => {
-        val msg = s"Minimum ${plugin.name} version is ${plugin.minimum}, docker image was built using: ${maybePluginVersion.getOrElse("")}"
+      case None => {
+        val msg = s"build plugin label not found; docker image must be built using sbt-reactive-app or reactive-app-maven-plugin"
         Future.failed(new IllegalArgumentException(msg))
       }
-      case _ => Future.successful(config)
+      case Some(false) => {
+        val msg = s"minimum ${plugin.name} version is ${plugin.minimum}, docker image was built using ${maybePluginVersion.getOrElse("")}"
+        Future.failed(new IllegalArgumentException(msg))
+      }
+      case Some(true) => Future.successful(config)
     }
   }
 
@@ -206,22 +210,10 @@ object Main extends LazyLogging {
 
                 def getDockerConfig(imageName: String): Future[Config] = {
                   def validateConfig(config: Config): Future[Config] = {
-                    val maybeVersion =
-                      config
-                        .config
-                        .Labels
-                        .flatMap(_.get("com.lightbend.rp.sbt-reactive-app-version"))
+                    val sbtConfig = validateBuildPluginVersion(config, MinSupportedSbtReactiveApp)
+                    val mavenConfig = validateBuildPluginVersion(config, MinSupportedReactiveMavenApp)
 
-                    val validVersion = maybeVersion.fold(true) { ver =>
-                      isVersionValid(ver, MinSupportedSbtReactiveApp.major, MinSupportedSbtReactiveApp.minor)
-                    }
-
-                    if (validVersion)
-                      Future.successful(config)
-                    else
-                      Future.failed(
-                        new IllegalArgumentException(
-                          s"Minimum sbt-reactive-app version is ${MinSupportedSbtReactiveApp.minimum}, given: ${maybeVersion.getOrElse("")}"))
+                    sbtConfig fallbackTo mavenConfig
                   }
 
                   for {
