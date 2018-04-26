@@ -33,6 +33,30 @@ import slogging._
 
 import Scalaz._
 
+trait MinVersion {
+  val name: String
+  val major: Int
+  val minor: Int
+  val minimum: String
+  val label: String
+}
+
+object MinSupportedSbtReactiveApp extends MinVersion {
+  val name = "sbt-reactive-app"
+  val major: Int = 1
+  val minor: Int = 1
+  val minimum = s"$major.$minor.0"
+  val label = "com.lightbend.rp.sbt-reactive-app-version"
+}
+
+object MinSupportedReactiveMavenApp extends MinVersion {
+  val name = "reactive-maven-app-plugin"
+  val major: Int = 0
+  val minor: Int = 2
+  val minimum = s"$major.$minor.0"
+  val label = "com.lightbend.rp.reactive-maven-app-version"
+}
+
 /**
  * This is the main entry of the Reactive CLI.
  */
@@ -41,32 +65,43 @@ object Main extends LazyLogging {
 
   val parser = InputArgs.parser(CliName, ProgramVersion.current)
 
-  object MinSupportedSbtReactiveApp {
-    val major: Int = 0
-    val minor: Int = 4
-    val minimum = s"$major.$minor.0"
-
-    def parseVersion(version: String): Option[(Int, Int, Int)] = {
-      // Only strings like "1.2.3" are supported, what comes after
-      // doesn't matter so snapshots like "0.1.2-SNAPSHOT" are okay.
-      try {
-        val parts = version.split("-|\\.")
+  def parseVersion(version: String): Option[(Int, Int, Int)] = {
+    // Only strings like "1.2.3" are supported, what comes after
+    // doesn't matter so snapshots like "0.1.2-SNAPSHOT" are okay.
+    try {
+      val parts = version.split("-|\\.")
+      if (parts.length < 3)
+        None
+      else
         Some(parts(0).toInt, parts(1).toInt, parts(2).toInt)
-      } catch {
-        case _: Exception => None
-      }
+    } catch {
+      case _: Exception => None
     }
+  }
 
-    def isVersionValid(version: String, reqMajor: Int = major, reqMinor: Int = minor): Boolean = {
-      parseVersion(version) match {
-        case Some((givenMajor, givenMinor, _)) => {
-          if (givenMajor == reqMajor)
-            givenMinor >= reqMinor
-          else
-            givenMajor >= reqMajor
-        }
-        case None => false
+  def isVersionValid(version: String, reqMajor: Int, reqMinor: Int): Boolean = {
+    parseVersion(version) match {
+      case Some((givenMajor, givenMinor, _)) => {
+        if (givenMajor == reqMajor)
+          givenMinor >= reqMinor
+        else
+          givenMajor >= reqMajor
       }
+      case None => false
+    }
+  }
+
+  private def validateBuildPluginVersion(config: Config, plugin: MinVersion): Future[Config] = {
+    val maybePluginVersion = config.config.Labels.flatMap(_.get(plugin.label))
+    val maybeValid = maybePluginVersion.map(isVersionValid(_, plugin.major, plugin.minor))
+
+    // Only fail if plugin version is defined and it's too old
+    maybeValid match {
+      case Some(false) => {
+        val msg = s"Minimum ${plugin.name} version is ${plugin.minimum}, docker image was built using: ${maybePluginVersion.getOrElse("")}"
+        Future.failed(new IllegalArgumentException(msg))
+      }
+      case _ => Future.successful(config)
     }
   }
 
@@ -177,7 +212,9 @@ object Main extends LazyLogging {
                         .Labels
                         .flatMap(_.get("com.lightbend.rp.sbt-reactive-app-version"))
 
-                    val validVersion = maybeVersion.fold(true)(MinSupportedSbtReactiveApp.isVersionValid(_))
+                    val validVersion = maybeVersion.fold(true) { ver =>
+                      isVersionValid(ver, MinSupportedSbtReactiveApp.major, MinSupportedSbtReactiveApp.minor)
+                    }
 
                     if (validVersion)
                       Future.successful(config)
