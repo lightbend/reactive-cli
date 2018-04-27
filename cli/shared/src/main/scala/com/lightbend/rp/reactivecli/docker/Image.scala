@@ -38,5 +38,5 @@ case class Image(
   providedNamespace: Option[String],
   providedImage: String,
   providedRef: Option[ImageRef]) {
-  def pullScope: String = s"repository:$namespace/$image:pull"
+  def pullScope: String = s"repository:${namespace.map(ns => s"$ns/")}$image:pull"
 }
