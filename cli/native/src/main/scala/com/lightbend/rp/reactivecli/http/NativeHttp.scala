@@ -105,7 +105,7 @@ object NativeHttp {
         case (headerName, headerValue) => s"$headerName$HttpHeaderNameAndValueSeparator $headerValue"
       }.toVector
 
-  private def parseHeaders(input: Option[String]): Map[String, String] = {
+  def parseHeaders(input: Option[String]): Map[String, String] = {
     def splitBySeparator(v: String, separator: String): (String, String) = {
       val lineBreakIndex = v.indexOf(separator)
       val (l, r) = v.splitAt(lineBreakIndex)
@@ -115,9 +115,23 @@ object NativeHttp {
     input match {
       case Some(headers) =>
         // Exclude the first line which is the HTTP status line
-        headers.split(CRLF).tail.foldLeft(Map.empty[String, String]) { (v, l) =>
-          val (headerName, headerValue) = splitBySeparator(l, HttpHeaderNameAndValueSeparator)
-          v.updated(headerName, headerValue.trim)
+        val headerLines = headers.split(CRLF).tail
+
+        // Keep track of previous header name to handle multiline fields correctly
+        var prev: Option[String] = None
+        headerLines.foldLeft(Map.empty[String, String]) { (v, l) =>
+          if (l.startsWith(" ") || l.startsWith("\t")) {
+            prev match {
+              case None => throw new IllegalArgumentException("unexpected whitespace in HTTP header field")
+              case Some(key) =>
+                val prevVal = v(key)
+                v.updated(key, prevVal + " " + l.trim)
+            }
+          } else {
+            val (headerName, headerValue) = splitBySeparator(l, HttpHeaderNameAndValueSeparator)
+            prev = Some(headerName)
+            v.updated(headerName, headerValue.trim)
+          }
         }
       case _ =>
         Map.empty[String, String]
