@@ -87,6 +87,10 @@ object InputArgs {
         .text("Sets the log level. Available: error, warn, info, debug, trace")
         .action((v, c) => c.copy(logLevel = v))
 
+      opt[Unit]("stacktrace")
+        .text("In case of failure, prints out a stack trace")
+        .action((v, c) => c.copy(stackTrace = true))
+
       help("help")
         .text("Print this help text")
 
@@ -491,5 +495,6 @@ object InputArgs {
  */
 case class InputArgs(
   logLevel: LogLevel = LogLevel.INFO,
+  stackTrace: Boolean = false,
   tlsCacertsPath: Option[String] = None,
   commandArgs: Option[CommandArgs] = None)
