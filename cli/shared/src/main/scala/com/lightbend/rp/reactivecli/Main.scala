@@ -226,8 +226,11 @@ object Main extends LazyLogging {
                   } yield validConfig
                 }
 
-                def configFailure(img: String, t: Throwable) =
+                def configFailure(img: String, t: Throwable) = {
+                  if (inputArgsMerged.stackTrace)
+                    t.printStackTrace()
                   s"Failed to obtain Docker config for $img, ${t.getMessage}"
+                }
 
                 Future
                   .sequence(generateDeploymentArgs.dockerImages.map(img => attempt(getDockerConfig(img)).map(c => img -> c)))
