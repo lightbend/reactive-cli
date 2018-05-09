@@ -18,6 +18,7 @@ package com.lightbend.rp.reactivecli.http
 
 import scala.scalanative.native
 import scala.util.{ Failure, Success, Try }
+import scala.util.matching.Regex
 import scala.collection.immutable.Seq
 
 object NativeHttp {
@@ -106,31 +107,31 @@ object NativeHttp {
       }.toVector
 
   def parseHeaders(input: Option[String]): Map[String, String] = {
-    def splitBySeparator(v: String, separator: String): (String, String) = {
-      val lineBreakIndex = v.indexOf(separator)
-      val (l, r) = v.splitAt(lineBreakIndex)
-      l -> r.substring(separator.length)
-    }
+    val matchHeader = """^([a-zA-Z-_]+):(.*)$""".r
 
     input match {
       case Some(headers) =>
-        // Exclude the first line which is the HTTP status line
-        val headerLines = headers.split(CRLF).tail
+        // Filter out empty lines, exclude the first line which is the HTTP status line
+        val headerLines = headers.split(CRLF).filter(!_.isEmpty).tail
 
         // Keep track of previous header name to handle multiline fields correctly
         var prev: Option[String] = None
         headerLines.foldLeft(Map.empty[String, String]) { (v, l) =>
           if (l.startsWith(" ") || l.startsWith("\t")) {
             prev match {
-              case None => throw new IllegalArgumentException("unexpected whitespace in HTTP header field")
+              case None => v
               case Some(key) =>
                 val prevVal = v(key)
                 v.updated(key, prevVal + " " + l.trim)
             }
           } else {
-            val (headerName, headerValue) = splitBySeparator(l, HttpHeaderNameAndValueSeparator)
-            prev = Some(headerName)
-            v.updated(headerName, headerValue.trim)
+            l match {
+              case matchHeader(name, value) => {
+                prev = Some(name)
+                v.updated(name, if (value == null) "" else value.trim)
+              }
+              case _ => v
+            }
           }
         }
       case _ =>
