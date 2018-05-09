@@ -97,8 +97,7 @@ object DockerRegistry extends LazyLogging {
     } yield (
       r._1.statusCode match {
         case x if x >= 200 && x <= 299 => Right(())
-        case 404 => Left("unable to find repository or registry")
-        case 401 => Left("unable to access repository or registry; check authentication")
+        case 401 => Left("unable to access repository or registry; check authentication [401]")
         case c => Left(s"unable to find repository or registry [$c]")
       },
       r._2)
@@ -109,7 +108,10 @@ object DockerRegistry extends LazyLogging {
       _ = logger.debug("Image: {}", img)
       validRepository <- checkRepositoryValid(http, credentials, useHttps, validateTls, img)
       _ <- validRepository._1 match {
-        case Left(errorMessage) => Future.failed(new IllegalArgumentException(errorMessage))
+        case Left(errorMessage) => {
+          logger.debug(s"checkRepositoryValid failed: $errorMessage")
+          Future.failed(new IllegalArgumentException(errorMessage))
+        }
         case Right(_) => Future.successful(())
       }
       token = validRepository._2

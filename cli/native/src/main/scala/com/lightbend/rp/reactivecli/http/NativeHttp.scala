@@ -18,9 +18,12 @@ package com.lightbend.rp.reactivecli.http
 
 import scala.scalanative.native
 import scala.util.{ Failure, Success, Try }
+import scala.util.matching.Regex
 import scala.collection.immutable.Seq
 
-object NativeHttp {
+import slogging._
+
+object NativeHttp extends LazyLogging {
   type HttpExchange = HttpRequest => Try[HttpResponse]
 
   private val CRLF = "\r\n"
@@ -106,31 +109,43 @@ object NativeHttp {
       }.toVector
 
   def parseHeaders(input: Option[String]): Map[String, String] = {
-    def splitBySeparator(v: String, separator: String): (String, String) = {
-      val lineBreakIndex = v.indexOf(separator)
-      val (l, r) = v.splitAt(lineBreakIndex)
-      l -> r.substring(separator.length)
-    }
+    val matchHeader = """^([a-zA-Z-_]+):(.*)$""".r
 
     input match {
       case Some(headers) =>
+        // Filter out empty lines
+        val splitHeader = headers.split(CRLF).filter(!_.isEmpty)
+        val protocol = splitHeader.head
+        if (!protocol.startsWith("HTTP/1.1") && !protocol.startsWith("HTTP/2"))
+          logger.debug("Unexpected protocol name: \"{}\"", protocol)
+
         // Exclude the first line which is the HTTP status line
-        val headerLines = headers.split(CRLF).tail
+        val headerLines = splitHeader.tail
 
         // Keep track of previous header name to handle multiline fields correctly
         var prev: Option[String] = None
         headerLines.foldLeft(Map.empty[String, String]) { (v, l) =>
           if (l.startsWith(" ") || l.startsWith("\t")) {
             prev match {
-              case None => throw new IllegalArgumentException("unexpected whitespace in HTTP header field")
+              case None => {
+                logger.debug("Unexpected whitespace in HTTP header: \"{}\"", l)
+                v
+              }
               case Some(key) =>
                 val prevVal = v(key)
                 v.updated(key, prevVal + " " + l.trim)
             }
           } else {
-            val (headerName, headerValue) = splitBySeparator(l, HttpHeaderNameAndValueSeparator)
-            prev = Some(headerName)
-            v.updated(headerName, headerValue.trim)
+            l match {
+              case matchHeader(name, value) => {
+                prev = Some(name)
+                v.updated(name, if (value == null) "" else value.trim)
+              }
+              case _ => {
+                logger.debug("Cannot parse HTTP header: \"{}\"", l)
+                v
+              }
+            }
           }
         }
       case _ =>

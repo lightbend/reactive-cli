@@ -20,12 +20,11 @@ import scala.collection.immutable.Map
 import utest._
 
 object NativeHttpTest extends TestSuite {
-  val tests = this {
+  val tests = this{
     "Parse HTTP headers" - {
       // No header field value
       assert(NativeHttp.parseHeaders(Some("HTTP/1.1 200 OK\r\nAccept:")) == Map(
-        "Accept" -> ""
-      ))
+        "Accept" -> ""))
 
       // Real-world punctuation
       assert(NativeHttp.parseHeaders(Some(
@@ -37,8 +36,7 @@ object NativeHttpTest extends TestSuite {
         "Date" -> "Mon, 07 May 2018 08:43:13 GMT",
         "Expires" -> "-1",
         "Cache-Control" -> "private, max-age=0",
-        "Content-Type" -> "text/html; charset=ISO-8859-1"
-      ))
+        "Content-Type" -> "text/html; charset=ISO-8859-1"))
 
       // Multiline field values
       assert(NativeHttp.parseHeaders(Some(
@@ -52,7 +50,22 @@ object NativeHttpTest extends TestSuite {
         "Date" -> "Mon, 07 May 2018 08:43:13 GMT",
         "Expires" -> "-1",
         "Cache-Control" -> "private, max-age=0",
-        "Content-Type" -> "text/html; charset=ISO-8859-1"
+        "Content-Type" -> "text/html; charset=ISO-8859-1"))
+    }
+
+    "Parse headers not following HTTP spec" - {
+      // Empty lines before and after HTTP status
+      assert(NativeHttp.parseHeaders(Some("\r\n\r\n\r\nHTTP/1.1 200 OK\r\n \r\nAccept:\r\n")) == Map(
+        "Accept" -> ""))
+
+      // No colon separator
+      assert(NativeHttp.parseHeaders(Some(
+        """HTTP/1.1 200 OK
+          |Accept: *
+          |Date Mon, 07 May 2018 08:43:13 GMT
+          |Expires: -1""".stripMargin.replaceAll("\n", "\r\n"))) == Map(
+        "Accept" -> "*",
+        "Expires" -> "-1"
       ))
     }
   }
