@@ -216,14 +216,10 @@ object Main extends LazyLogging {
                     sbtConfig fallbackTo mavenConfig
                   }
 
-                  for {
-                    maybeConfig <- getDockerHostConfig(imageName)
-                    config <- maybeConfig match {
-                      case None => getDockerRegistryConfig(imageName)
-                      case Some(c) => Future.successful(c)
-                    }
-                    validConfig <- validateConfig(config)
-                  } yield validConfig
+                  process.docker.inspectImageForConfig(imageName).flatMap(_.map(Future.successful).getOrElse(
+                    getDockerHostConfig(imageName).flatMap(_.map(Future.successful).getOrElse(
+                      getDockerRegistryConfig(imageName)))))
+                    .flatMap(validateConfig _)
                 }
 
                 def configFailure(img: String, t: Throwable) = {
