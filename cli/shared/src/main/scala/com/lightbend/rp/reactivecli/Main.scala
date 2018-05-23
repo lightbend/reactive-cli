@@ -140,7 +140,7 @@ object Main extends LazyLogging {
                   System.out.println(s"jq support: ${if (jqAvail) "Available" else "Unavailable"}")
                 }
 
-              case generateDeploymentArgs @ GenerateDeploymentArgs(_, _, _, _, _, _, _, _, _, _, _, Some(targetRuntimeArgs), _, _, _, _, _) =>
+              case generateDeploymentArgs @ GenerateDeploymentArgs(_, _, _, _, _, _, _, _, _, _, _, Some(targetRuntimeArgs), _, _, _, _, _, _) =>
                 implicit val httpSettings: HttpSettings =
                   inputArgs.tlsCacertsPath.fold(HttpSettings.default)(v => HttpSettings.default.copy(tlsCacertsPath = Some(v)))
 
@@ -191,6 +191,11 @@ object Main extends LazyLogging {
                   }
                 }
 
+                def getDockerLocalConfigIfEnabled(imageName: String): Future[Option[Config]] =
+                  if (generateDeploymentArgs.registryUseLocal)
+                    process.docker.inspectImageForConfig(imageName)
+                  else Future.successful(None)
+
                 def getDockerHostConfig(imageName: String): Future[Option[Config]] = {
                   implicit val httpSettingsWithDockerCredentials: HttpSettings = DockerEngine.applyDockerHostSettings(httpSettings, environment)
                   val http = Http.http(httpSettingsWithDockerCredentials)
@@ -216,14 +221,10 @@ object Main extends LazyLogging {
                     sbtConfig fallbackTo mavenConfig
                   }
 
-                  for {
-                    maybeConfig <- getDockerHostConfig(imageName)
-                    config <- maybeConfig match {
-                      case None => getDockerRegistryConfig(imageName)
-                      case Some(c) => Future.successful(c)
-                    }
-                    validConfig <- validateConfig(config)
-                  } yield validConfig
+                  getDockerLocalConfigIfEnabled(imageName).flatMap(_.map(Future.successful).getOrElse(
+                    getDockerHostConfig(imageName).flatMap(_.map(Future.successful).getOrElse(
+                      getDockerRegistryConfig(imageName)))))
+                    .flatMap(validateConfig _)
                 }
 
                 def configFailure(img: String, t: Throwable) = {

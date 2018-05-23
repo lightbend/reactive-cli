@@ -17,7 +17,7 @@
 package com.lightbend.rp.reactivecli.argparse
 
 import scala.collection.immutable.Seq
-import GenerateDeploymentArgs.{ DockerRegistryUseHttpsDefault, DockerRegistryValidateTlsDefault }
+import GenerateDeploymentArgs.{ DockerRegistryUseHttpsDefault, DockerRegistryValidateTlsDefault, DockerRegistryUseLocalDefault }
 
 /**
  * Base type which represents input argument for a specific command invoked by the user.
@@ -29,6 +29,7 @@ object VersionArgs extends CommandArgs
 object GenerateDeploymentArgs {
   val DockerRegistryUseHttpsDefault = true
   val DockerRegistryValidateTlsDefault = true
+  val DockerRegistryUseLocalDefault = false
 
   /**
    * Convenience method to set the [[GenerateDeploymentArgs]] values when parsing the complete user input.
@@ -79,4 +80,5 @@ case class GenerateDeploymentArgs(
   registryPassword: Option[String] = None,
   registryUseHttps: Boolean = DockerRegistryUseHttpsDefault,
   registryValidateTls: Boolean = DockerRegistryValidateTlsDefault,
+  registryUseLocal: Boolean = DockerRegistryUseLocalDefault,
   externalServices: Map[String, Seq[String]] = Map.empty) extends CommandArgs

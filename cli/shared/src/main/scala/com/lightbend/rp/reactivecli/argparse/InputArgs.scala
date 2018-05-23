@@ -287,6 +287,11 @@ object InputArgs {
             .optional()
             .action(GenerateDeploymentArgs.set((v, c) => c.copy(registryPassword = Some(v)))),
 
+          opt[Unit]("registry-use-local") /* note: this argument will apply for other targets */
+            .text("Checks the local docker registry before the remote registry. No authentication required, but does not verify that the image will be accessible at deployment time.")
+            .optional()
+            .action(GenerateDeploymentArgs.set((_, c) => c.copy(registryUseLocal = true))),
+
           opt[String]("service-api-version")
             .text(s"Sets the Service API version. Default: ${printFuture(KubernetesArgs.DefaultServiceApiVersion)}")
             .optional()
@@ -440,6 +445,11 @@ object InputArgs {
             .text("Specify username to access docker registry. Password must be specified also.")
             .optional()
             .action(GenerateDeploymentArgs.set((v, c) => c.copy(registryUsername = Some(v)))),
+
+          opt[Unit]("registry-use-local") /* note: this argument will apply for other targets */
+            .text("Checks the local docker registry before the remote registry. No authentication required, but does not verify that the image will be accessible at deployment time.")
+            .optional()
+            .action(GenerateDeploymentArgs.set((_, c) => c.copy(registryUseLocal = true))),
 
           opt[String]("transform-output")
             .text("A jq expression that will be applied to the configuration output. jq must be installed")
