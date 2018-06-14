@@ -2,13 +2,13 @@
 
 [![Build Status](https://api.travis-ci.org/lightbend/reactive-cli.png?branch=master)](https://travis-ci.org/lightbend/reactive-cli)
 
-This project is a component of [Lightbend Orchestration for Kubernetes](https://developer.lightbend.com/docs/lightbend-orchestration-kubernetes/latest/). Refer to its documentation for usage, examples, and reference information.
+This project is a component of [Lightbend Orchestration](https://developer.lightbend.com/docs/lightbend-orchestration/latest/). Refer to its documentation for usage, examples, and reference information.
 
-`reactive-cli` is a CLI tool, `rp`, that can inspect Docker images created by [sbt-reactive-app](https://github.com/lightbend/sbt-reactive-app) and generate resources for Kubernetes and potentially other target platforms.
+`reactive-cli` is a CLI tool, `rp`, that can inspect Docker images created by [sbt-reactive-app](https://github.com/lightbend/sbt-reactive-app) and generate resources for Kubernetes, DC/OS and potentially other target platforms.
 
 ## Installation / Usage
 
-Consult the [Lightbend Orchestration for Kubernetes](https://developer.lightbend.com/docs/lightbend-orchestration-kubernetes/latest/cli-installation.html#install-the-cli) documentation for setup and configuration.
+Consult the [Lightbend Orchestration](https://developer.lightbend.com/docs/lightbend-orchestration/latest/cli-installation.html#install-the-cli) documentation for setup and configuration.
 
 ## Developer
 
@@ -110,17 +110,21 @@ the build images for you.
 
 #### Building a single distribution package locally
 
-```sbt "build ubuntu-16-04"```
+```
+sbt "build ubuntu-16-04"
+```
 
 #### Building every distribution
 
-```sbt buildAll```
+```
+sbt buildAll
+```
 
 Once built, you can find the packages in `target/stage/<name>/output`.
 
 ## Releasing
 
-Consult the _Lightbend Orchestration for Kubernetes_ document in Google Drive.
+Consult the _Lightbend Orchestration_ document in Google Drive.
 
 ## Maintenance
 
