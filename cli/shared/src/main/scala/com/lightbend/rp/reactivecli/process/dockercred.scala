@@ -20,7 +20,7 @@ import java.util.NoSuchElementException
 import com.lightbend.rp.reactivecli.concurrent._
 import com.lightbend.rp.reactivecli.docker.DockerCredentials
 import com.lightbend.rp.reactivecli.files._
-import scala.collection.immutable.{Seq, Map}
+import scala.collection.immutable.{ Seq, Map }
 import scala.concurrent.Future
 import slogging._
 import argonaut._
@@ -67,7 +67,7 @@ object dockercred extends LazyLogging {
   }
 
   // Returns seq of tuples (server, username, helper) merged from multiple helpers
-  private def listAll(ks: Seq[String]) : Future[Seq[(String, String, String)]] = {
+  private def listAll(ks: Seq[String]): Future[Seq[(String, String, String)]] = {
     def step(ks: Seq[String]): Future[Map[String, (String, String)]] =
       if (ks.isEmpty)
         Future.successful(Map.empty)
