@@ -20,6 +20,7 @@ import argonaut._
 import com.lightbend.rp.reactivecli.annotations._
 import com.lightbend.rp.reactivecli.argparse.{ CanaryDeploymentType, BlueGreenDeploymentType, RollingDeploymentType }
 import com.lightbend.rp.reactivecli.concurrent._
+import com.lightbend.rp.reactivecli.json.JsonTransformExpression
 import scala.collection.immutable.Seq
 import utest._
 
@@ -93,7 +94,7 @@ object ServiceJsonTest extends TestSuite {
 
       "jq" - {
         Service
-          .generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, Some(".jqTest = \"test\""), None, None)
+          .generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, Some(JsonTransformExpression(".jqTest = \"test\"")), None, None)
           .toOption
           .get
           .get

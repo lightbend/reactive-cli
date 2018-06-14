@@ -19,6 +19,7 @@ package com.lightbend.rp.reactivecli.runtime.kubernetes
 import argonaut._
 import com.lightbend.rp.reactivecli.annotations._
 import com.lightbend.rp.reactivecli.argparse._
+import com.lightbend.rp.reactivecli.json.JsonTransformExpression
 import scala.collection.immutable.Seq
 import scalaz._
 
@@ -46,7 +47,7 @@ object Job {
     noOfReplicas: Int,
     externalServices: Map[String, Seq[String]],
     deploymentType: DeploymentType,
-    jqExpression: Option[String],
+    jqExpression: Option[JsonTransformExpression],
     akkaClusterJoinExisting: Boolean): ValidationNel[String, Job] =
 
     (annotations.applicationValidation(application)
@@ -103,6 +104,6 @@ object Job {
 /**
  * Represents the generated Kubernetes job resource.
  */
-case class Job(name: String, json: Json, jqExpression: Option[String]) extends GeneratedKubernetesResource {
+case class Job(name: String, json: Json, jqExpression: Option[JsonTransformExpression]) extends GeneratedKubernetesResource {
   val resourceType = "job"
 }

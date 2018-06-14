@@ -19,6 +19,7 @@ package com.lightbend.rp.reactivecli.runtime.kubernetes
 import argonaut._
 import com.lightbend.rp.reactivecli.annotations._
 import com.lightbend.rp.reactivecli.argparse._
+import com.lightbend.rp.reactivecli.json.JsonTransformExpression
 import scalaz._
 
 import Argonaut._
@@ -58,7 +59,7 @@ object Service {
     apiVersion: String,
     clusterIp: Option[String],
     deploymentType: DeploymentType,
-    jqExpression: Option[String],
+    jqExpression: Option[JsonTransformExpression],
     loadBalancerIp: Option[String],
     serviceType: Option[String]): ValidationNel[String, Option[Service]] =
     (annotations.appNameValidation |@| annotations.versionValidation) { (rawAppName, version) =>
@@ -101,6 +102,6 @@ object Service {
 /**
  * Represents the generated Kubernetes service resource.
  */
-case class Service(name: String, json: Json, jqExpression: Option[String]) extends GeneratedKubernetesResource {
+case class Service(name: String, json: Json, jqExpression: Option[JsonTransformExpression]) extends GeneratedKubernetesResource {
   val resourceType = "service"
 }

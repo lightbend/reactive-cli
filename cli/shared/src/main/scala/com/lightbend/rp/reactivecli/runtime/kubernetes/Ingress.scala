@@ -18,6 +18,7 @@ package com.lightbend.rp.reactivecli.runtime.kubernetes
 
 import argonaut._
 import com.lightbend.rp.reactivecli.annotations._
+import com.lightbend.rp.reactivecli.json.JsonTransformExpression
 import com.lightbend.rp.reactivecli.runtime._
 import scala.collection.immutable.Seq
 import scalaz._
@@ -116,7 +117,7 @@ object Ingress {
     apiVersion: String,
     hosts: Option[Seq[String]],
     ingressAnnotations: Map[String, String],
-    jqExpression: Option[String],
+    jqExpression: Option[JsonTransformExpression],
     name: Option[String],
     pathAppend: Option[String],
     tlsSecrets: Seq[String]): ValidationNel[String, Option[Ingress]] = {
@@ -182,6 +183,6 @@ object Ingress {
 /**
  * Represents the generated ingress resource.
  */
-case class Ingress(name: String, endpoints: List[Ingress.EncodedEndpoint], json: Json, jqExpression: Option[String]) extends GeneratedKubernetesResource {
+case class Ingress(name: String, endpoints: List[Ingress.EncodedEndpoint], json: Json, jqExpression: Option[JsonTransformExpression]) extends GeneratedKubernetesResource {
   val resourceType = "ingress"
 }

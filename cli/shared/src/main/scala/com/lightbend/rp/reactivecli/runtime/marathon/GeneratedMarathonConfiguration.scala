@@ -18,13 +18,14 @@ package com.lightbend.rp.reactivecli.runtime.marathon
 
 import argonaut._
 import com.lightbend.rp.reactivecli.concurrent._
+import com.lightbend.rp.reactivecli.json.JsonTransformExpression
 import com.lightbend.rp.reactivecli.process.jq
 import com.lightbend.rp.reactivecli.runtime.GeneratedResource
 import scala.concurrent.Future
 
 import Argonaut._
 
-case class GeneratedMarathonConfiguration(resourceType: String, name: String, json: Json, jqExpression: Option[String]) extends GeneratedResource[Json] {
+case class GeneratedMarathonConfiguration(resourceType: String, name: String, json: Json, jqExpression: Option[JsonTransformExpression]) extends GeneratedResource[Json] {
   def payload: Future[Json] = jqExpression.fold(Future.successful(json))(
     jq(_, json.nospaces)
       .map(

@@ -19,6 +19,7 @@ package com.lightbend.rp.reactivecli.runtime.kubernetes
 import argonaut._
 import com.lightbend.rp.reactivecli.annotations._
 import com.lightbend.rp.reactivecli.concurrent._
+import com.lightbend.rp.reactivecli.json.JsonTransformExpression
 import scala.collection.immutable.Seq
 import utest._
 
@@ -216,7 +217,7 @@ object IngressJsonTest extends TestSuite {
 
       "jq" - {
         Ingress
-          .generate(annotations.copy(appName = Some("test")), "extensions/v1beta1", None, Map.empty, Some(".jqTest = \"test\""), None, None, Seq.empty)
+          .generate(annotations.copy(appName = Some("test")), "extensions/v1beta1", None, Map.empty, Some(JsonTransformExpression(".jqTest = \"test\"")), None, None, Seq.empty)
           .toOption
           .get
           .get

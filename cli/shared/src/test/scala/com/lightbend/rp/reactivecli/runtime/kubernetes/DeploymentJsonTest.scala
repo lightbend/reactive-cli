@@ -21,6 +21,7 @@ import com.lightbend.rp.reactivecli.annotations.kubernetes._
 import com.lightbend.rp.reactivecli.annotations._
 import com.lightbend.rp.reactivecli.argparse._
 import com.lightbend.rp.reactivecli.concurrent._
+import com.lightbend.rp.reactivecli.json.JsonTransformExpression
 import scala.collection.immutable.Seq
 import utest._
 
@@ -401,7 +402,7 @@ object DeploymentJsonTest extends TestSuite {
 
         "jq" - {
           Deployment
-            .generate(annotations, "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, 1, Map.empty, CanaryDeploymentType, Some(".jqTest = \"test\""), false)
+            .generate(annotations, "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, 1, Map.empty, CanaryDeploymentType, Some(JsonTransformExpression(".jqTest = \"test\"")), false)
             .toOption
             .get
             .payload

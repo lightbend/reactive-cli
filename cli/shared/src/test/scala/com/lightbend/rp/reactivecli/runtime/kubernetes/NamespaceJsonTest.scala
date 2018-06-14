@@ -20,6 +20,7 @@ import argonaut._
 import scala.collection.immutable.Seq
 import com.lightbend.rp.reactivecli.annotations.Annotations
 import com.lightbend.rp.reactivecli.concurrent._
+import com.lightbend.rp.reactivecli.json.JsonTransformExpression
 import utest._
 
 import Argonaut._
@@ -74,7 +75,7 @@ object NamespaceJsonTest extends TestSuite {
       }
 
       "jq works" - {
-        val result = Namespace.generate(annotations.copy(namespace = Some("chirper")), "v1", Some(".jq=\"testing\""))
+        val result = Namespace.generate(annotations.copy(namespace = Some("chirper")), "v1", Some(JsonTransformExpression(".jq=\"testing\"")))
 
         assert(result.isSuccess)
 
