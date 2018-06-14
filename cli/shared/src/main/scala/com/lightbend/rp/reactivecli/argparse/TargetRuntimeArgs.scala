@@ -21,4 +21,4 @@ package com.lightbend.rp.reactivecli.argparse
  * [[com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs]] extends [[TargetRuntimeArgs]] which represents
  * Kubernetes specific input arguments.
  */
-private[argparse] trait TargetRuntimeArgs
+class TargetRuntimeArgs private[argparse] ()
