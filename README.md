@@ -67,7 +67,7 @@ $ sudo apt-get install -y -qq \
 
 ## Building and running
 
-Use the following SBT command to create the native executable:
+Use the following sbt command to create the native executable:
 
 ```bash
 $ sbt nativeLink
@@ -98,7 +98,7 @@ you'll need to run the following:
 sbt buildAllDockerImages
 ```
 
-Afterwards, it will give you the commands you must run to push these images (SBT having tagged them). For example,
+Afterwards, it will give you the commands you must run to push these images (sbt having tagged them). For example,
 below is pushing one of these images:
 
 ```bash
