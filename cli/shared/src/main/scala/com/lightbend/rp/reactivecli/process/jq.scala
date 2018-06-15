@@ -16,11 +16,14 @@
 
 package com.lightbend.rp.reactivecli.process
 
+import argonaut._
 import com.lightbend.rp.reactivecli.concurrent._
 import com.lightbend.rp.reactivecli.files._
 import com.lightbend.rp.reactivecli.json.JsonTransformExpression
 import scala.concurrent.Future
 import slogging._
+
+import Argonaut._
 
 object jq extends LazyLogging {
   lazy val available: Future[Boolean] =
@@ -42,4 +45,13 @@ object jq extends LazyLogging {
         output
       }
     }
+
+  def jsonTransform(json: Json, expr: JsonTransformExpression): Future[Json] =
+    apply(expr, json.nospaces)
+        .map(
+          _
+            .parse
+            .fold(
+                error => throw new RuntimeException(s"Unable to parse output from jq: $error"),
+                identity))
 }

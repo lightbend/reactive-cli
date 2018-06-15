@@ -17,13 +17,10 @@
 package com.lightbend.rp.reactivecli.runtime.kubernetes
 
 import argonaut._
-import com.lightbend.rp.reactivecli.concurrent._
 import com.lightbend.rp.reactivecli.json.JsonTransformExpression
 import com.lightbend.rp.reactivecli.runtime.GeneratedResource
 import com.lightbend.rp.reactivecli.process.jq
 import scala.concurrent.Future
-
-import Argonaut._
 
 /**
  * Base type which represents generated Kubernetes resource.
@@ -32,12 +29,5 @@ private[reactivecli] trait GeneratedKubernetesResource extends GeneratedResource
   def json: Json
   def jqExpression: Option[JsonTransformExpression]
 
-  def payload: Future[Json] = jqExpression.fold(Future.successful(json))(
-    jq(_, json.nospaces)
-      .map(
-        _
-          .parse
-          .fold(
-            error => throw new RuntimeException(s"Unable to parse output from jq: $error"),
-            identity)))
+  def payload: Future[Json] = jqExpression.fold(Future.successful(json))(jq.jsonTransform(json, _))
 }
