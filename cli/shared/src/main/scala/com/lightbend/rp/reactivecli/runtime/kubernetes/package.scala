@@ -75,6 +75,7 @@ package object kubernetes extends LazyLogging {
       val namespaces = Namespace.generate(
         annotations,
         namespaceApiVersion,
+        jq.jsonTransform,
         kubernetesArgs.transformNamespaces)
 
       val podControllers =
@@ -90,6 +91,7 @@ package object kubernetes extends LazyLogging {
               kubernetesArgs.podControllerArgs.numberOfReplicas,
               generateDeploymentArgs.externalServices,
               generateDeploymentArgs.deploymentType,
+              jq.jsonTransform,
               kubernetesArgs.transformPodControllers,
               generateDeploymentArgs.akkaClusterJoinExisting)
 
@@ -104,6 +106,7 @@ package object kubernetes extends LazyLogging {
               kubernetesArgs.podControllerArgs.numberOfReplicas,
               generateDeploymentArgs.externalServices,
               generateDeploymentArgs.deploymentType,
+              jq.jsonTransform,
               kubernetesArgs.transformPodControllers,
               generateDeploymentArgs.akkaClusterJoinExisting)
         }
@@ -113,6 +116,7 @@ package object kubernetes extends LazyLogging {
         serviceApiVersion,
         kubernetesArgs.serviceArgs.clusterIp,
         generateDeploymentArgs.deploymentType,
+        jq.jsonTransform,
         kubernetesArgs.transformServices,
         kubernetesArgs.serviceArgs.loadBalancerIp,
         kubernetesArgs.serviceArgs.serviceType)
@@ -124,6 +128,7 @@ package object kubernetes extends LazyLogging {
         else
           None,
         kubernetesArgs.ingressArgs.ingressAnnotations,
+        jq.jsonTransform,
         kubernetesArgs.transformIngress,
         kubernetesArgs.ingressArgs.name,
         kubernetesArgs.ingressArgs.pathAppend,
@@ -166,11 +171,7 @@ package object kubernetes extends LazyLogging {
    * @return
    */
   def mergeGeneratedResources(kubernetesArgs: KubernetesArgs, resources: Seq[GeneratedKubernetesResource]): ValidationNel[String, Seq[GeneratedKubernetesResource]] = {
-    val (other, ingress) =
-      resources.partition {
-        case Ingress(_, _, _, _) => false
-        case _ => true
-      }
+    val (other, ingress) = resources.partition { case _: Ingress => false; case _ => true }
 
     val ingressTyped = ingress.collect { case i: Ingress => i }
 

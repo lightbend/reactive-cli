@@ -18,11 +18,10 @@ package com.lightbend.rp.reactivecli.runtime.kubernetes
 
 import argonaut._
 import com.lightbend.rp.reactivecli.annotations._
-import com.lightbend.rp.reactivecli.json.JsonTransformExpression
+import com.lightbend.rp.reactivecli.json.{ JsonTransform, JsonTransformExpression }
 import com.lightbend.rp.reactivecli.runtime._
 import scala.collection.immutable.Seq
 import scalaz._
-
 import Argonaut._
 import Scalaz._
 
@@ -117,6 +116,7 @@ object Ingress {
     apiVersion: String,
     hosts: Option[Seq[String]],
     ingressAnnotations: Map[String, String],
+    jsonTransform: JsonTransform,
     jqExpression: Option[JsonTransformExpression],
     name: Option[String],
     pathAppend: Option[String],
@@ -146,6 +146,7 @@ object Ingress {
                   "rules" -> renderEndpoints(encodedEndpoints)).deepmerge(
                     if (tlsSecrets.isEmpty) jEmptyObject else jObjectFields("tls" -> jArray(
                       tlsSecrets.toList.map(s => jObjectFields("secretName" -> jString(s))))))),
+              jsonTransform,
               jqExpression))
       }
   }
@@ -161,7 +162,7 @@ object Ingress {
         .getOrElse(merged)
         .deepmerge(jObjectFields("spec" -> jObjectFields("rules" -> renderEndpoints(endpoints))))
 
-    Ingress(appName, endpoints, updated, b.jqExpression)
+    Ingress(appName, endpoints, updated, b.jsonTransform, b.jqExpression)
   }
 
   private def generateIngressAnnotations(ingressAnnotations: Map[String, String]): Json =
@@ -183,6 +184,6 @@ object Ingress {
 /**
  * Represents the generated ingress resource.
  */
-case class Ingress(name: String, endpoints: List[Ingress.EncodedEndpoint], json: Json, jqExpression: Option[JsonTransformExpression]) extends GeneratedKubernetesResource {
+case class Ingress(name: String, endpoints: List[Ingress.EncodedEndpoint], json: Json, jsonTransform: JsonTransform, jqExpression: Option[JsonTransformExpression]) extends GeneratedKubernetesResource {
   val resourceType = "ingress"
 }

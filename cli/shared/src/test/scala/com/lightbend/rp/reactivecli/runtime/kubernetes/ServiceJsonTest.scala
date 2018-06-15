@@ -21,6 +21,7 @@ import com.lightbend.rp.reactivecli.annotations._
 import com.lightbend.rp.reactivecli.argparse.{ CanaryDeploymentType, BlueGreenDeploymentType, RollingDeploymentType }
 import com.lightbend.rp.reactivecli.concurrent._
 import com.lightbend.rp.reactivecli.json.JsonTransformExpression
+import com.lightbend.rp.reactivecli.process.jq
 import scala.collection.immutable.Seq
 import utest._
 
@@ -50,7 +51,7 @@ object ServiceJsonTest extends TestSuite {
   val tests = this{
     "json serialization" - {
       "empty" - {
-        val result = Service.generate(annotations.copy(endpoints = Map.empty), "v1", clusterIp = None, CanaryDeploymentType, None, None, None).toOption.get.isEmpty
+        val result = Service.generate(annotations.copy(endpoints = Map.empty), "v1", clusterIp = None, CanaryDeploymentType, jq.jsonTransform, None, None, None).toOption.get.isEmpty
 
         assert(result)
       }
@@ -58,7 +59,7 @@ object ServiceJsonTest extends TestSuite {
       "deploymentType" - {
         "Canary" - {
           Service
-            .generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, None, None, None)
+            .generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, jq.jsonTransform, None, None, None)
             .toOption
             .get
             .get
@@ -73,7 +74,7 @@ object ServiceJsonTest extends TestSuite {
 
         "BlueGreen" - {
           Service
-            .generate(annotations, "v1", clusterIp = None, BlueGreenDeploymentType, None, None, None)
+            .generate(annotations, "v1", clusterIp = None, BlueGreenDeploymentType, jq.jsonTransform, None, None, None)
             .toOption
             .get
             .get
@@ -83,7 +84,7 @@ object ServiceJsonTest extends TestSuite {
 
         "Rolling" - {
           Service
-            .generate(annotations, "v1", clusterIp = None, RollingDeploymentType, None, None, None)
+            .generate(annotations, "v1", clusterIp = None, RollingDeploymentType, jq.jsonTransform, None, None, None)
             .toOption
             .get
             .get
@@ -94,7 +95,7 @@ object ServiceJsonTest extends TestSuite {
 
       "jq" - {
         Service
-          .generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, Some(JsonTransformExpression(".jqTest = \"test\"")), None, None)
+          .generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, jq.jsonTransform, Some(JsonTransformExpression(".jqTest = \"test\"")), None, None)
           .toOption
           .get
           .get
@@ -104,7 +105,7 @@ object ServiceJsonTest extends TestSuite {
 
       "options" - {
         "not defined" - {
-          val generatedJson = Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, None, None, None).toOption.get
+          val generatedJson = Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, jq.jsonTransform, None, None, None).toOption.get
           val expectedJson =
             """
               |{
@@ -132,11 +133,11 @@ object ServiceJsonTest extends TestSuite {
               |  }
               |}
             """.stripMargin.parse.right.get
-          assert(generatedJson.get == Service("friendimpl", expectedJson, None))
+          assert(generatedJson.get == Service("friendimpl", expectedJson, jq.jsonTransform, None))
         }
 
         "defined" - {
-          val generatedJson = Service.generate(annotations, "v1", clusterIp = Some("10.0.0.5"), CanaryDeploymentType, None, Some("10.0.0.1"), Some("NodePort")).toOption.get
+          val generatedJson = Service.generate(annotations, "v1", clusterIp = Some("10.0.0.5"), CanaryDeploymentType, jq.jsonTransform, None, Some("10.0.0.1"), Some("NodePort")).toOption.get
           val expectedJson =
             """
               |{
@@ -168,7 +169,7 @@ object ServiceJsonTest extends TestSuite {
               |}
             """.stripMargin.parse.right.get
 
-          assert(generatedJson.get == Service("friendimpl", expectedJson, None))
+          assert(generatedJson.get == Service("friendimpl", expectedJson, jq.jsonTransform, None))
         }
       }
     }

@@ -257,7 +257,7 @@ package object marathon {
           else
             jEmptyObject
 
-        GeneratedMarathonConfiguration("", "", jsonConfig, marathonArgs.transformOutput)
+        GeneratedMarathonConfiguration("", "", jsonConfig, jq.jsonTransform, marathonArgs.transformOutput)
       }
     }
 

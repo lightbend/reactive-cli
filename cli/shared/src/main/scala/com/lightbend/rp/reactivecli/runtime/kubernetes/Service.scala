@@ -19,7 +19,7 @@ package com.lightbend.rp.reactivecli.runtime.kubernetes
 import argonaut._
 import com.lightbend.rp.reactivecli.annotations._
 import com.lightbend.rp.reactivecli.argparse._
-import com.lightbend.rp.reactivecli.json.JsonTransformExpression
+import com.lightbend.rp.reactivecli.json.{ JsonTransform, JsonTransformExpression }
 import scalaz._
 
 import Argonaut._
@@ -59,6 +59,7 @@ object Service {
     apiVersion: String,
     clusterIp: Option[String],
     deploymentType: DeploymentType,
+    jsonTransform: JsonTransform,
     jqExpression: Option[JsonTransformExpression],
     loadBalancerIp: Option[String],
     serviceType: Option[String]): ValidationNel[String, Option[Service]] =
@@ -95,6 +96,7 @@ object Service {
                 .deepmerge(clusterIp.fold(jEmptyObject)(cIp => Json("clusterIP" -> jString(cIp))))
                 .deepmerge(serviceType.fold(jEmptyObject)(svcType => Json("type" -> jString(svcType))))
                 .deepmerge(loadBalancerIp.fold(jEmptyObject)(lbIp => Json("loadBalancerIP" -> jString(lbIp))))),
+            jsonTransform,
             jqExpression))
     }
 }
@@ -102,6 +104,6 @@ object Service {
 /**
  * Represents the generated Kubernetes service resource.
  */
-case class Service(name: String, json: Json, jqExpression: Option[JsonTransformExpression]) extends GeneratedKubernetesResource {
+case class Service(name: String, json: Json, jsonTransform: JsonTransform, jqExpression: Option[JsonTransformExpression]) extends GeneratedKubernetesResource {
   val resourceType = "service"
 }

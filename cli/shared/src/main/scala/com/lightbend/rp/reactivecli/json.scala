@@ -16,6 +16,13 @@
 
 package com.lightbend.rp.reactivecli
 
+import _root_.argonaut._
+import scala.concurrent.Future
+
 package json {
   final case class JsonTransformExpression(value: String) extends AnyVal
+}
+
+package object json {
+  type JsonTransform = (Json, JsonTransformExpression) => Future[Json]
 }

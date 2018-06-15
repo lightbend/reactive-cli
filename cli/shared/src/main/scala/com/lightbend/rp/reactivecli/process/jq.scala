@@ -19,7 +19,7 @@ package com.lightbend.rp.reactivecli.process
 import argonaut._
 import com.lightbend.rp.reactivecli.concurrent._
 import com.lightbend.rp.reactivecli.files._
-import com.lightbend.rp.reactivecli.json.JsonTransformExpression
+import com.lightbend.rp.reactivecli.json.{ JsonTransformExpression, JsonTransform }
 import scala.concurrent.Future
 import slogging._
 
@@ -46,7 +46,7 @@ object jq extends LazyLogging {
       }
     }
 
-  def jsonTransform(json: Json, expr: JsonTransformExpression): Future[Json] =
+  val jsonTransform: JsonTransform = (json: Json, expr: JsonTransformExpression) =>
     apply(expr, json.nospaces)
         .map(
           _
