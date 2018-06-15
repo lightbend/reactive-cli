@@ -27,7 +27,9 @@ import com.lightbend.rp.reactivecli.runtime.marathon
 import com.lightbend.rp.reactivecli.http.{ Http, HttpRequest, HttpSettings }
 import com.lightbend.rp.reactivecli.http.Http.HttpExchange
 import scala.annotation.tailrec
+import scala.collection.immutable.Seq
 import scala.concurrent.Future
+import scala.util.{ Failure, Success, Try }
 import scalaz._
 import slogging._
 
@@ -64,6 +66,17 @@ object Main extends LazyLogging {
   val CliName = "reactive-cli"
 
   val parser = InputArgs.parser(CliName, ProgramVersion.current)
+
+  type ?=>[-A, +B] = PartialFunction[A, B]
+  private def partition[X, A, B](xs: Seq[X])(f: X ?=> A, b: X ?=> B): (List[A], List[B]) = {
+    var as = List.empty[A]
+    var bs = List.empty[B]
+    xs foreach {
+      case x if f.isDefinedAt(x) => as ::= f(x)
+      case x if b.isDefinedAt(x) => bs ::= b(x)
+    }
+    (as.reverse, bs.reverse)
+  }
 
   def parseVersion(version: String): Option[(Int, Int, Int)] = {
     // Only strings like "1.2.3" are supported, what comes after
@@ -256,7 +269,9 @@ object Main extends LazyLogging {
     Future
       .sequence(generateDeploymentArgs.dockerImages.map(img => attempt(getDockerConfig(img)).map(c => img -> c)))
       .flatMap { tryConfigs =>
-        val (failures, successes) = tryConfigs.partition(_._2.isFailure)
+        val (failures, successes) = partition(tryConfigs)(
+          { case (lbl, Failure(e)) => lbl -> e },
+          { case (lbl, Success(c)) => lbl -> c })
 
         if (failures.isEmpty) {
           targetRuntimeArgs match {
@@ -264,8 +279,8 @@ object Main extends LazyLogging {
               import scalaz.Validation.FlatMap._
               val futureValidationResources =
                 successes.map {
-                  case (image, tryConfig) =>
-                    kubernetes.generateResources(image, tryConfig.get, generateDeploymentArgs, kubernetesArgs)
+                  case (image, config) =>
+                    kubernetes.generateResources(image, config, generateDeploymentArgs, kubernetesArgs)
                 }
 
               Future
@@ -280,20 +295,14 @@ object Main extends LazyLogging {
                 }
                 .recover { case t: Throwable => s"Failed to generate Kubernetes resources for ${generateDeploymentArgs.dockerImages.mkString(", ")}, ${t.getMessage}".failureNel }
             case marathonArgs: MarathonArgs =>
-              val futureConfiguration =
-                marathon.generateConfiguration(
-                  successes.map(t => t._1 -> t._2.get),
-                  generateDeploymentArgs,
-                  marathonArgs)
+              val futureConfiguration = marathon.generateConfiguration(successes, generateDeploymentArgs, marathonArgs)
 
               futureConfiguration.map { validations =>
                 validations.map(config => marathon.outputConfiguration(config, marathonArgs.output))
               }
           }
         } else {
-          val failureMessages =
-            failures
-              .map { case (img, f) => configFailure(img, f.failed.get) }
+          val failureMessages = failures.map { case (img, t) => configFailure(img, t) }
           Future.successful(NonEmptyList(failureMessages.head, failureMessages.tail: _*).failure)
         }
       }
