@@ -137,7 +137,7 @@ object Main extends LazyLogging {
       if (parsedArgs.isEmpty) {
         System.exit(1)
       } else {
-        parsedArgs.foreach { inputArgs => runInputArgs(inputArgs) }
+        parsedArgs.foreach { inputArgs => runInputArgs(InputArgs.Envs.mergeWithEnvs(inputArgs, environment)) }
       }
     } else {
       run(Array("--help"))
@@ -145,11 +145,9 @@ object Main extends LazyLogging {
   }
 
   private def runInputArgs(inputArgs: InputArgs): Unit = {
-    val inputArgsMerged = InputArgs.Envs.mergeWithEnvs(inputArgs, environment)
+    LoggerConfig.level = inputArgs.logLevel
 
-    LoggerConfig.level = inputArgsMerged.logLevel
-
-    inputArgsMerged.commandArgs
+    inputArgs.commandArgs
       .collect {
         case VersionArgs =>
           System.out.println(s"rp (Reactive CLI) ${ProgramVersion.current}")
@@ -162,7 +160,6 @@ object Main extends LazyLogging {
           generateDeploymentArgs.targetRuntimeArgs foreach { targetRuntimeArgs =>
             generateDeployment(
               inputArgs,
-              inputArgsMerged,
               generateDeploymentArgs,
               targetRuntimeArgs)
           }
@@ -171,7 +168,6 @@ object Main extends LazyLogging {
 
   private def generateDeployment(
     inputArgs: InputArgs,
-    inputArgsMerged: InputArgs,
     generateDeploymentArgs: GenerateDeploymentArgs,
     targetRuntimeArgs: TargetRuntimeArgs): Unit = {
     implicit val httpSettings: HttpSettings =
@@ -261,7 +257,7 @@ object Main extends LazyLogging {
     }
 
     def configFailure(img: String, t: Throwable) = {
-      if (inputArgsMerged.stackTrace)
+      if (inputArgs.stackTrace)
         t.printStackTrace()
       s"Failed to obtain Docker config for $img, ${t.getMessage}"
     }
