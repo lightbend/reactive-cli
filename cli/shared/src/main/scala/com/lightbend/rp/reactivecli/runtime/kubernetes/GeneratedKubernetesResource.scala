@@ -17,7 +17,7 @@
 package com.lightbend.rp.reactivecli.runtime.kubernetes
 
 import argonaut._
-import com.lightbend.rp.reactivecli.json.{ JsonTransform, JsonTransformExpression }
+import com.lightbend.rp.reactivecli.json.JsonTransform
 import com.lightbend.rp.reactivecli.runtime.GeneratedResource
 import scala.concurrent.Future
 
@@ -27,7 +27,6 @@ import scala.concurrent.Future
 private[reactivecli] trait GeneratedKubernetesResource extends GeneratedResource[Json] {
   def json: Json
   def jsonTransform: JsonTransform
-  def jqExpression: Option[JsonTransformExpression]
 
-  def payload: Future[Json] = jqExpression.fold(Future.successful(json))(jsonTransform(json, _))
+  def payload: Future[Json] = jsonTransform.jsonTransform(json)
 }

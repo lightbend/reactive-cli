@@ -24,13 +24,13 @@ import com.lightbend.rp.reactivecli.argparse.kubernetes.{ KubernetesArgs, PodCon
 import com.lightbend.rp.reactivecli.concurrent._
 import com.lightbend.rp.reactivecli.docker.Config
 import com.lightbend.rp.reactivecli.files._
+import com.lightbend.rp.reactivecli.json.JsonTransform
 import com.lightbend.rp.reactivecli.process.jq
 import java.io.PrintStream
 import scala.collection.immutable.Seq
 import scala.concurrent.Future
 import scalaz._
 import slogging.LazyLogging
-
 import Scalaz._
 
 package object kubernetes extends LazyLogging {
@@ -75,8 +75,7 @@ package object kubernetes extends LazyLogging {
       val namespaces = Namespace.generate(
         annotations,
         namespaceApiVersion,
-        jq.jsonTransform,
-        kubernetesArgs.transformNamespaces)
+        kubernetesArgs.transformNamespaces.fold(JsonTransform.noop)(JsonTransform.jq))
 
       val podControllers =
         kubernetesArgs.podControllerArgs.controllerType match {
@@ -91,8 +90,7 @@ package object kubernetes extends LazyLogging {
               kubernetesArgs.podControllerArgs.numberOfReplicas,
               generateDeploymentArgs.externalServices,
               generateDeploymentArgs.deploymentType,
-              jq.jsonTransform,
-              kubernetesArgs.transformPodControllers,
+              kubernetesArgs.transformPodControllers.fold(JsonTransform.noop)(JsonTransform.jq),
               generateDeploymentArgs.akkaClusterJoinExisting)
 
           case PodControllerArgs.ControllerType.Job =>
@@ -106,8 +104,7 @@ package object kubernetes extends LazyLogging {
               kubernetesArgs.podControllerArgs.numberOfReplicas,
               generateDeploymentArgs.externalServices,
               generateDeploymentArgs.deploymentType,
-              jq.jsonTransform,
-              kubernetesArgs.transformPodControllers,
+              kubernetesArgs.transformPodControllers.fold(JsonTransform.noop)(JsonTransform.jq),
               generateDeploymentArgs.akkaClusterJoinExisting)
         }
 
@@ -116,8 +113,7 @@ package object kubernetes extends LazyLogging {
         serviceApiVersion,
         kubernetesArgs.serviceArgs.clusterIp,
         generateDeploymentArgs.deploymentType,
-        jq.jsonTransform,
-        kubernetesArgs.transformServices,
+        kubernetesArgs.transformServices.fold(JsonTransform.noop)(JsonTransform.jq),
         kubernetesArgs.serviceArgs.loadBalancerIp,
         kubernetesArgs.serviceArgs.serviceType)
       val ingress = Ingress.generate(
@@ -128,8 +124,7 @@ package object kubernetes extends LazyLogging {
         else
           None,
         kubernetesArgs.ingressArgs.ingressAnnotations,
-        jq.jsonTransform,
-        kubernetesArgs.transformIngress,
+        kubernetesArgs.transformIngress.fold(JsonTransform.noop)(JsonTransform.jq),
         kubernetesArgs.ingressArgs.name,
         kubernetesArgs.ingressArgs.pathAppend,
         kubernetesArgs.ingressArgs.tlsSecrets)

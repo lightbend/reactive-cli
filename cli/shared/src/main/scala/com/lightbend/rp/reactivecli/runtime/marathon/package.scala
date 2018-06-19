@@ -23,6 +23,7 @@ import com.lightbend.rp.reactivecli.argparse.marathon._
 import com.lightbend.rp.reactivecli.concurrent._
 import com.lightbend.rp.reactivecli.docker.Config
 import com.lightbend.rp.reactivecli.files._
+import com.lightbend.rp.reactivecli.json.JsonTransform
 import com.lightbend.rp.reactivecli.process.jq
 import scala.collection.immutable.Seq
 import scala.concurrent.Future
@@ -257,7 +258,7 @@ package object marathon {
           else
             jEmptyObject
 
-        GeneratedMarathonConfiguration("", "", jsonConfig, jq.jsonTransform, marathonArgs.transformOutput)
+        GeneratedMarathonConfiguration("", "", jsonConfig, marathonArgs.transformOutput.fold(JsonTransform.noop)(JsonTransform.jq))
       }
     }
 

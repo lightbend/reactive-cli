@@ -46,12 +46,12 @@ object jq extends LazyLogging {
       }
     }
 
-  val jsonTransform: JsonTransform = (json: Json, expr: JsonTransformExpression) =>
+  def jsonTransform(json: Json, expr: JsonTransformExpression) =
     apply(expr, json.nospaces)
-        .map(
-          _
-            .parse
-            .fold(
-                error => throw new RuntimeException(s"Unable to parse output from jq: $error"),
-                identity))
+      .map(
+        _
+          .parse
+          .fold(
+            error => throw new RuntimeException(s"Unable to parse output from jq: $error"),
+            identity))
 }

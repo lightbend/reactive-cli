@@ -14,15 +14,27 @@
  * limitations under the License.
  */
 
-package com.lightbend.rp.reactivecli
+package com.lightbend.rp.reactivecli.json
 
 import _root_.argonaut._
 import scala.concurrent.Future
+import com.lightbend.rp.reactivecli.process.jq
 
-package json {
-  final case class JsonTransformExpression(value: String) extends AnyVal
+final case class JsonTransformExpression(value: String) extends AnyVal
+
+sealed trait JsonTransform {
+  def jsonTransform(json: Json): Future[Json]
 }
 
-package object json {
-  type JsonTransform = (Json, JsonTransformExpression) => Future[Json]
+object JsonTransform {
+  def noop: JsonTransform = NoJsonTransform
+  def jq(expr: JsonTransformExpression): JsonTransform = new jqJsonTransform(expr)
+}
+
+case object NoJsonTransform extends JsonTransform {
+  def jsonTransform(json: Json) = Future.successful(json)
+}
+
+final class jqJsonTransform(expr: JsonTransformExpression) extends JsonTransform {
+  def jsonTransform(json: Json) = jq.jsonTransform(json, expr)
 }

@@ -30,8 +30,7 @@ object Namespace {
   def generate(
     annotations: Annotations,
     apiVersion: String,
-    jsonTransform: JsonTransform,
-    jqExpression: Option[JsonTransformExpression]): ValidationNel[String, Option[Namespace]] =
+    jsonTransform: JsonTransform): ValidationNel[String, Option[Namespace]] =
     annotations
       .namespace
       .map { rawNs =>
@@ -46,12 +45,11 @@ object Namespace {
               "name" -> ns.asJson,
               "labels" -> Json(
                 "name" -> ns.asJson))),
-          jsonTransform,
-          jqExpression)
+          jsonTransform)
       }
       .successNel
 }
 
-case class Namespace(name: String, json: Json, jsonTransform: JsonTransform, jqExpression: Option[JsonTransformExpression]) extends GeneratedKubernetesResource {
+case class Namespace(name: String, json: Json, jsonTransform: JsonTransform) extends GeneratedKubernetesResource {
   val resourceType = "namespace"
 }

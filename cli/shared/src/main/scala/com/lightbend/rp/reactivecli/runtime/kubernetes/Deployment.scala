@@ -48,7 +48,6 @@ object Deployment {
     externalServices: Map[String, Seq[String]],
     deploymentType: DeploymentType,
     jsonTransform: JsonTransform,
-    jqExpression: Option[JsonTransformExpression],
     akkaClusterJoinExisting: Boolean): ValidationNel[String, Deployment] =
 
     (annotations.applicationValidation(application)
@@ -105,14 +104,13 @@ object Deployment {
               "replicas" -> noOfReplicas.asJson,
               "selector" -> Json("matchLabels" -> deploymentMatchLabels),
               "template" -> podTemplate.json)),
-          jsonTransform,
-          jqExpression)
+          jsonTransform)
       }
 }
 
 /**
  * Represents the generated Kubernetes deployment resource.
  */
-case class Deployment(name: String, json: Json, jsonTransform: JsonTransform, jqExpression: Option[JsonTransformExpression]) extends GeneratedKubernetesResource {
+case class Deployment(name: String, json: Json, jsonTransform: JsonTransform) extends GeneratedKubernetesResource {
   val resourceType = "deployment"
 }

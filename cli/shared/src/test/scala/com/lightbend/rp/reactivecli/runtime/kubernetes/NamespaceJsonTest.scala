@@ -20,7 +20,7 @@ import argonaut._
 import scala.collection.immutable.Seq
 import com.lightbend.rp.reactivecli.annotations.Annotations
 import com.lightbend.rp.reactivecli.concurrent._
-import com.lightbend.rp.reactivecli.json.JsonTransformExpression
+import com.lightbend.rp.reactivecli.json.{ JsonTransform, JsonTransformExpression }
 import com.lightbend.rp.reactivecli.process.jq
 import utest._
 
@@ -48,7 +48,7 @@ object NamespaceJsonTest extends TestSuite {
         akkaClusterBootstrapSystemName = None)
 
       "namespace present" - {
-        val result = Namespace.generate(annotations.copy(namespace = Some("chirper")), "v1", jq.jsonTransform, None)
+        val result = Namespace.generate(annotations.copy(namespace = Some("chirper")), "v1", JsonTransform.noop)
 
         assert(result.isSuccess)
 
@@ -65,18 +65,18 @@ object NamespaceJsonTest extends TestSuite {
             |  }
             |}
           """.stripMargin.parse.right.get
-        assert(result.toOption.get.get == Namespace("chirper", expectedJson, jq.jsonTransform, None))
+        assert(result.toOption.get.get == Namespace("chirper", expectedJson, JsonTransform.noop))
       }
 
       "namespace not present" - {
-        val result = Namespace.generate(annotations.copy(namespace = None), "v1", jq.jsonTransform, None)
+        val result = Namespace.generate(annotations.copy(namespace = None), "v1", JsonTransform.noop)
 
         assert(result.isSuccess)
         assert(result.toOption.get.isEmpty)
       }
 
       "jq works" - {
-        val result = Namespace.generate(annotations.copy(namespace = Some("chirper")), "v1", jq.jsonTransform, Some(JsonTransformExpression(".jq=\"testing\"")))
+        val result = Namespace.generate(annotations.copy(namespace = Some("chirper")), "v1", JsonTransform.jq(JsonTransformExpression(".jq=\"testing\"")))
 
         assert(result.isSuccess)
 
