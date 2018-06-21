@@ -22,6 +22,7 @@ import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
 import com.lightbend.rp.reactivecli.concurrent._
 import com.lightbend.rp.reactivecli.docker.Config
 import com.lightbend.rp.reactivecli.files._
+import com.lightbend.rp.reactivecli.json.JsonTransform
 import com.lightbend.rp.reactivecli.runtime.GeneratedResource
 import java.io.{ ByteArrayOutputStream, PrintStream }
 import scala.collection.immutable.Seq
@@ -554,8 +555,8 @@ object KubernetesPackageTest extends TestSuite {
     "handleGeneratedResources" - {
       "saves generated resources into filesystem" - {
         val generatedResources = Seq(
-          Deployment("dep1", Json("key1" -> "value1".asJson), None),
-          Service("svc1", Json("key2" -> "value2".asJson), None))
+          Deployment("dep1", Json("key1" -> "value1".asJson), JsonTransform.noop),
+          Service("svc1", Json("key2" -> "value2".asJson), JsonTransform.noop))
         withTempDir { testDir =>
           handleGeneratedResources(KubernetesArgs.Output.SaveToFile(testDir))(generatedResources).map { _ =>
             val deploymentFile = pathFor(testDir, "deployment-dep1.yml")
@@ -575,8 +576,8 @@ object KubernetesPackageTest extends TestSuite {
 
       "print generated resources as kubectl format into outputstream" - {
         val generatedResources = Seq(
-          Deployment("deployment1", Json("key1" -> "value1".asJson), None),
-          Service("service1", Json("key2" -> "value2".asJson), None))
+          Deployment("deployment1", Json("key1" -> "value1".asJson), JsonTransform.noop),
+          Service("service1", Json("key2" -> "value2".asJson), JsonTransform.noop))
 
         val output = new ByteArrayOutputStream()
         val printStream = new PrintStream(output)

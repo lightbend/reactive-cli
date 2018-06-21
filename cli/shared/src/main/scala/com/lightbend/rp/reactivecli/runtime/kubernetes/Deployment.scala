@@ -19,6 +19,7 @@ package com.lightbend.rp.reactivecli.runtime.kubernetes
 import argonaut._
 import com.lightbend.rp.reactivecli.annotations._
 import com.lightbend.rp.reactivecli.argparse._
+import com.lightbend.rp.reactivecli.json.{ JsonTransform, JsonTransformExpression }
 import scala.collection.immutable.Seq
 import scalaz._
 
@@ -46,7 +47,7 @@ object Deployment {
     noOfReplicas: Int,
     externalServices: Map[String, Seq[String]],
     deploymentType: DeploymentType,
-    jqExpression: Option[String],
+    jsonTransform: JsonTransform,
     akkaClusterJoinExisting: Boolean): ValidationNel[String, Deployment] =
 
     (annotations.applicationValidation(application)
@@ -103,13 +104,13 @@ object Deployment {
               "replicas" -> noOfReplicas.asJson,
               "selector" -> Json("matchLabels" -> deploymentMatchLabels),
               "template" -> podTemplate.json)),
-          jqExpression)
+          jsonTransform)
       }
 }
 
 /**
  * Represents the generated Kubernetes deployment resource.
  */
-case class Deployment(name: String, json: Json, jqExpression: Option[String]) extends GeneratedKubernetesResource {
+case class Deployment(name: String, json: Json, jsonTransform: JsonTransform) extends GeneratedKubernetesResource {
   val resourceType = "deployment"
 }

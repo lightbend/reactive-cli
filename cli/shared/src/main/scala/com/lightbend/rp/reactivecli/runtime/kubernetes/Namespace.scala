@@ -18,8 +18,8 @@ package com.lightbend.rp.reactivecli.runtime.kubernetes
 
 import argonaut._
 import com.lightbend.rp.reactivecli.annotations.Annotations
+import com.lightbend.rp.reactivecli.json.{ JsonTransform, JsonTransformExpression }
 import scalaz._
-
 import Argonaut._
 import Scalaz._
 
@@ -30,7 +30,7 @@ object Namespace {
   def generate(
     annotations: Annotations,
     apiVersion: String,
-    jqExpression: Option[String]): ValidationNel[String, Option[Namespace]] =
+    jsonTransform: JsonTransform): ValidationNel[String, Option[Namespace]] =
     annotations
       .namespace
       .map { rawNs =>
@@ -45,11 +45,11 @@ object Namespace {
               "name" -> ns.asJson,
               "labels" -> Json(
                 "name" -> ns.asJson))),
-          jqExpression)
+          jsonTransform)
       }
       .successNel
 }
 
-case class Namespace(name: String, json: Json, jqExpression: Option[String]) extends GeneratedKubernetesResource {
+case class Namespace(name: String, json: Json, jsonTransform: JsonTransform) extends GeneratedKubernetesResource {
   val resourceType = "namespace"
 }

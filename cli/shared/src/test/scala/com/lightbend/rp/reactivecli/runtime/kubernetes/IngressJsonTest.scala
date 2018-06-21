@@ -19,6 +19,7 @@ package com.lightbend.rp.reactivecli.runtime.kubernetes
 import argonaut._
 import com.lightbend.rp.reactivecli.annotations._
 import com.lightbend.rp.reactivecli.concurrent._
+import com.lightbend.rp.reactivecli.json.{ JsonTransform, JsonTransformExpression }
 import scala.collection.immutable.Seq
 import utest._
 
@@ -62,7 +63,7 @@ object IngressJsonTest extends TestSuite {
           "extensions/v1beta1",
           None,
           ingressAnnotations = Map.empty,
-          None,
+          JsonTransform.noop,
           None,
           pathAppend = None,
           tlsSecrets = Seq.empty).toOption.get
@@ -152,7 +153,7 @@ object IngressJsonTest extends TestSuite {
           "extensions/v1beta1",
           Some(Vector("test.com")),
           ingressAnnotations = Map("kubernetes.io/ingress.class" -> "istio"),
-          None,
+          JsonTransform.noop,
           None,
           pathAppend = Some("/.*"),
           tlsSecrets = Seq("hello1", "hello2")).toOption.get
@@ -211,12 +212,12 @@ object IngressJsonTest extends TestSuite {
       }
 
       "should fail if application name is not defined" - {
-        assert(Ingress.generate(annotations.copy(appName = None), "extensions/v1beta1", None, Map.empty, None, None, None, Seq.empty).toOption.isEmpty)
+        assert(Ingress.generate(annotations.copy(appName = None), "extensions/v1beta1", None, Map.empty, JsonTransform.noop, None, None, Seq.empty).toOption.isEmpty)
       }
 
       "jq" - {
         Ingress
-          .generate(annotations.copy(appName = Some("test")), "extensions/v1beta1", None, Map.empty, Some(".jqTest = \"test\""), None, None, Seq.empty)
+          .generate(annotations.copy(appName = Some("test")), "extensions/v1beta1", None, Map.empty, JsonTransform.jq(JsonTransformExpression(".jqTest = \"test\"")), None, None, Seq.empty)
           .toOption
           .get
           .get
@@ -230,7 +231,7 @@ object IngressJsonTest extends TestSuite {
           "extensions/v1beta1",
           Some(Vector("test.com")),
           ingressAnnotations = Map("kubernetes.io/ingress.class" -> "istio"),
-          None,
+          JsonTransform.noop,
           None,
           None,
           Seq.empty).toOption.get.get
@@ -240,7 +241,7 @@ object IngressJsonTest extends TestSuite {
           "extensions/v1beta1",
           Some(Vector("test.com")),
           ingressAnnotations = Map("kubernetes.io/ingress.class" -> "istio2"),
-          None,
+          JsonTransform.noop,
           None,
           None,
           Seq.empty).toOption.get.get

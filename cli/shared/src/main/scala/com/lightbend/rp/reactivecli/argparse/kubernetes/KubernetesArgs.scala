@@ -17,6 +17,7 @@
 package com.lightbend.rp.reactivecli.argparse.kubernetes
 
 import com.lightbend.rp.reactivecli.argparse.{ GenerateDeploymentArgs, InputArgs, TargetRuntimeArgs }
+import com.lightbend.rp.reactivecli.json.JsonTransformExpression
 import com.lightbend.rp.reactivecli.process.kubectl
 import com.lightbend.rp.reactivecli.runtime.kubernetes.PodTemplate
 import java.io.PrintStream
@@ -76,10 +77,10 @@ case class KubernetesArgs(
   generateNamespaces: Boolean = false,
   generatePodControllers: Boolean = false,
   generateServices: Boolean = false,
-  transformIngress: Option[String] = None,
-  transformNamespaces: Option[String] = None,
-  transformPodControllers: Option[String] = None,
-  transformServices: Option[String] = None,
+  transformIngress: Option[JsonTransformExpression] = None,
+  transformNamespaces: Option[JsonTransformExpression] = None,
+  transformPodControllers: Option[JsonTransformExpression] = None,
+  transformServices: Option[JsonTransformExpression] = None,
   namespace: Option[String] = None,
   podControllerArgs: PodControllerArgs = PodControllerArgs(),
   serviceArgs: ServiceArgs = ServiceArgs(),

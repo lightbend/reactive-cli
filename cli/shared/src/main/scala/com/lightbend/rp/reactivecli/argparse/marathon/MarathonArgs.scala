@@ -17,6 +17,7 @@
 package com.lightbend.rp.reactivecli.argparse.marathon
 
 import com.lightbend.rp.reactivecli.argparse.{ GenerateDeploymentArgs, InputArgs, TargetRuntimeArgs }
+import com.lightbend.rp.reactivecli.json.JsonTransformExpression
 import java.io.PrintStream
 import scala.collection.immutable.Seq
 
@@ -67,4 +68,4 @@ case class MarathonArgs(
   namespace: Option[String] = None,
   output: MarathonArgs.Output = MarathonArgs.Output.PipeToStream(System.out),
   registryForcePull: Boolean = false,
-  transformOutput: Option[String] = None) extends TargetRuntimeArgs
+  transformOutput: Option[JsonTransformExpression] = None) extends TargetRuntimeArgs

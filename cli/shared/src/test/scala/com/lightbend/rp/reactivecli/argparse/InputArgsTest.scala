@@ -19,6 +19,7 @@ package com.lightbend.rp.reactivecli.argparse
 import com.lightbend.rp.reactivecli.argparse.kubernetes.{ IngressArgs, KubernetesArgs, PodControllerArgs, ServiceArgs }
 import com.lightbend.rp.reactivecli.argparse.marathon.MarathonArgs
 import com.lightbend.rp.reactivecli.files._
+import com.lightbend.rp.reactivecli.json.JsonTransformExpression
 import com.lightbend.rp.reactivecli.runtime.kubernetes.Deployment
 
 import scala.collection.immutable.Seq
@@ -204,7 +205,7 @@ object InputArgsTest extends TestSuite {
                       namespace = Some("chirper"),
                       output = MarathonArgs.Output.SaveToFile("/tmp/foo"),
                       registryForcePull = true,
-                      transformOutput = Some(".test = 123"))),
+                      transformOutput = Some(JsonTransformExpression(".test = 123")))),
                   registryUsername = Some("john"),
                   registryPassword = Some("wick"),
                   registryUseHttps = false,

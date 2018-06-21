@@ -19,6 +19,7 @@ package com.lightbend.rp.reactivecli.argparse
 import com.lightbend.rp.reactivecli.argparse.kubernetes._
 import com.lightbend.rp.reactivecli.argparse.marathon.MarathonArgs
 import com.lightbend.rp.reactivecli.files._
+import com.lightbend.rp.reactivecli.json.JsonTransformExpression
 import com.lightbend.rp.reactivecli.runtime.kubernetes.PodTemplate.{ ImagePullPolicy, RestartPolicy }
 
 import scala.collection.immutable.Seq
@@ -60,6 +61,9 @@ object InputArgs {
       case v if v.toLowerCase == PodControllerArgs.ControllerType.Job.arg =>
         PodControllerArgs.ControllerType.Job
     }
+
+  implicit val readJsonTransformExpression: scopt.Read[JsonTransformExpression] =
+    scopt.Read.reads(new JsonTransformExpression(_))
 
   val default = InputArgs()
 
@@ -314,19 +318,19 @@ object InputArgs {
             .optional()
             .action(GenerateDeploymentArgs.set((v, args) => args.copy(version = Some(v)))),
 
-          opt[String]("transform-ingress")
+          opt[JsonTransformExpression]("transform-ingress")
             .text("A jq expression that will be applied to Ingress resources. jq must be installed")
             .action(KubernetesArgs.set((v, args) => args.copy(transformIngress = Some(v)))),
 
-          opt[String]("transform-namespaces")
+          opt[JsonTransformExpression]("transform-namespaces")
             .text("A jq expression that will be applied to Namespace resources. jq must be installed")
             .action(KubernetesArgs.set((v, args) => args.copy(transformNamespaces = Some(v)))),
 
-          opt[String]("transform-pod-controllers")
+          opt[JsonTransformExpression]("transform-pod-controllers")
             .text("A jq expression that will be applied to Pod Controller resources. jq must be installed")
             .action(KubernetesArgs.set((v, args) => args.copy(transformPodControllers = Some(v)))),
 
-          opt[String]("transform-services")
+          opt[JsonTransformExpression]("transform-services")
             .text("A jq expression that will be applied to Service resources. jq must be installed")
             .action(KubernetesArgs.set((v, args) => args.copy(transformServices = Some(v)))))
 
@@ -451,7 +455,7 @@ object InputArgs {
             .optional()
             .action(GenerateDeploymentArgs.set((_, c) => c.copy(registryUseLocal = true))),
 
-          opt[String]("transform-output")
+          opt[JsonTransformExpression]("transform-output")
             .text("A jq expression that will be applied to the configuration output. jq must be installed")
             .action(MarathonArgs.set((v, args) => args.copy(transformOutput = Some(v)))),
 

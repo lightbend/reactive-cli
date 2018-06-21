@@ -22,6 +22,7 @@ import com.lightbend.rp.reactivecli.argparse.marathon.MarathonArgs
 import com.lightbend.rp.reactivecli.concurrent._
 import com.lightbend.rp.reactivecli.docker.Config
 import com.lightbend.rp.reactivecli.files._
+import com.lightbend.rp.reactivecli.json.JsonTransform
 import java.io.{ ByteArrayOutputStream, PrintStream }
 
 import scala.collection.immutable.Seq
@@ -149,7 +150,7 @@ object MarathonPackageTest extends TestSuite {
           "marathon",
           "test",
           Json("key1" -> "value1".asJson),
-          None)
+          JsonTransform.noop)
 
         withTempFile { testFile =>
           outputConfiguration(config, MarathonArgs.Output.SaveToFile(testFile)).map { _ =>
@@ -169,7 +170,7 @@ object MarathonPackageTest extends TestSuite {
           "marathon",
           "test",
           Json("key1" -> "value1".asJson),
-          None)
+          JsonTransform.noop)
 
         val output = new ByteArrayOutputStream()
         val printStream = new PrintStream(output)

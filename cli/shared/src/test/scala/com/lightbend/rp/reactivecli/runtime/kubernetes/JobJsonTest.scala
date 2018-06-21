@@ -19,6 +19,7 @@ package com.lightbend.rp.reactivecli.runtime.kubernetes
 import argonaut._
 import com.lightbend.rp.reactivecli.annotations.{ Annotations, LiteralEnvironmentVariable, Secret }
 import com.lightbend.rp.reactivecli.argparse.CanaryDeploymentType
+import com.lightbend.rp.reactivecli.json.JsonTransform
 import scala.collection.immutable.Seq
 import utest._
 
@@ -56,7 +57,7 @@ object JobJsonTest extends TestSuite {
           noOfReplicas = 1,
           Map.empty,
           CanaryDeploymentType,
-          None,
+          JsonTransform.noop,
           true)
 
       val json = job.toOption.get.json
@@ -109,7 +110,7 @@ object JobJsonTest extends TestSuite {
           noOfReplicas = 1,
           Map.empty,
           CanaryDeploymentType,
-          None,
+          JsonTransform.noop,
           true)
 
       assert(!job.toOption.isDefined)
