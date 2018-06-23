@@ -195,7 +195,7 @@ object Main extends LazyLogging {
           } yield entry.credentials match {
             case Left(raw) => HttpRequest.EncodedBasicAuth(raw)
             case Right((username, password)) => {
-              if (username == "oauth2accesstoken")
+              if (username == "oauth2accesstoken" || username == "_dcgcloud_token")
                 HttpRequest.BearerToken(password)
               else
                 HttpRequest.BasicAuth(username, password)
