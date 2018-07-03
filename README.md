@@ -122,10 +122,6 @@ sbt buildAll
 
 Once built, you can find the packages in `target/stage/<name>/output`.
 
-## Releasing
-
-Consult the _Lightbend Orchestration Release Process_ document in Google Drive.
-
 ## Maintenance
 
 Enterprise Suite Platform Team <es-platform@lightbend.com>
