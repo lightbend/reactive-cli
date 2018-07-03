@@ -124,7 +124,7 @@ Once built, you can find the packages in `target/stage/<name>/output`.
 
 ## Releasing
 
-Consult the _Lightbend Orchestration_ document in Google Drive.
+Consult the _Lightbend Orchestration Release Process_ document in Google Drive.
 
 ## Maintenance
 
