@@ -65,6 +65,12 @@ $ sudo apt-get install -y -qq \
     jq
 ```
 
+### IntelliJ setup
+
+After importing into IntelliJ, there will be lots of errors. To fix, manually delete the scalalib_native
+library from the project libraries, as described [here](https://github.com/twitter/rsc/issues/13#issuecomment-345429964).
+This is due to lack of support for sbt-crossproject in IntelliJ.
+
 ## Building and running
 
 Use the following sbt command to create the native executable:
