@@ -118,11 +118,18 @@ package object marathon {
                             sortedPaths.nonEmpty.option(Seq(s"HAPROXY_${i}_PATH" -> jString(sortedPaths.mkString(" ")), s"HAPROXY_${i}_HTTP_BACKEND_PROXYPASS_PATH" -> jString(sortedPaths.mkString(" ")))).getOrElse(Seq.empty)).flatten
                       }
 
+                  val annotationsToUse =
+                    annotations
+                      .annotations
+                      .map(a => a.key -> jString(a.value))
+                      .toList
+
                   val labels = List(
                     "APP_NAME" -> jString(appName),
                     "APP_NAME_VERSION" -> jString(appNameVersion)) ++
                     annotations.akkaClusterBootstrapSystemName.fold(List.empty[(String, Json)])(system => List("ACTOR_SYSTEM_NAME" -> jString(system))) ++
-                    endpointLabels
+                    endpointLabels ++
+                    annotationsToUse
 
                   val enableChecks =
                     annotations.modules.contains(Module.Status) && annotations.modules.contains(Module.AkkaManagement)
