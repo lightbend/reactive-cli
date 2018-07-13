@@ -26,7 +26,7 @@ import utest._
 import Argonaut._
 
 object IngressJsonTest extends TestSuite {
-  def createAnnotations(appName: String, urlOne: String, urlTwo: String) =
+  def createAnnotations(appName: String, urlOne: String, urlTwo: String): Annotations =
     Annotations(
       namespace = Some("chirper"),
       applications = Vector.empty,

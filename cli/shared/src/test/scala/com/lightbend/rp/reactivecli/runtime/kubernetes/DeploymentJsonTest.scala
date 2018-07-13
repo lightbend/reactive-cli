@@ -47,6 +47,9 @@ object DeploymentJsonTest extends TestSuite {
     cpu = Some(0.5D),
     endpoints = endpoints,
     secrets = Seq(Secret("acme.co", "my-secret")),
+    annotations = Seq(
+      Annotation("annotationKey0", "annotationValue0"),
+      Annotation("annotationKey1", "annotationValue1")),
     privileged = true,
     environmentVariables = Map(
       "testing1" -> LiteralEnvironmentVariable("testingvalue1")),
@@ -126,6 +129,10 @@ object DeploymentJsonTest extends TestSuite {
               |        "labels": {
               |          "appName": "friendimpl",
               |          "appNameVersion": "friendimpl-v3-2-1-snapshot"
+              |        },
+              |        "annotations": {
+              |          "annotationKey0": "annotationValue0",
+              |          "annotationKey1": "annotationValue1"
               |        }
               |      },
               |      "spec": {

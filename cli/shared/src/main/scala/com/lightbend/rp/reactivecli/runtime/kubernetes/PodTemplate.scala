@@ -359,9 +359,18 @@ object PodTemplate {
       else
         labels
 
+    val annotationsToUse = Option(
+      annotations
+        .annotations
+        .map(a => (a.key, jString(a.value)))
+        .toMap)
+      .filter(_.nonEmpty)
+
     PodTemplate(
       Json(
-        "metadata" -> Json("labels" -> labelsToUse.asJson),
+        "metadata" -> (
+          ("labels" -> labelsToUse.asJson) ->:
+          ("annotations" :=? annotationsToUse) ->?: jEmptyObject),
         "spec" -> Json(
           "restartPolicy" -> restartPolicy.asJson,
           "containers" -> jArrayElements(

@@ -176,6 +176,10 @@ object AnnotationsTest extends TestSuite {
               "com.lightbend.rp.endpoints.2.name" -> "ep3",
               "com.lightbend.rp.endpoints.2.protocol" -> "udp",
               "com.lightbend.rp.endpoints.2.port" -> "1234",
+              "com.lightbend.rp.annotations.0.key" -> "annotationKey0",
+              "com.lightbend.rp.annotations.0.value" -> "annotationValue0",
+              "com.lightbend.rp.annotations.1.key" -> "annotationKey1",
+              "com.lightbend.rp.annotations.1.value" -> "annotationValue1",
               "com.lightbend.rp.modules.common.enabled" -> "true",
               "com.lightbend.rp.modules.another-one.enabled" -> "false",
               "com.lightbend.rp.akka-cluster-bootstrap.system-name" -> "test"),
@@ -195,6 +199,9 @@ object AnnotationsTest extends TestSuite {
                 "ep2" -> TcpEndpoint(1, "ep2", 1234),
                 "ep3" -> UdpEndpoint(2, "ep3", 1234)),
               secrets = Seq.empty,
+              annotations = Vector(
+                Annotation("annotationKey0", "annotationValue0"),
+                Annotation("annotationKey1", "annotationValue1")),
               privileged = true,
               environmentVariables = Map(
                 "testing1" -> LiteralEnvironmentVariable("testingvalue1"),
