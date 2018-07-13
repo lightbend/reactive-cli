@@ -22,7 +22,7 @@ lazy val Names = new {
 }
 
 lazy val Versions = new {
-  val argonaut  = "6.2.2"
+  val argonaut  = "6.2.1"
   val fastparse = "1.0.0"
   val nodejs    = "0.4.2"
   val scala     = "2.11.12"
