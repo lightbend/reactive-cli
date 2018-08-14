@@ -8,7 +8,7 @@ This project is a component of [Lightbend Orchestration](https://developer.light
 
 ## Installation / Usage
 
-Consult the [Lightbend Orchestration](https://developer.lightbend.com/docs/lightbend-orchestration/latest/cli-installation.html#install-the-cli) documentation for setup and configuration.
+Consult the [Lightbend Orchestration](https://developer.lightbend.com/docs/lightbend-orchestration/current/setup/cli-installation.html#install-the-cli) documentation for setup and configuration.
 
 ## Developer
 
