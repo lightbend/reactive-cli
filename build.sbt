@@ -70,9 +70,7 @@ lazy val commonSettings = Seq(
 
 lazy val root = project
   .in(file("."))
-  .aggregate(
-    cliJs, cliNative
-  )
+  .aggregate(cliJs, cliNative)
   .settings(
     name := "reactive-cli-root",
 
@@ -203,18 +201,16 @@ lazy val cli = crossProject(JSPlatform, NativePlatform)
   .crossType(CrossType.Full)
   .in(file("cli"))
   .enablePlugins(AutomateHeaderPlugin)
-  .settings(commonSettings)
-  .settings(Seq(
+  .settings(
+    commonSettings,
+    name := "reactive-cli",
     libraryDependencies ++= Seq(
       "com.github.scopt"  %%% "scopt"       % Versions.scopt,
       "io.argonaut"       %%% "argonaut"    % Versions.argonaut,
       "biz.enef"          %%% "slogging"    % Versions.slogging,
       "org.scalaz"        %%% "scalaz-core" % Versions.scalaz,
       "com.lihaoyi"       %%% "fastparse"   % Versions.fastparse
-    )
-  ))
-  .settings(
-    name := "reactive-cli",
+    ),
     sourceGenerators in Compile += Def.task {
       val versionFile = (sourceManaged in Compile).value / "ProgramVersion.scala"
 
@@ -246,9 +242,9 @@ lazy val cli = crossProject(JSPlatform, NativePlatform)
           .toVector
           .map(dl => s"-Wl,--dynamic-linker=$dl")
 
-      dynamicLinkerOptions ++ Seq(
-        "-lcurl"
-      ) ++ sys.props.get("nativeLinkingOptions").fold(Seq.empty[String])(_.split(" ").toVector)
+      dynamicLinkerOptions ++
+          Seq("-lcurl") ++
+          sys.props.get("nativeLinkingOptions").fold(Seq.empty[String])(_.split(" ").toVector)
     },
 
     Keys.`package` in Compile := {
@@ -300,5 +296,4 @@ lazy val cli = crossProject(JSPlatform, NativePlatform)
   )
 
 lazy val cliJs = cli.js
-
 lazy val cliNative = cli.native

@@ -241,13 +241,10 @@ case class BuildInfo(name: String, baseImage: String, install: String, target: B
           |""".stripMargin
 
     IO.createDirectory(stage / ".context")
-
     IO.write(stage / ".context" / "Dockerfile", dockerFile)
 
     runProcess("docker", "pull", baseImage)
-
     runProcessCwd(stage / ".context", "docker", "build", "-t", dockerBuildImage, (stage / ".context").getPath)
-
     runProcess("docker", "tag", dockerBuildImage, dockerTaggedBuildImage)
 
     dockerTaggedBuildImage
