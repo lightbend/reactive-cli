@@ -78,7 +78,7 @@ lazy val root = project
 
     TaskKey[Unit]("ensureRelease") := {
       if (Properties.nativeMode != "release") {
-        sys.error("To release, you must launch SBT with -Dbuild.nativeMode=release")
+        sys.error("To release, you must launch sbt with -Dbuild.nativeMode=release")
       }
     },
 

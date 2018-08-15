@@ -72,7 +72,7 @@ trait BuildTarget {
       stage / "build",
       s"""|#!/usr/bin/env bash
           |
-          |# This is executed within the container. It runs the SBT build and creates a local package directory.
+          |# This is executed within the container. It runs the sbt build and creates a local package directory.
           |
           |set -e
           |
@@ -163,7 +163,7 @@ case class RpmBuildTarget(release: String, requires: String, libs: Seq[String]) 
       stage / "command",
       s"""|#!/usr/bin/env bash
           |
-          |# This is executed within the container. It runs the SBT build (via ./build) and creates the .rpm package
+          |# This is executed within the container. It runs the sbt build (via ./build) and creates the .rpm package
           |
           |set -e
           |
@@ -206,7 +206,7 @@ case class DebBuildTarget(distributions: Seq[String], components: String, depend
       stage / "command",
       s"""|#!/usr/bin/env bash
           |
-          |# This is executed within the container. It runs the SBT build (via .build) and creates the .deb package
+          |# This is executed within the container. It runs the sbt build (via .build) and creates the .deb package
           |
           |set -e
           |
@@ -275,7 +275,7 @@ case class TarGzSelfContainedExecutableBuildTarget(libs: Seq[String]) extends Bu
       stage / "command",
       s"""|#!/usr/bin/env bash
           |
-          |# This is executed within the container. It runs the SBT build (via .build) and creates the .tar.gz package
+          |# This is executed within the container. It runs the sbt build (via .build) and creates the .tar.gz package
           |
           |set -e
           |
