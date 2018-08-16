@@ -1,11 +1,10 @@
-import sbt._
+import sbt._, Keys._
 import scala.collection.immutable.Seq
-
 import AdditionalIO._
 
 object BuildInfo {
   val Builds =
-    Seq(
+    Vector(
       MuslBuild.tgz("tgz"),
 
       MuslBuild.rpm("centos-6", "el6", "bash"),
@@ -112,7 +111,7 @@ object BuildInfo {
         target = DebBuildTarget(Seq("bionic"), "main", "bash,libre2-4,libunwind8,libcurl4", Seq.empty)))
   */
 
-  def initialize(root: File): Unit = {
+  private def initialize(root: File): Unit = {
     val ivyDir = root / "target" / ".ivy2" / "cache"
     val sbtDir = root / "target" / ".sbt" / "launchers"
 
@@ -136,6 +135,48 @@ object BuildInfo {
       IO.move(sbtTempDir, sbtDir)
     }
   }
+
+  def builds(): Def.Initialize[InputTask[Vector[BuildInfo]]] = Def.inputTask {
+    for {
+      name <- Def.spaceDelimited().parsed.toVector
+      build <- BuildInfo.forName(name, streams.value.log)
+    } yield build
+  }
+
+  private def forName(name: String, log: Logger): Seq[BuildInfo] = {
+    Builds.find(_.name == name) match {
+      case Some(b) => Seq(b)
+      case None    => log.error(s"Unable to find build for name: $name"); Nil
+    }
+  }
+
+  def buildDockerImage(builds: Seq[BuildInfo], target: File, log: Logger): Seq[String] = {
+    val tags =
+      for {
+        b <- builds
+      } yield {
+        val stage = target / "stage" / b.name
+        IO.createDirectory(stage)
+        b.build(stage)
+      }
+
+    log.warn("The build has been completed but the image has not been published. To publish:")
+    tags foreach (tag => log.warn(s"""docker push "$tag""""))
+
+    tags
+  }
+
+  def build(builds: Seq[BuildInfo], target: File, baseDir: File, version: String, log: Logger): Seq[(BuildInfo, Seq[File])] = {
+    BuildInfo.initialize(baseDir)
+    for {
+      b <- builds
+    } yield {
+      val stage = target / "stage" / b.name
+      IO.createDirectory(stage)
+      b -> b.run(baseDir, stage, version, log)
+    }
+  }
+
 }
 
 object MuslBuild {
@@ -219,7 +260,7 @@ object MuslBuild {
     })
 }
 
-case class BuildInfo(name: String, baseImage: String, install: String, target: BuildTarget) {
+final case class BuildInfo(name: String, baseImage: String, install: String, target: BuildTarget) {
   private val dockerVersion = "latest"
 
   val dockerBuildImage = s"reactive-cli-build-$name:$dockerVersion"
@@ -241,13 +282,10 @@ case class BuildInfo(name: String, baseImage: String, install: String, target: B
           |""".stripMargin
 
     IO.createDirectory(stage / ".context")
-
     IO.write(stage / ".context" / "Dockerfile", dockerFile)
 
     runProcess("docker", "pull", baseImage)
-
     runProcessCwd(stage / ".context", "docker", "build", "-t", dockerBuildImage, (stage / ".context").getPath)
-
     runProcess("docker", "tag", dockerBuildImage, dockerTaggedBuildImage)
 
     dockerTaggedBuildImage

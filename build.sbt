@@ -1,6 +1,5 @@
 import sbt._
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
-import complete.DefaultParsers._
 import scala.collection.immutable.Seq
 import scalariform.formatter.preferences.AlignSingleLineCaseStatements
 import ReleaseTransformations._
@@ -70,15 +69,13 @@ lazy val commonSettings = Seq(
 
 lazy val root = project
   .in(file("."))
-  .aggregate(
-    cliJs, cliNative
-  )
+  .aggregate(cliJs, cliNative)
   .settings(
     name := "reactive-cli-root",
 
     TaskKey[Unit]("ensureRelease") := {
       if (Properties.nativeMode != "release") {
-        sys.error("To release, you must launch SBT with -Dbuild.nativeMode=release")
+        sys.error("To release, you must launch sbt with -Dbuild.nativeMode=release")
       }
     },
 
@@ -96,79 +93,17 @@ lazy val root = project
       pushChanges
     ),
 
-    build in Compile := {
-      BuildInfo.initialize(baseDirectory.value)
+    buildDockerImage in Compile :=
+        BuildInfo.buildDockerImage(BuildInfo.builds.evaluated, target.value, streams.value.log),
 
-      for {
-        name <- spaceDelimited("<arg>").parsed.toVector
-        result <- BuildInfo.Builds.find(_.name == name) match {
-          case None =>
-            streams.value.log.error(s"Unable to find build for name: $name")
+    buildAllDockerImages in Compile :=
+        BuildInfo.buildDockerImage(BuildInfo.Builds, target.value, streams.value.log),
 
-            Seq.empty
+    build in Compile :=
+      BuildInfo.build(BuildInfo.builds.evaluated, target.value, baseDirectory.value, version.value, streams.value.log),
 
-          case Some(b) =>
-            val stage = target.value / "stage" / b.name
-            Seq(b -> b.run(baseDirectory.value, stage, version.value, streams.value.log))
-        }
-      } yield result
-    },
-
-    buildDockerImage in Compile := {
-      for {
-        name <- spaceDelimited("<arg>").parsed.toVector
-        result <- BuildInfo.Builds.find(_.name == name) match {
-          case None =>
-            streams.value.log.error(s"Unable to find build for name: $name")
-
-            Seq.empty
-
-          case Some(b) =>
-            val stage = target.value / "stage" / b.name
-            val tag = b.build(stage)
-
-            streams.value.log.warn("The build has been completed but the image has not been published. To publish:")
-            streams.value.log.warn(s"""docker push "$tag"""")
-
-            Seq(tag)
-        }
-      } yield result
-    },
-
-    buildAllDockerImages in Compile := {
-      val tags =
-        for {
-          b <- BuildInfo.Builds
-        } yield {
-          val stage = target.value / "stage" / b.name
-
-          IO.createDirectory(stage)
-
-          b.build(stage)
-        }
-
-      streams.value.log.warn("The build has been completed but the image has not been published. To publish:")
-
-      tags.foreach { tag =>
-        streams.value.log.warn(s"""docker push "$tag"""")
-      }
-
-      tags
-    },
-
-    buildAll in Compile := {
-      BuildInfo.initialize(baseDirectory.value)
-
-      for {
-        b <- BuildInfo.Builds
-      } yield {
-        val stage = target.value / "stage" / b.name
-
-        IO.createDirectory(stage)
-
-        b -> b.run(baseDirectory.value, stage, version.value, streams.value.log)
-      }
-    }.toVector,
+    buildAll in Compile :=
+      BuildInfo.build(BuildInfo.Builds, target.value, baseDirectory.value, version.value, streams.value.log),
 
     publishToBintray in Compile := {
       val info = (buildAll in Compile).value
@@ -203,18 +138,16 @@ lazy val cli = crossProject(JSPlatform, NativePlatform)
   .crossType(CrossType.Full)
   .in(file("cli"))
   .enablePlugins(AutomateHeaderPlugin)
-  .settings(commonSettings)
-  .settings(Seq(
+  .settings(
+    commonSettings,
+    name := "reactive-cli",
     libraryDependencies ++= Seq(
       "com.github.scopt"  %%% "scopt"       % Versions.scopt,
       "io.argonaut"       %%% "argonaut"    % Versions.argonaut,
       "biz.enef"          %%% "slogging"    % Versions.slogging,
       "org.scalaz"        %%% "scalaz-core" % Versions.scalaz,
       "com.lihaoyi"       %%% "fastparse"   % Versions.fastparse
-    )
-  ))
-  .settings(
-    name := "reactive-cli",
+    ),
     sourceGenerators in Compile += Def.task {
       val versionFile = (sourceManaged in Compile).value / "ProgramVersion.scala"
 
@@ -246,9 +179,9 @@ lazy val cli = crossProject(JSPlatform, NativePlatform)
           .toVector
           .map(dl => s"-Wl,--dynamic-linker=$dl")
 
-      dynamicLinkerOptions ++ Seq(
-        "-lcurl"
-      ) ++ sys.props.get("nativeLinkingOptions").fold(Seq.empty[String])(_.split(" ").toVector)
+      dynamicLinkerOptions ++
+          Seq("-lcurl") ++
+          sys.props.get("nativeLinkingOptions").fold(Seq.empty[String])(_.split(" ").toVector)
     },
 
     Keys.`package` in Compile := {
@@ -300,5 +233,4 @@ lazy val cli = crossProject(JSPlatform, NativePlatform)
   )
 
 lazy val cliJs = cli.js
-
 lazy val cliNative = cli.native
