@@ -5,12 +5,14 @@ import AdditionalIO._
 object BuildInfo {
   val Builds =
     Vector(
+      // @FIXME these could be parallelized on CI for a quick win in build times
       MuslBuild.tgz("tgz"),
 
       MuslBuild.rpm("centos-6", "el6", "bash"),
 
       MuslBuild.rpm("centos-7", "el7", "bash"),
 
+      // Ideally this would be "debian" instead of "ubuntu-older"
       MuslBuild.deb("ubuntu-older", Seq("trusty", "utopic", "vivid", "wily", "jessie", "stretch", "xenial", "yakkety", "zesty", "artful", "bionic"), "main", "bash")
     )
 
@@ -138,6 +140,8 @@ object MuslBuild {
     baseImage = image,
     install = install,
     target = new DebBuildTarget(distributions, components, dependencies, libs) {
+      override def launcherExecHook: String = "exec $DIR/lib/ld-musl-x86_64.so.1"
+
       override protected def preBuildHook: String = preBuild
 
       override protected def sbtBuildArgumentsHook: String = sbtBuildArguments
@@ -148,6 +152,8 @@ object MuslBuild {
     baseImage = image,
     install = install,
     target = new RpmBuildTarget(release, requires, libs) {
+      override def launcherExecHook: String = "exec $DIR/lib/ld-musl-x86_64.so.1"
+
       override protected def preBuildHook: String = preBuild
 
       override protected def sbtBuildArgumentsHook: String = sbtBuildArguments
@@ -217,7 +223,7 @@ final case class BuildInfo(name: String, baseImage: String, install: String, tar
     }
 
     def pullImage(): Unit = {
-      runProcess("docker", "pull", baseImage)
+      runProcess("docker", "pull", dockerTaggedBuildImage)
     }
 
     def run(): Vector[File] = {
