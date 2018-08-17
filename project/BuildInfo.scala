@@ -10,9 +10,12 @@ object BuildInfo {
 
       MuslBuild.rpm("centos-6", "el6", "bash"),
 
-      MuslBuild.rpm("centos-7", "el7", "bash"),
+      // @FIXME build name is wonky, needs to be centos-6 until proper images published
+      // @FIXME even further, rpm should take el6 and el7 as args instead of requiring
+      //        two entries
+      MuslBuild.rpm("centos-6", "el7", "bash"),
 
-      // Ideally this would be "debian" instead of "ubuntu-older"
+      // @FIXME this should be "debian" instead of "ubuntu-older"
       MuslBuild.deb("ubuntu-older", Seq("trusty", "utopic", "vivid", "wily", "jessie", "stretch", "xenial", "yakkety", "zesty", "artful", "bionic"), "main", "bash")
     )
 
