@@ -9,107 +9,11 @@ object BuildInfo {
 
       MuslBuild.rpm("centos-6", "el6", "bash"),
 
-      BuildInfo(
-        name = "centos-7",
-        baseImage = "centos:7",
-        install = s"""|RUN \\
-                      |  curl -s https://releases.llvm.org/3.8.0/clang+llvm-3.8.0-linux-x86_64-centos6.tar.xz | tar xf - --strip-components=1 -J -C /usr/local/ && \\
-                      |  curl -s https://bintray.com/sbt/rpm/rpm > /etc/yum.repos.d/bintray-sbt-rpm.repo && \\
-                      |  yum install -y bc gcc gcc-c++ epel-release git java-1.8.0-openjdk-headless libcurl-devel libunwind-devel make openssl-devel rpm-build sbt which && \\
-                      |  yum install -y jq && \\
-                      |  git clone https://code.googlesource.com/re2 /opt/re2 && \\
-                      |  pushd /opt/re2 && \\
-                      |  git checkout 2017-11-01 && \\
-                      |  make && \\
-                      |  make install && \\
-                      |  popd
-                      |RUN yum install -y libstdc++-devel libstdc++-static
-                      |""".stripMargin,
-        target = new RpmBuildTarget("el7", "bash,libunwind,libcurl", Seq("/opt/re2/obj/so/libre2.so.0"))),
+      MuslBuild.rpm("centos-7", "el7", "bash"),
 
-      BuildInfo(
-        name = "debian-8",
-        baseImage = "debian:8",
-        install = s"""|RUN \\
-                      |  apt-get -y update && \\
-                      |  apt-get -y install apt-transport-https && \\
-                      |  echo "deb http://ftp.de.debian.org/debian jessie-backports main" > /etc/apt/sources.list.d/jessie-backports.list && \\
-                      |  echo "deb https://dl.bintray.com/sbt/debian /" > /etc/apt/sources.list.d/sbt.list && \\
-                      |  apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823 && \\
-                      |  apt-get -y update && \\
-                      |  apt-get -y install -t jessie-backports jq openjdk-8-jre-headless ca-certificates-java && \\
-                      |  apt-get -y install bc build-essential clang++-3.8 libcurl4-openssl-dev libgc-dev libre2-dev libunwind8-dev sbt
-                      |""".stripMargin,
-        target = DebBuildTarget(Seq("jessie"), "main", "bash,libcurl3,libre2-1,libunwind8", Seq.empty)),
+      MuslBuild.deb("ubuntu-older", Seq("trusty", "utopic", "vivid", "wily", "jessie", "stretch", "xenial", "yakkety", "zesty", "artful", "bionic"), "main", "bash")
+    )
 
-      BuildInfo(
-        name = "debian-9",
-        baseImage = "debian:9",
-        install = s"""|RUN \\
-                      |  apt-get -y update && \\
-                      |  apt-get -y install apt-transport-https gnupg && \\
-                      |  echo "deb https://dl.bintray.com/sbt/debian /" > /etc/apt/sources.list.d/sbt.list && \\
-                      |  apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823 && \\
-                      |  apt-get -y update && \\
-                      |  apt-get -y install bc build-essential clang++-3.9 jq libcurl4-openssl-dev libgc-dev libre2-dev libunwind8-dev openjdk-8-jdk-headless sbt
-                      |""".stripMargin,
-        target = DebBuildTarget(Seq("stretch"), "main", "bash,libcurl3,libre2-3,libunwind8", Seq.empty)),
-
-      MuslBuild.deb("ubuntu-older", Seq("trusty", "utopic", "vivid", "wily"), "main", "bash"),
-
-      BuildInfo(
-        name = "ubuntu-16-04",
-        baseImage = "ubuntu:16.04",
-        install = s"""|RUN \\
-                      |  apt-get -y update && \\
-                      |  apt-get -y install apt-transport-https && \\
-                      |  echo "deb https://dl.bintray.com/sbt/debian /" > /etc/apt/sources.list.d/sbt.list && \\
-                      |  apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823 && \\
-                      |  apt-get -y update && \\
-                      |  apt-get -y install bc build-essential jq openjdk-8-jre-headless ca-certificates-java clang++-3.8 libcurl4-openssl-dev libgc-dev libre2-dev libunwind8-dev sbt
-                      |""".stripMargin,
-        target = DebBuildTarget(Seq("xenial"), "main", "bash,libre2-1v5,libunwind8,libcurl3", Seq.empty)),
-
-      BuildInfo(
-        name = "ubuntu-16-10",
-        baseImage = "ubuntu:16.10",
-        install = s"""|RUN \\
-                      |  apt-get -y update && \\
-                      |  apt-get -y install apt-transport-https dirmngr && \\
-                      |  echo "deb https://dl.bintray.com/sbt/debian /" > /etc/apt/sources.list.d/sbt.list && \\
-                      |  apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823 && \\
-                      |  apt-get -y update && \\
-                      |  apt-get -y install bc build-essential jq openjdk-8-jre-headless ca-certificates-java clang-3.8 libcurl4-openssl-dev libgc-dev libre2-dev libunwind8-dev sbt
-                      |""".stripMargin,
-        target = DebBuildTarget(Seq("yakkety"), "main", "bash,libre2-2,libunwind8,libcurl3", Seq.empty)),
-
-      BuildInfo(
-        name = "ubuntu-17-04_17-10",
-        baseImage = "ubuntu:17.04",
-        install = s"""|RUN \\
-                      |  apt-get -y update && \\
-                      |  apt-get -y install apt-transport-https dirmngr && \\
-                      |  echo "deb https://dl.bintray.com/sbt/debian /" > /etc/apt/sources.list.d/sbt.list && \\
-                      |  apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823 && \\
-                      |  apt-get -y update && \\
-                      |  apt-get -y install bc build-essential jq openjdk-8-jre-headless ca-certificates-java clang-3.8 libcurl4-openssl-dev libgc-dev libre2-dev libunwind8-dev sbt
-                      |""".stripMargin,
-        target = DebBuildTarget(Seq("zesty", "artful"), "main", "bash,libre2-3,libunwind8,libcurl3", Seq.empty)))
-
-  /*
-      BuildInfo(
-        name = "ubuntu-18-04",
-        baseImage = "ubuntu:18.04",
-        install = s"""|RUN \\
-                      |  apt-get -y update && \\
-                      |  apt-get -y install apt-transport-https dirmngr ca-certificates && \\
-                      |  echo "deb https://dl.bintray.com/sbt/debian /" > /etc/apt/sources.list.d/sbt.list && \\
-                      |  apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823 && \\
-                      |  apt-get -y update && \\
-                      |  apt-get -y install bc build-essential jq openjdk-8-jre-headless ca-certificates-java clang-3.9 libcurl4-openssl-dev libgc-dev libre2-dev libunwind8-dev sbt
-                      |""".stripMargin,
-        target = DebBuildTarget(Seq("bionic"), "main", "bash,libre2-4,libunwind8,libcurl4", Seq.empty)))
-  */
 
   private def initialize(root: File): Unit = {
     val ivyDir = root / "target" / ".ivy2" / "cache"
@@ -313,7 +217,7 @@ final case class BuildInfo(name: String, baseImage: String, install: String, tar
     }
 
     def pullImage(): Unit = {
-      runProcess("docker", "pull", dockerTaggedBuildImage)
+      runProcess("docker", "pull", baseImage)
     }
 
     def run(): Vector[File] = {
