@@ -203,7 +203,15 @@ case class DebBuildTarget(distributions: Seq[String], components: String, depend
           |
           |bash ./build
           |
-          |dpkg --build package
+          |DPKGVER="$$(dpkg --version | sed -e 's/^.*version \\([^ ]*\\) .*$$/\\1/;q')"
+          |RECENTDPKG=0
+          |dpkg --compare-versions "$$DPKGVER" "lt" "1.19" || RECENTDPKG=1
+          |if [[ "$$RECENTDPKG" == "0" ]]
+          |then
+          |  dpkg-deb -b package
+          |else
+          |  dpkg-deb -b --no-uniform-compression package
+          |fi
           |
           |mv package.deb output/reactive-cli_$version-${distributions.mkString("-")}_$architecture.deb
           |""".stripMargin

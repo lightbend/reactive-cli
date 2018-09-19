@@ -5,6 +5,7 @@ import AdditionalIO._
 object BuildInfo {
   val Builds =
     Vector(
+
       MuslBuild.tgz("tgz"),
 
       MuslBuild.rpm("centos-6", "el6", "bash"),
@@ -94,9 +95,8 @@ object BuildInfo {
                       |  apt-get -y update && \\
                       |  apt-get -y install bc build-essential jq openjdk-8-jre-headless ca-certificates-java clang-3.8 libcurl4-openssl-dev libgc-dev libre2-dev libunwind8-dev sbt
                       |""".stripMargin,
-        target = DebBuildTarget(Seq("zesty", "artful"), "main", "bash,libre2-3,libunwind8,libcurl3", Seq.empty)))
+        target = DebBuildTarget(Seq("zesty", "artful"), "main", "bash,libre2-3,libunwind8,libcurl3", Seq.empty)),
 
-  /*
       BuildInfo(
         name = "ubuntu-18-04",
         baseImage = "ubuntu:18.04",
@@ -109,7 +109,7 @@ object BuildInfo {
                       |  apt-get -y install bc build-essential jq openjdk-8-jre-headless ca-certificates-java clang-3.9 libcurl4-openssl-dev libgc-dev libre2-dev libunwind8-dev sbt
                       |""".stripMargin,
         target = DebBuildTarget(Seq("bionic"), "main", "bash,libre2-4,libunwind8,libcurl4", Seq.empty)))
-  */
+
 
   private def initialize(root: File): Unit = {
     val ivyDir = root / "target" / ".ivy2" / "cache"
