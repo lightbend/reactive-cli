@@ -203,7 +203,7 @@ case class DebBuildTarget(distributions: Seq[String], components: String, depend
           |
           |bash ./build
           |
-          |DPKGVER="$$(dpkg-query --showformat='$${Version}' -W dpkg)"
+          |DPKGVER="$$(dpkg --version | sed -e 's/^.*version \\([^ ]*\\) .*$$/\\1/;q')"
           |RECENTDPKG=0
           |dpkg --compare-versions "$$DPKGVER" "lt" "1.19" || RECENTDPKG=1
           |if [[ "$$RECENTDPKG" == "0" ]]
