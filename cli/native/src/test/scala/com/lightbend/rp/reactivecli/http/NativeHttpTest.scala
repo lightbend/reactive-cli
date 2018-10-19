@@ -65,8 +65,7 @@ object NativeHttpTest extends TestSuite {
           |Date Mon, 07 May 2018 08:43:13 GMT
           |Expires: -1""".stripMargin.replaceAll("\n", "\r\n"))) == Map(
         "Accept" -> "*",
-        "Expires" -> "-1"
-      ))
+        "Expires" -> "-1"))
     }
   }
 }

@@ -122,6 +122,19 @@ object DockerRegistryTest extends TestSuite {
               Some(ImageTag("3.5")))))
 
       assert(
+        DockerRegistry.parseImageUri("lightbend-docker-registry.bintray.io/allyourbase:1.0.arebelongtous") ==
+          Success(
+            Image(
+              "lightbend-docker-registry.bintray.io",
+              None,
+              "allyourbase",
+              ImageTag("1.0.arebelongtous"),
+              Some("lightbend-docker-registry.bintray.io"),
+              None,
+              "allyourbase",
+              Some(ImageTag("1.0.arebelongtous")))))
+
+      assert(
         DockerRegistry.parseImageUri("lightbend-docker.registry.bintray.io/conductr/oci-in-docker") ==
           Success(
             Image(
