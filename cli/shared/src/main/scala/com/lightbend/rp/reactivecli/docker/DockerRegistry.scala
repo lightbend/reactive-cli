@@ -45,42 +45,58 @@ object DockerRegistry extends LazyLogging {
     if (useHttps) "https" else "http"
 
   private[docker] def parseImageUri(uri: String): Try[Image] = {
-    val parts = uri.split("/", 3).toVector
+    if (uri == "") Failure(new IllegalArgumentException(s"""Cannot parse a blank uri"""))
+    else {
+      val parts = uri.split("/", 3).toVector
+      val partsZero = parts(0)
+      val partsZeroIsHost = partsZero.contains(":") || partsZero.contains(".")
+      val providedUrl = (parts.length > 2 || (parts.length > 1 && partsZeroIsHost)).option(partsZero)
 
-    val providedUrl = (parts.length > 2 || (parts.length > 1 && parts(0).contains(":"))).option(parts(0))
+      val providedNs = (parts.length > 2).option(parts(1))
+        .orElse((parts.length > 1 && !partsZeroIsHost).option(partsZero))
 
-    val providedNs = (parts.length > 2).option(parts(1))
-      .orElse((parts.length > 1 && !parts(0).contains(":")).option(parts(0)))
+      val imageWithTagOrDigest = (parts.length > 2).option(parts(2))
+        .orElse((parts.length > 1).option(parts(1)))
+        .getOrElse(partsZero)
 
-    val imageWithTagOrDigest = (parts.length > 2).option(parts(2))
-      .orElse((parts.length > 1).option(parts(1)))
-      .getOrElse(parts(0))
+      val firstColon = imageWithTagOrDigest.indexOf(":")
 
-    val firstColon = imageWithTagOrDigest.indexOf(":")
+      val firstAt = imageWithTagOrDigest.indexOf("@")
 
-    val firstAt = imageWithTagOrDigest.indexOf("@")
+      val (image, providedRef) =
+        if (firstColon >= 0 && firstAt >= 0)
+          imageWithTagOrDigest.take(firstAt) -> Some(ImageDigest(imageWithTagOrDigest.substring(firstAt + 1)))
+        else if (firstColon >= 0)
+          imageWithTagOrDigest.take(firstColon) -> Some(ImageTag(imageWithTagOrDigest.substring(firstColon + 1)))
+        else
+          imageWithTagOrDigest -> None
 
-    val (image, providedRef) =
-      if (firstColon >= 0 && firstAt >= 0)
-        imageWithTagOrDigest.take(firstAt) -> Some(ImageDigest(imageWithTagOrDigest.substring(firstAt + 1)))
-      else if (firstColon >= 0)
-        imageWithTagOrDigest.take(firstColon) -> Some(ImageTag(imageWithTagOrDigest.substring(firstColon + 1)))
-      else
-        imageWithTagOrDigest -> None
+      if (image.isEmpty || providedRef.fold(false)(_.value.isEmpty))
+        Failure(new IllegalArgumentException(s"""Cannot parse uri "$uri"""))
+      else {
+        Success {
+          Image(
+            url = providedUrl.getOrElse(DockerDefaultRegistry),
+            namespace = providedNs.orElse(providedUrl.fold(DockerDefaultLibrary.some)(_ => None)),
+            image = image,
+            ref = providedRef.getOrElse(ImageTag(DockerDefaultTag)),
+            providedUrl = providedUrl,
+            providedNamespace = providedNs,
+            providedImage = image,
+            providedRef = providedRef)
+        }
+      }
 
-    if (image.isEmpty || providedRef.fold(false)(_.value.isEmpty))
-      Failure(new IllegalArgumentException(s"""Cannot parse uri "$uri"""))
-    else
-      Success(
-        Image(
-          url = providedUrl.getOrElse(DockerDefaultRegistry),
-          namespace = providedNs.orElse(providedUrl.fold(DockerDefaultLibrary.some)(_ => None)),
-          image = image,
-          ref = providedRef.getOrElse(ImageTag(DockerDefaultTag)),
-          providedUrl = providedUrl,
-          providedNamespace = providedNs,
-          providedImage = image,
-          providedRef = providedRef))
+    }
+
+
+
+
+
+
+
+
+
   }
 
   private def getBlob(http: HttpExchange, credentials: Option[HttpRequest.Auth], useHttps: Boolean, validateTls: Boolean, img: Image, digest: String): Future[(HttpResponse, Option[HttpRequest.BearerToken])] =
