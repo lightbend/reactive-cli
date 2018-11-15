@@ -72,7 +72,7 @@ object Platform extends LazyLogging {
     }
 
   def encodeURI(uri: String): String = {
-    val enc = new URI(uri)
+    val enc = new URI(uri.replace(" ", "+"))
     enc.toASCIIString
   }
 
