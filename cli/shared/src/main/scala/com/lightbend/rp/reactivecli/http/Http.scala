@@ -32,8 +32,8 @@ object Http extends LazyLogging {
   def apply(request: HttpRequest)(implicit settings: HttpSettings): Future[HttpResponse] = doRequest(request, Nil)
 
   private def doRequest(
-    request: HttpRequest,
-    visitedUrls: List[String])(implicit settings: HttpSettings): Future[HttpResponse] = {
+                         request: HttpRequest,
+                         visitedUrls: List[String])(implicit settings: HttpSettings): Future[HttpResponse] = {
     val isFollowRedirect = request.requestFollowRedirects.getOrElse(settings.followRedirect)
 
     Platform
@@ -50,17 +50,8 @@ object Http extends LazyLogging {
             logger.debug("No more redirects allowed")
             Future.failed(InfiniteRedirect(visitedUrls))
           } else {
-            println(location)
-            if (location.indexOf("X-Amz-Credential") > -1) {
-              // S3 based registry doesn't accept authorization header on redirect
-              logger.debug("Performing S3 redirect")
-              doRequest(
-                HttpRequest(location, tlsValidationEnabled = Some(true), requestFollowRedirects = request.requestFollowRedirects),
-                location :: visitedUrls)
-            } else {
-              doRequest(
-                request.copy(location), location :: visitedUrls)
-            }
+            doRequest(
+              request.copy(location), location :: visitedUrls)
           }
         } else {
           Future.successful(response)
