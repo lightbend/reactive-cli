@@ -50,8 +50,16 @@ object Http extends LazyLogging {
             logger.debug("No more redirects allowed")
             Future.failed(InfiniteRedirect(visitedUrls))
           } else {
-            doRequest(
-              request.copy(location), location :: visitedUrls)
+            if (location.indexOf("X-Amz-Credential") > -1) {
+              // S3 based registry doesn't accept authorization header on redirect
+              logger.debug("Performing S3 redirect")
+              doRequest(
+                HttpRequest(location, tlsValidationEnabled = Some(true), requestFollowRedirects = request.requestFollowRedirects),
+                location :: visitedUrls)
+            } else {
+              doRequest(
+                request.copy(location), location :: visitedUrls)
+            }
           }
         } else {
           Future.successful(response)
