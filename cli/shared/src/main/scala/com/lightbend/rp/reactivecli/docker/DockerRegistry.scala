@@ -86,17 +86,7 @@ object DockerRegistry extends LazyLogging {
             providedRef = providedRef)
         }
       }
-
     }
-
-
-
-
-
-
-
-
-
   }
 
   private def getBlob(http: HttpExchange, credentials: Option[HttpRequest.Auth], useHttps: Boolean, validateTls: Boolean, img: Image, digest: String): Future[(HttpResponse, Option[HttpRequest.BearerToken])] =
@@ -203,6 +193,7 @@ object DockerRegistry extends LazyLogging {
 
         maybeResponse.recover {
           case t: Throwable =>
+            logger.trace("Error: {}", t)
             logger.error(s"Unable to obtain an OAuth token (${response.statusCode}${response.body.fold("")(" " + _)})")
 
             response -> token
