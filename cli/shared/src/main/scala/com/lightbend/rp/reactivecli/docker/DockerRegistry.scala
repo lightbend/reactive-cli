@@ -155,15 +155,18 @@ object DockerRegistry extends LazyLogging {
   private def getWithToken(http: HttpExchange, credentials: Option[HttpRequest.Auth], validateTls: Boolean, url: String, headers: HttpHeaders, tryNewToken: Boolean = true, fallbackScope: Option[String]): Future[(HttpResponse, Option[HttpRequest.Auth])] = {
     logger.debug("Request URL: {}", url)
 
-    val request = (credentials match {
+    val base = HttpRequest(url).headers(headers).
+      copy(tlsValidationEnabled = Some(validateTls))
+
+    val request = credentials match {
       case Some(token: HttpRequest.BearerToken) =>
-        HttpRequest(url).headers(headers.updated("Authorization", s"Bearer ${token}"))
+        base.headers(headers.updated("Authorization", s"Bearer ${token.value}"))
       case Some(auth: HttpRequest.BasicAuth) =>
-        HttpRequest(url).withAuth(auth)
+        base.withAuth(auth)
       case Some(auth: HttpRequest.EncodedBasicAuth) =>
-        HttpRequest(url).withAuth(auth)
-      case _ => HttpRequest(url)
-    }).copy(tlsValidationEnabled = Some(validateTls))
+        base.withAuth(auth)
+      case _ => base
+    }
 
     http.apply(request).flatMap {
       case response if response.statusCode == 401 && response.headers.contains("Www-Authenticate") && tryNewToken =>
