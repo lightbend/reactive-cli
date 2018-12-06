@@ -108,7 +108,20 @@ object BuildInfo {
                       |  apt-get -y update && \\
                       |  apt-get -y install bc build-essential jq openjdk-8-jre-headless ca-certificates-java clang-3.9 libcurl4-openssl-dev libgc-dev libre2-dev libunwind8-dev sbt
                       |""".stripMargin,
-        target = DebBuildTarget(Seq("bionic"), "main", "bash,libre2-4,libunwind8,libcurl4", Seq.empty)))
+        target = DebBuildTarget(Seq("bionic"), "main", "bash,libre2-4,libunwind8,libcurl4", Seq.empty)),
+
+      BuildInfo(
+        name = "ubuntu-18-10",
+        baseImage = "ubuntu:18.10",
+        install = s"""|RUN \\
+                      |  apt-get -y update && \\
+                      |  apt-get -y install apt-transport-https dirmngr ca-certificates && \\
+                      |  echo "deb https://dl.bintray.com/sbt/debian /" > /etc/apt/sources.list.d/sbt.list && \\
+                      |  apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823 && \\
+                      |  apt-get -y update && \\
+                      |  apt-get -y install bc build-essential jq openjdk-8-jre-headless ca-certificates-java clang-3.9 libcurl4-openssl-dev libgc-dev libre2-dev libunwind8-dev sbt
+                      |""".stripMargin,
+        target = DebBuildTarget(Seq("cosmic"), "main", "bash,libre2-4,libunwind8,libcurl4", Seq.empty)))
 
   private def initialize(root: File): Unit = {
     val ivyDir = root / "target" / ".ivy2" / "cache"
