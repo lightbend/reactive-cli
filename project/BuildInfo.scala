@@ -110,7 +110,6 @@ object BuildInfo {
                       |""".stripMargin,
         target = DebBuildTarget(Seq("bionic"), "main", "bash,libre2-4,libunwind8,libcurl4", Seq.empty)))
 
-
   private def initialize(root: File): Unit = {
     val ivyDir = root / "target" / ".ivy2" / "cache"
     val sbtDir = root / "target" / ".sbt" / "launchers"
@@ -146,7 +145,7 @@ object BuildInfo {
   private def forName(name: String, log: Logger): Seq[BuildInfo] = {
     Builds.find(_.name == name) match {
       case Some(b) => Seq(b)
-      case None    => log.error(s"Unable to find build for name: $name"); Nil
+      case None => log.error(s"Unable to find build for name: $name"); Nil
     }
   }
 
