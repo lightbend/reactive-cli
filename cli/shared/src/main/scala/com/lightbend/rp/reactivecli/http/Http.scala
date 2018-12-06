@@ -32,8 +32,8 @@ object Http extends LazyLogging {
   def apply(request: HttpRequest)(implicit settings: HttpSettings): Future[HttpResponse] = doRequest(request, Nil)
 
   private def doRequest(
-                         request: HttpRequest,
-                         visitedUrls: List[String])(implicit settings: HttpSettings): Future[HttpResponse] = {
+    request: HttpRequest,
+    visitedUrls: List[String])(implicit settings: HttpSettings): Future[HttpResponse] = {
     val isFollowRedirect = request.requestFollowRedirects.getOrElse(settings.followRedirect)
 
     Platform
