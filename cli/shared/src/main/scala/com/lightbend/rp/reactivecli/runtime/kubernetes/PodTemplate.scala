@@ -78,7 +78,7 @@ object PodTemplate {
         Map(
           "RP_JAVA_OPTS" -> LiteralEnvironmentVariable(
             Seq(
-              s"-Dakka.discovery.method=kubernetes-api",
+              s"-Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=kubernetes-api",
               s"-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName",
               s"-Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas",
               akkaClusterBootstrapSystemName.fold("-Dakka.discovery.kubernetes-api.pod-label-selector=appName=%s")(systemName => s"-Dakka.discovery.kubernetes-api.pod-label-selector=actorSystemName=$systemName"),
