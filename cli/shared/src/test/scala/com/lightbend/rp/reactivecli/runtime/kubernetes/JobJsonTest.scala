@@ -36,7 +36,6 @@ object JobJsonTest extends TestSuite {
     memory = None,
     cpu = None,
     endpoints = Map.empty,
-    remotingEndpointName = None,
     managementEndpointName = None,
     secrets = Seq.empty,
     privileged = false,

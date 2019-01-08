@@ -46,7 +46,6 @@ object DeploymentJsonTest extends TestSuite {
     memory = Some(8192L),
     cpu = Some(0.5D),
     endpoints = endpoints,
-    remotingEndpointName = None,
     managementEndpointName = None,
     secrets = Seq(Secret("acme.co", "my-secret")),
     annotations = Seq(
