@@ -45,6 +45,8 @@ object IngressJsonTest extends TestSuite {
             HttpIngress(Seq(80, 443), Seq.empty, Seq(urlOne)),
             HttpIngress(Seq(80, 443), Seq("hello.com"), Seq.empty),
             HttpIngress(Seq(80, 443), Seq("hello.com", "world.io"), Seq(urlOne, urlTwo))))),
+      remotingEndpointName = None,
+      managementEndpointName = None,
       secrets = Seq.empty,
       privileged = true,
       environmentVariables = Map(

@@ -38,7 +38,7 @@ object RpEnvironmentVariables {
       appTypeEnvs(annotations.appType, annotations.modules),
       configEnvs(annotations.configResource),
       endpointEnvs(annotations.endpoints),
-      akkaClusterEnvs(annotations.modules, annotations.namespace, serviceResourceName, noOfReplicas, annotations.akkaClusterBootstrapSystemName, akkaClusterJoinExisting),
+      akkaClusterEnvs(annotations.modules, annotations.namespace, serviceResourceName, annotations.managementEndpointName.getOrElse(legacyAkkaManagementPortName), noOfReplicas, annotations.akkaClusterBootstrapSystemName, akkaClusterJoinExisting),
       externalServicesEnvs(annotations.modules, externalServices))
 
   private def appNameEnvs(appName: Option[String]): Map[String, String] =
@@ -51,13 +51,21 @@ object RpEnvironmentVariables {
         if (modules.isEmpty) Seq.empty else Seq("RP_MODULES" -> modules.toVector.sorted.mkString(",")))
   }.toMap
 
-  private def akkaClusterEnvs(modules: Set[String], namespace: Option[String], serviceResourceName: String, noOfReplicas: Int, akkaClusterBootstrapSystemName: Option[String], akkaClusterJoinExisting: Boolean): Map[String, String] =
+  private def akkaClusterEnvs(
+    modules: Set[String],
+    namespace: Option[String],
+    serviceResourceName: String,
+    managementEndpointName: String,
+    noOfReplicas: Int,
+    akkaClusterBootstrapSystemName: Option[String],
+    akkaClusterJoinExisting: Boolean): Map[String, String] =
     if (!modules.contains(Module.AkkaClusterBootstrapping))
       Map.empty
     else
       Map(
         "RP_JAVA_OPTS" -> Seq(
           s"-Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=marathon-api",
+          s"-Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=$managementEndpointName",
           s"-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName",
           s"-Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas",
           akkaClusterBootstrapSystemName.fold("-Dakka.discovery.marathon-api.app-label-query=APP_NAME==%s")(systemName => s"-Dakka.discovery.marathon-api.app-label-query=ACTOR_SYSTEM_NAME==$systemName"),

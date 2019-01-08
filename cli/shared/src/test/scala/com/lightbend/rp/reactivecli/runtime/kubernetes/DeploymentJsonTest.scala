@@ -46,6 +46,8 @@ object DeploymentJsonTest extends TestSuite {
     memory = Some(8192L),
     cpu = Some(0.5D),
     endpoints = endpoints,
+    remotingEndpointName = None,
+    managementEndpointName = None,
     secrets = Seq(Secret("acme.co", "my-secret")),
     annotations = Seq(
       Annotation("annotationKey0", "annotationValue0"),
@@ -438,7 +440,7 @@ object DeploymentJsonTest extends TestSuite {
               |            "readinessProbe": {
               |              "httpGet": {
               |                 "path": "/platform-tooling/ready",
-              |                 "port": "akka-mgmt-http"
+              |                 "port": "management"
               |               },
               |               "periodSeconds": 10
               |            },
@@ -446,7 +448,7 @@ object DeploymentJsonTest extends TestSuite {
               |            "livenessProbe": {
               |              "httpGet": {
               |                "path": "/platform-tooling/healthy",
-              |                "port": "akka-mgmt-http"
+              |                "port": "management"
               |              },
               |              "periodSeconds": 10,
               |              "initialDelaySeconds": 60
@@ -654,7 +656,7 @@ object DeploymentJsonTest extends TestSuite {
               |              },
               |              {
               |                "name": "RP_JAVA_OPTS",
-              |                "value": "-Dconfig.resource=my-config.conf -Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=kubernetes-api -Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=friendimpl -Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=1 -Dakka.discovery.kubernetes-api.pod-label-selector=appName=%s"
+              |                "value": "-Dconfig.resource=my-config.conf -Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=kubernetes-api -Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=management -Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=friendimpl -Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=1 -Dakka.discovery.kubernetes-api.pod-label-selector=appName=%s"
               |              },
               |              {
               |                "name": "RP_KUBERNETES_POD_IP",
@@ -709,8 +711,8 @@ object DeploymentJsonTest extends TestSuite {
               |}
             """.stripMargin.parse.right.get
           val result = Deployment.generate(annotations.copy(
-            modules = Set("akka-management", "status", "akka-cluster-bootstrapping")
-          ), "apps/v1beta2", None, imageName,
+            modules = Set("akka-management", "status", "akka-cluster-bootstrapping"),
+            managementEndpointName = Some("management")), "apps/v1beta2", None, imageName,
             PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, noOfReplicas = 1, Map.empty, CanaryDeploymentType, JsonTransform.noop, false).toOption.get
           if (result.json != expectedJson) {
             println(s"deployment K8 JSON:\n" + PrettyParams.spaces2.copy(colonLeft = "").pretty(result.json))

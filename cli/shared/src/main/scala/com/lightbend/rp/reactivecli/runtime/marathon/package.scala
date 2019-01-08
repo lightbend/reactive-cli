@@ -134,12 +134,17 @@ package object marathon {
                   val enableChecks =
                     annotations.modules.contains(Module.Status) && annotations.modules.contains(Module.AkkaManagement)
 
+                  val managementPortName =
+                    annotations
+                      .managementEndpointName
+                      .getOrElse(legacyAkkaManagementPortName)
+
                   val checkPortName =
-                    portName(AkkaManagementPortName)
+                    portName(managementPortName)
 
                   val checkPortIndex =
                     sortedEndpoints
-                      .find(_.name == AkkaManagementPortName)
+                      .find(_.name == managementPortName)
                       .map(_.index)
                       .getOrElse(0)
 

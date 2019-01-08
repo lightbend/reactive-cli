@@ -39,6 +39,8 @@ object ServiceJsonTest extends TestSuite {
     cpu = Some(0.5D),
     endpoints = Map(
       "ep1" -> TcpEndpoint(0, "ep1", 1234)),
+    remotingEndpointName = None,
+    managementEndpointName = None,
     secrets = Seq.empty,
     privileged = true,
     environmentVariables = Map(

@@ -36,6 +36,8 @@ case class Annotations(
   memory: Option[Long],
   cpu: Option[Double],
   endpoints: Map[String, Endpoint],
+  remotingEndpointName: Option[String],
+  managementEndpointName: Option[String],
   secrets: Seq[Secret],
   annotations: Seq[Annotation] = Seq.empty,
   privileged: Boolean,
@@ -116,6 +118,8 @@ object Annotations extends LazyLogging {
       memory = args.memory.orElse(memory(labels)),
       cpu = args.cpu.orElse(cpu(labels)),
       endpoints = endpoints(selectArrayWithIndex(labels, ns("endpoints")), applicationVersion),
+      remotingEndpointName = remotingEndpointName(labels),
+      managementEndpointName = managementEndpointName(labels),
       secrets = secrets(selectArray(labels, ns("secrets"))),
       annotations = annotations(selectArray(labels, ns("annotations"))),
       privileged = privileged(labels),
@@ -210,6 +214,14 @@ object Annotations extends LazyLogging {
       key <- annotation.get("key")
       value <- annotation.get("value")
     } yield Annotation(key, value)
+
+  private[annotations] def remotingEndpointName(labels: Map[String, String]): Option[String] =
+    labels
+      .get(ns("remoting-endpoint"))
+
+  private[annotations] def managementEndpointName(labels: Map[String, String]): Option[String] =
+    labels
+      .get(ns("management-endpoint"))
 
   private[annotations] def endpoints(endpoints: Seq[(Int, Map[String, String])], version: Option[String]): Map[String, Endpoint] =
     endpoints.flatMap(v => endpoint(v._2, v._1, version)).toMap
