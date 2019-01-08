@@ -42,6 +42,7 @@ object RpEnvironmentVariablesTest extends TestSuite {
               cpu = Some(0.5D),
               endpoints = Map(
                 "ep1" -> TcpEndpoint(0, "ep1", 1234)),
+              managementEndpointName = None,
               secrets = Seq.empty,
               privileged = true,
               environmentVariables = Map(
@@ -89,6 +90,7 @@ object RpEnvironmentVariablesTest extends TestSuite {
               cpu = Some(0.5D),
               endpoints = Map(
                 "ep1" -> TcpEndpoint(0, "ep1", 1234)),
+              managementEndpointName = None,
               secrets = Seq.empty,
               privileged = true,
               environmentVariables = Map(
@@ -109,7 +111,7 @@ object RpEnvironmentVariablesTest extends TestSuite {
         Map(
           "RP_ENDPOINT_0_BIND_PORT" -> "$PORT_EP",
           "RP_ENDPOINTS" -> "EP1", "RP_APP_VERSION" -> "3.2.1-SNAPSHOT",
-          "RP_JAVA_OPTS" -> "-Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=marathon-api -Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=friendimpl -Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=3 -Dakka.discovery.marathon-api.app-label-query=APP_NAME==%s",
+          "RP_JAVA_OPTS" -> "-Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=marathon-api -Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=management -Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=friendimpl -Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=3 -Dakka.discovery.marathon-api.app-label-query=APP_NAME==%s",
           "RP_PLATFORM" -> "mesos",
           "RP_ENDPOINT_EP1_PORT" -> "$PORT_EP",
           "RP_MODULES" -> "akka-cluster-bootstrapping",
@@ -138,6 +140,7 @@ object RpEnvironmentVariablesTest extends TestSuite {
               cpu = Some(0.5D),
               endpoints = Map(
                 "ep1" -> TcpEndpoint(0, "ep1", 1234)),
+              managementEndpointName = Some("management"),
               secrets = Seq.empty,
               privileged = true,
               environmentVariables = Map(
@@ -187,6 +190,7 @@ object RpEnvironmentVariablesTest extends TestSuite {
               cpu = Some(0.5D),
               endpoints = Map(
                 "ep1" -> TcpEndpoint(0, "ep1", 1234)),
+              managementEndpointName = None,
               secrets = Seq.empty,
               privileged = true,
               environmentVariables = Map(

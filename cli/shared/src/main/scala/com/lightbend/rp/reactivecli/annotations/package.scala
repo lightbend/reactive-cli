@@ -17,5 +17,5 @@
 package com.lightbend.rp.reactivecli
 
 package object annotations {
-  val AkkaManagementPortName = "akka-mgmt-http"
+  val legacyAkkaManagementPortName = "akka-mgmt-http"
 }

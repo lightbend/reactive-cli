@@ -58,7 +58,14 @@ object PodTemplate {
         appTypeEnvs(annotations.appType, annotations.modules),
         configEnvs(annotations.configResource),
         endpointEnvs(annotations.endpoints),
-        akkaClusterEnvs(annotations.modules, annotations.namespace, serviceResourceName, noOfReplicas, annotations.akkaClusterBootstrapSystemName, akkaClusterJoinExisting),
+        akkaClusterEnvs(
+          annotations.modules,
+          annotations.namespace,
+          serviceResourceName,
+          annotations.managementEndpointName.getOrElse(legacyAkkaManagementPortName),
+          noOfReplicas,
+          annotations.akkaClusterBootstrapSystemName,
+          akkaClusterJoinExisting),
         externalServicesEnvs(annotations.modules, externalServices))
 
     private[kubernetes] def appNameEnvs(appName: Option[String]): Map[String, EnvironmentVariable] =
@@ -71,7 +78,14 @@ object PodTemplate {
           if (modules.isEmpty) Seq.empty else Seq("RP_MODULES" -> LiteralEnvironmentVariable(modules.toVector.sorted.mkString(","))))
     }.toMap
 
-    private[kubernetes] def akkaClusterEnvs(modules: Set[String], namespace: Option[String], serviceResourceName: String, noOfReplicas: Int, akkaClusterBootstrapSystemName: Option[String], akkaClusterJoinExisting: Boolean): Map[String, EnvironmentVariable] =
+    private[kubernetes] def akkaClusterEnvs(
+      modules: Set[String],
+      namespace: Option[String],
+      serviceResourceName: String,
+      managementEndpointName: String,
+      noOfReplicas: Int,
+      akkaClusterBootstrapSystemName: Option[String],
+      akkaClusterJoinExisting: Boolean): Map[String, EnvironmentVariable] =
       if (!modules.contains(Module.AkkaClusterBootstrapping))
         Map.empty
       else
@@ -79,6 +93,7 @@ object PodTemplate {
           "RP_JAVA_OPTS" -> LiteralEnvironmentVariable(
             Seq(
               s"-Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=kubernetes-api",
+              s"-Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=$managementEndpointName",
               s"-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName",
               s"-Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas",
               akkaClusterBootstrapSystemName.fold("-Dakka.discovery.kubernetes-api.pod-label-selector=appName=%s")(systemName => s"-Dakka.discovery.kubernetes-api.pod-label-selector=actorSystemName=$systemName"),
@@ -316,13 +331,18 @@ object PodTemplate {
     val enableChecks =
       annotations.modules.contains(Module.Status) && annotations.modules.contains(Module.AkkaManagement)
 
+    lazy val managementPortName =
+      annotations
+        .managementEndpointName
+        .getOrElse(legacyAkkaManagementPortName)
+
     val livenessProbe =
       if (enableChecks)
         Json("livenessProbe" ->
           Json(
             "httpGet" -> Json(
               "path" -> jString(HealthCheckUrl),
-              "port" -> jString(AkkaManagementPortName)),
+              "port" -> jString(managementPortName)),
             "periodSeconds" -> jNumber(StatusPeriodSeconds),
             "initialDelaySeconds" -> jNumber(LivenessInitialDelaySeconds)))
       else
@@ -334,7 +354,7 @@ object PodTemplate {
           Json(
             "httpGet" -> Json(
               "path" -> jString(ReadyCheckUrl),
-              "port" -> jString(AkkaManagementPortName)),
+              "port" -> jString(managementPortName)),
             "periodSeconds" -> jNumber(StatusPeriodSeconds)))
       else
         jEmptyObject
