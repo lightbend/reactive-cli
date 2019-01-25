@@ -31,6 +31,12 @@ lazy val Versions = new {
   val utest     = "0.5.3"
 }
 
+ThisBuild / scalaVersion := Versions.scala
+ThisBuild / organization := "com.lightbend.rp"
+ThisBuild / organizationName := "Lightbend, Inc."
+ThisBuild / startYear := Some(2017)
+ThisBuild / licenses += ("Apache-2.0", new URL("https://www.apache.org/licenses/LICENSE-2.0.txt"))
+
 lazy val Platform = new {
   val isWindows =
     sys
@@ -41,16 +47,6 @@ lazy val Platform = new {
 }
 
 lazy val commonSettings = Seq(
-  organization := "com.lightbend.rp",
-
-  organizationName := "Lightbend, Inc.",
-
-  startYear := Some(2017),
-
-  licenses += ("Apache-2.0", new URL("https://www.apache.org/licenses/LICENSE-2.0.txt")),
-
-  scalaVersion := Versions.scala,
-
   libraryDependencies ++= Seq(
     "com.lihaoyi" %%% "utest" % Versions.utest % "test"
   ),
