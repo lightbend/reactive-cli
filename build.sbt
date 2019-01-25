@@ -63,8 +63,7 @@ lazy val commonSettings = Seq(
   cSource in Compile := sourceDirectory.value / "main" / "c"
 )
 
-lazy val root = project
-  .in(file("."))
+lazy val root = (project in file("."))
   .aggregate(cliJs, cliNative)
   .settings(
     name := "reactive-cli-root",
@@ -230,3 +229,20 @@ lazy val cli = crossProject(JSPlatform, NativePlatform)
 
 lazy val cliJs = cli.js
 lazy val cliNative = cli.native
+
+lazy val integrationTest = (project in file("integration-test"))
+  .enablePlugins(SbtPlugin)
+  .settings(
+    publish / skip := true,
+    scalaVersion := "2.12.8",
+    // pass in -Ddeckhand.openshift to run scripted test with -Ddeckhand.openshift
+    scriptedLaunchOpts := { scriptedLaunchOpts.value ++
+      Seq(
+        "-Xmx1024M",
+        "-Dplugin.version=" + version.value,
+        "-Dreactiveclipath=" + (cliNative / crossTarget).value,
+      ) ++
+      sys.props.get("deckhand.openshift").toList.map(_ => "-Ddeckhand.openshift")
+    },
+    scriptedBufferLog := false
+  )
