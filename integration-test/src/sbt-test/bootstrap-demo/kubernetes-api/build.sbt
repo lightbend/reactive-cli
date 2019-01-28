@@ -51,7 +51,7 @@ lazy val root = (project in file("."))
           out.replaceAllLiterally("imagePullPolicy: IfNotPresent", "imagePullPolicy: Never")
         else out
           .replaceAllLiterally("imagePullPolicy: IfNotPresent", "imagePullPolicy: Always")
-          .replaceAllLiterally(s"image: $nm:$v", s"image: docker-registry-default.centralpark.lightbend.com/$namespace/$nm:$v")
+          .replaceAllLiterally("image: \"" + s"$nm:$v" + "\"", s"image: docker-registry-default.centralpark.lightbend.com/$namespace/$nm:$v")
       s.log.info("generated YAML: " + x)
       IO.write(target.value / "temp.yaml", x)
     },
