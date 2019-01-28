@@ -14,7 +14,7 @@ lazy val generateYaml = taskKey[Unit]("generateYaml")
 lazy val root = (project in file("."))
   .enablePlugins(SbtReactiveAppPlugin)
   .settings(
-    name := "bootstrap-dns-demo",
+    name := "bootstrap-kubernetes-api-demo",
     scalacOptions ++= Seq(
       "-encoding",
       "UTF-8",
@@ -52,6 +52,7 @@ lazy val root = (project in file("."))
         else out
           .replaceAllLiterally("imagePullPolicy: IfNotPresent", "imagePullPolicy: Always")
           .replaceAllLiterally(s"image: $nm:$v", s"image: docker-registry-default.centralpark.lightbend.com/$namespace/$nm:$v")
+      s.log.info("generated YAML: " + x)
       IO.write(target.value / "temp.yaml", x)
     },
 

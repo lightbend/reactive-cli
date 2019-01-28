@@ -52,9 +52,9 @@ jobs:
         - oc delete project reactivelibtest1
 
 stages:
-  - test
   - name: openshift-test
     if: (repo = lightbend/reactive-cli) AND (fork = false)
+  - test
 
 before_cache:
   - rm -rf "$HOME/.ivy2/cache/com/lightbend/rp/reactivecli"
