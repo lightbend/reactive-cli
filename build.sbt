@@ -31,6 +31,12 @@ lazy val Versions = new {
   val utest     = "0.5.3"
 }
 
+ThisBuild / scalaVersion := Versions.scala
+ThisBuild / organization := "com.lightbend.rp"
+ThisBuild / organizationName := "Lightbend, Inc."
+ThisBuild / startYear := Some(2017)
+ThisBuild / licenses += ("Apache-2.0", new URL("https://www.apache.org/licenses/LICENSE-2.0.txt"))
+
 lazy val Platform = new {
   val isWindows =
     sys
@@ -41,16 +47,6 @@ lazy val Platform = new {
 }
 
 lazy val commonSettings = Seq(
-  organization := "com.lightbend.rp",
-
-  organizationName := "Lightbend, Inc.",
-
-  startYear := Some(2017),
-
-  licenses += ("Apache-2.0", new URL("https://www.apache.org/licenses/LICENSE-2.0.txt")),
-
-  scalaVersion := Versions.scala,
-
   libraryDependencies ++= Seq(
     "com.lihaoyi" %%% "utest" % Versions.utest % "test"
   ),
@@ -67,8 +63,7 @@ lazy val commonSettings = Seq(
   cSource in Compile := sourceDirectory.value / "main" / "c"
 )
 
-lazy val root = project
-  .in(file("."))
+lazy val root = (project in file("."))
   .aggregate(cliJs, cliNative)
   .settings(
     name := "reactive-cli-root",
@@ -234,3 +229,20 @@ lazy val cli = crossProject(JSPlatform, NativePlatform)
 
 lazy val cliJs = cli.js
 lazy val cliNative = cli.native
+
+lazy val integrationTest = (project in file("integration-test"))
+  .enablePlugins(SbtPlugin)
+  .settings(
+    publish / skip := true,
+    scalaVersion := "2.12.8",
+    // pass in -Ddeckhand.openshift to run scripted test with -Ddeckhand.openshift
+    scriptedLaunchOpts := { scriptedLaunchOpts.value ++
+      Seq(
+        "-Xmx1024M",
+        "-Dplugin.version=" + version.value,
+        "-Dreactiveclipath=" + (cliNative / crossTarget).value,
+      ) ++
+      sys.props.get("deckhand.openshift").toList.map(_ => "-Ddeckhand.openshift")
+    },
+    scriptedBufferLog := false
+  )

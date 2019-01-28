@@ -205,7 +205,7 @@ object MuslBuild {
         |  make install && \\
         |  cd - && \\
         |  mkdir /opt/sbt && \\
-        |  wget -qO - --no-check-certificate "https://dl.bintray.com/sbt/native-packages/sbt/0.13.15/sbt-0.13.15.tgz" | tar xz -C /opt/sbt --strip-components=1
+        |  wget -qO - --no-check-certificate "https://piccolo.link/sbt-1.2.8.tgz" | tar xz -C /opt/sbt --strip-components=1
         |
         |ENV PATH /opt/sbt/bin:$${PATH}
         |

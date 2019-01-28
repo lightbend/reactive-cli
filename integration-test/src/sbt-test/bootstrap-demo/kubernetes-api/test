@@ -1,0 +1,4 @@
+> Docker/publishLocal
+> generateYaml
+$exists target/temp.yaml
+> check
