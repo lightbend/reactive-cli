@@ -57,7 +57,6 @@ object PodTemplate {
         annotations.version.fold(Map.empty[String, EnvironmentVariable])(versionEnvs),
         appTypeEnvs(annotations.appType, annotations.modules),
         configEnvs(annotations.configResource),
-        endpointEnvs(annotations.endpoints),
         akkaClusterEnvs(
           annotations.modules,
           annotations.namespace,
@@ -135,37 +134,6 @@ object PodTemplate {
     private[kubernetes] def versionEnvs(version: String): Map[String, EnvironmentVariable] =
       Map(
         "RP_APP_VERSION" -> LiteralEnvironmentVariable(version))
-
-    private[kubernetes] def endpointEnvs(endpoints: Map[String, Endpoint]): Map[String, EnvironmentVariable] =
-      if (endpoints.isEmpty)
-        Map(
-          "RP_ENDPOINTS_COUNT" -> LiteralEnvironmentVariable("0"))
-      else
-        Map(
-          "RP_ENDPOINTS_COUNT" -> LiteralEnvironmentVariable(endpoints.size.toString),
-          "RP_ENDPOINTS" -> LiteralEnvironmentVariable(
-            endpoints.values.toList
-              .sortBy(_.index)
-              .map(v => envVarName(v.name))
-              .mkString(","))) ++
-          endpointPortEnvs(endpoints)
-
-    private[kubernetes] def endpointPortEnvs(endpoints: Map[String, Endpoint]): Map[String, EnvironmentVariable] =
-      AssignedPort.assignPorts(endpoints)
-        .flatMap { assigned =>
-          val assignedPortEnv = LiteralEnvironmentVariable(assigned.port.toString)
-          val hostEnv = FieldRefEnvironmentVariable("status.podIP")
-          Seq(
-            s"RP_ENDPOINT_${envVarName(assigned.endpoint.name)}_HOST" -> hostEnv,
-            s"RP_ENDPOINT_${envVarName(assigned.endpoint.name)}_BIND_HOST" -> hostEnv,
-            s"RP_ENDPOINT_${envVarName(assigned.endpoint.name)}_PORT" -> assignedPortEnv,
-            s"RP_ENDPOINT_${envVarName(assigned.endpoint.name)}_BIND_PORT" -> assignedPortEnv,
-            s"RP_ENDPOINT_${assigned.endpoint.index}_HOST" -> hostEnv,
-            s"RP_ENDPOINT_${assigned.endpoint.index}_BIND_HOST" -> hostEnv,
-            s"RP_ENDPOINT_${assigned.endpoint.index}_PORT" -> assignedPortEnv,
-            s"RP_ENDPOINT_${assigned.endpoint.index}_BIND_PORT" -> assignedPortEnv)
-        }
-        .toMap
 
     private[kubernetes] def mergeEnvs(envs: Map[String, EnvironmentVariable]*): Map[String, EnvironmentVariable] = {
       envs.foldLeft(Map.empty[String, EnvironmentVariable]) {
