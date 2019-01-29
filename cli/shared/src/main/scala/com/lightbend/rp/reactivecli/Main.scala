@@ -46,7 +46,7 @@ trait MinVersion {
 object MinSupportedSbtReactiveApp extends MinVersion {
   val name = "sbt-reactive-app"
   val major: Int = 1
-  val minor: Int = 1
+  val minor: Int = 7
   val minimum = s"$major.$minor.0"
   val label = "com.lightbend.rp.sbt-reactive-app-version"
 }
