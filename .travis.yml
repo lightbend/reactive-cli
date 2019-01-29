@@ -21,11 +21,26 @@ before_install:
 jobs:
   include:
     - stage: test
-      script:
-        - sbt clean cliJS/test
-          # We don't need to test/compile/package native here as buildAll will do that inside each Docker image
-        - sbt clean update buildAll
+      name: "JS test"
+      script: sbt cliJS/test
     - stage: test
+      script: sbt "build centos-7"
+    - stage: test
+      script: sbt "build debian-8"
+    - stage: test
+      script: sbt "build debian-9"
+    - stage: test
+      script: sbt "build ubuntu-16-04"
+    - stage: test
+      script: sbt "build ubuntu-16-10"
+    - stage: test
+      script: sbt "build ubuntu-17-04_17-10"
+    - stage: test
+      script: sbt "build ubuntu-18-04"
+    - stage: test
+      script: sbt "build ubuntu-18-10"
+    - stage: test
+      name: "Minikube test"
       env:
         - CHANGE_MINIKUBE_NONE_USER=true
       install:
@@ -33,6 +48,7 @@ jobs:
         - script/install-minikube.sh
       script: sbt cliNative/nativeLink integrationTest/scripted
     - stage: openshift-test
+      name: "OpenShift test"
       env:
         # travis encrypt -R lightbend/reactive-cli "OC_USERNAME=******"
         - secure: "PmWKBIC3q32A4/0+zq/52EtmtkXx2XANnr2US+0lbSCuVVWJ7kxvdv0Pp5nhmHS04Ffe7ps+9q/aw13G0w7sLRDgzPj5A1gUWMARfdKHnq4YQ1+hHA1dRkiiG4ycHzEdQYj6TjQOVl3hRw7PL0OdQkfWtv/XFZq4iENTFBCO7L9LyXGbEhzHqVfVhzuuzLGKJTeQbygntzydES0Qw+dKmLFR/05UsbD1WhLqrjjrLnWNAGpi7cS/KiNcYl6I9tCgvFQfizNHFeXttocFmg+7vz62duEyQK9UBzJ4NY5fln0kvN/ppxD8nADQp7gQFkv6zg4Pd2ab2pF/hUjyfK3jlt/VCN7DQM2LT0I+AK4h+CN50Is+i4xgVnRnNGecjKzKxZvqPURNknM4EUwE21bPr2KVIuMgoy6FpvG+Y4gnVQFuXSuXH0Xbetw7tIr3uB8UVbgbzg8Q8MFCscL+jOnhTwkyqgvo7uKdGzheR1HNAcNG9REL5DU/DX640M4uepqV8iquZyjyNSbEQ07ahoURGV5VUIVbhU22kFtlHESzYtHlAhPHusoIzzPb2mZvD7wcLudiP2ZwjQ4A/9wf6SaTt+89KOhbcCjD2ea4AJDJiIHcB7sOsTazXMWiktjhV5PeC0cjLQbdEfk1OQfHmUVRxWO1VE40R34UJWLExOIy/pE="
