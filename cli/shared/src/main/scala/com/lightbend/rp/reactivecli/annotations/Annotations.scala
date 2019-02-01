@@ -37,6 +37,7 @@ case class Annotations(
   cpu: Option[Double],
   endpoints: Map[String, Endpoint],
   managementEndpointName: Option[String],
+  remotingEndpointName: Option[String],
   secrets: Seq[Secret],
   annotations: Seq[Annotation] = Seq.empty,
   privileged: Boolean,
@@ -44,6 +45,18 @@ case class Annotations(
   version: Option[String],
   modules: Set[String],
   akkaClusterBootstrapSystemName: Option[String]) {
+
+  def headlessEndpoints: Map[String, Endpoint] =
+    endpoints filterKeys { (k: String) =>
+      (k.some === managementEndpointName) ||
+        (k.some === remotingEndpointName)
+    }
+
+  def publicEndpoints: Map[String, Endpoint] =
+    endpoints filterKeys { (k: String) =>
+      !((k.some === managementEndpointName) ||
+        (k.some === remotingEndpointName))
+    }
 
   def applicationValidation(application: Option[String]): ValidationNel[String, Option[Seq[String]]] =
     application match {
@@ -118,6 +131,7 @@ object Annotations extends LazyLogging {
       cpu = args.cpu.orElse(cpu(labels)),
       endpoints = endpoints(selectArrayWithIndex(labels, ns("endpoints")), applicationVersion),
       managementEndpointName = managementEndpointName(labels),
+      remotingEndpointName = remotingEndpointName(labels),
       secrets = secrets(selectArray(labels, ns("secrets"))),
       annotations = annotations(selectArray(labels, ns("annotations"))),
       privileged = privileged(labels),
@@ -216,6 +230,10 @@ object Annotations extends LazyLogging {
   private[annotations] def managementEndpointName(labels: Map[String, String]): Option[String] =
     labels
       .get(ns("management-endpoint"))
+
+  private[annotations] def remotingEndpointName(labels: Map[String, String]): Option[String] =
+    labels
+      .get(ns("remoting-endpoint"))
 
   private[annotations] def endpoints(endpoints: Seq[(Int, Map[String, String])], version: Option[String]): Map[String, Endpoint] =
     endpoints.flatMap(v => endpoint(v._2, v._1, version)).toMap

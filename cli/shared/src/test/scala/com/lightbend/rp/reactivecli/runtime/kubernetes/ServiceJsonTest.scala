@@ -18,7 +18,7 @@ package com.lightbend.rp.reactivecli.runtime.kubernetes
 
 import argonaut._
 import com.lightbend.rp.reactivecli.annotations._
-import com.lightbend.rp.reactivecli.argparse.{ CanaryDeploymentType, BlueGreenDeploymentType, RollingDeploymentType }
+import com.lightbend.rp.reactivecli.argparse.{ CanaryDeploymentType, BlueGreenDeploymentType, RollingDeploymentType, DiscoveryMethod }
 import com.lightbend.rp.reactivecli.concurrent._
 import com.lightbend.rp.reactivecli.json.{ JsonTransform, JsonTransformExpression }
 import scala.collection.immutable.Seq
@@ -38,8 +38,11 @@ object ServiceJsonTest extends TestSuite {
     memory = Some(8192L),
     cpu = Some(0.5D),
     endpoints = Map(
-      "ep1" -> TcpEndpoint(0, "ep1", 1234)),
-    managementEndpointName = None,
+      "remoting" -> TcpEndpoint(0, "remoting", 2552),
+      "management" -> TcpEndpoint(1, "management", 8558),
+      "ep3" -> TcpEndpoint(2, "ep3", 1234)),
+    managementEndpointName = Some("management"),
+    remotingEndpointName = Some("remoting"),
     secrets = Seq.empty,
     privileged = true,
     environmentVariables = Map(
@@ -51,7 +54,7 @@ object ServiceJsonTest extends TestSuite {
   val tests = this{
     "json serialization" - {
       "empty" - {
-        val result = Service.generate(annotations.copy(endpoints = Map.empty), "v1", clusterIp = None, CanaryDeploymentType, JsonTransform.noop, None, None).toOption.get.isEmpty
+        val result = Service.generate(annotations.copy(endpoints = Map.empty), "v1", clusterIp = None, CanaryDeploymentType, DiscoveryMethod.AkkaDns, JsonTransform.noop, None, None).toOption.get.isEmpty
 
         assert(result)
       }
@@ -59,10 +62,10 @@ object ServiceJsonTest extends TestSuite {
       "deploymentType" - {
         "Canary" - {
           Service
-            .generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, JsonTransform.noop, None, None)
+            .generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, DiscoveryMethod.KubernetesApi, JsonTransform.noop, None, None)
             .toOption
             .get
-            .get
+            .head
             .payload
             .map { j =>
               val result = (j.hcursor --\ "spec" --\ "selector" --\ "app").focus
@@ -74,20 +77,20 @@ object ServiceJsonTest extends TestSuite {
 
         "BlueGreen" - {
           Service
-            .generate(annotations, "v1", clusterIp = None, BlueGreenDeploymentType, JsonTransform.noop, None, None)
+            .generate(annotations, "v1", clusterIp = None, BlueGreenDeploymentType, DiscoveryMethod.KubernetesApi, JsonTransform.noop, None, None)
             .toOption
             .get
-            .get
+            .head
             .payload
             .map(j => assert((j.hcursor --\ "spec" --\ "selector" --\ "appNameVersion").focus.contains(jString("friendimpl-v3-2-1-snapshot"))))
         }
 
         "Rolling" - {
           Service
-            .generate(annotations, "v1", clusterIp = None, RollingDeploymentType, JsonTransform.noop, None, None)
+            .generate(annotations, "v1", clusterIp = None, RollingDeploymentType, DiscoveryMethod.KubernetesApi, JsonTransform.noop, None, None)
             .toOption
             .get
-            .get
+            .head
             .payload
             .map(j => assert((j.hcursor --\ "spec" --\ "selector" --\ "app").focus.contains(jString("friendimpl"))))
         }
@@ -95,17 +98,92 @@ object ServiceJsonTest extends TestSuite {
 
       "jq" - {
         Service
-          .generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, JsonTransform.jq(JsonTransformExpression(".jqTest = \"test\"")), None, None)
+          .generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, DiscoveryMethod.KubernetesApi, JsonTransform.jq(JsonTransformExpression(".jqTest = \"test\"")), None, None)
           .toOption
           .get
-          .get
+          .head
           .payload
           .map(j => assert((j.hcursor --\ "jqTest").focus.contains(jString("test"))))
       }
 
+      "discovery method" - {
+        "Akka DNS" - {
+          val generatedJson = Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, DiscoveryMethod.AkkaDns, JsonTransform.noop, None, None).toOption.get
+          val headlessJson =
+            """
+              |{
+              |  "apiVersion": "v1",
+              |  "kind": "Service",
+              |  "metadata": {
+              |    "labels": {
+              |      "app": "friendimpl"
+              |    },
+              |    "annotations": {
+              |      "service.alpha.kubernetes.io/tolerate-unready-endpoints" : "true"
+              |    },
+              |    "name": "friendimpl-internal",
+              |    "namespace": "chirper"
+              |  },
+              |  "spec": {
+              |    "ports": [
+              |      {
+              |        "name": "remoting",
+              |        "port": 2552,
+              |        "protocol": "TCP",
+              |        "targetPort": 2552
+              |      },
+              |      {
+              |        "name": "management",
+              |        "port": 8558,
+              |        "protocol": "TCP",
+              |        "targetPort": 8558
+              |      }
+              |    ],
+              |    "selector": {
+              |      "app": "friendimpl"
+              |    },
+              |    "clusterIP" : "None",
+              |    "publishNotReadyAddresses" : true
+              |  }
+              |}
+            """.stripMargin.parse.right.get
+          val serviceJson =
+            """
+              |{
+              |  "apiVersion": "v1",
+              |  "kind": "Service",
+              |  "metadata": {
+              |    "labels": {
+              |      "app": "friendimpl"
+              |    },
+              |    "name": "friendimpl",
+              |    "namespace": "chirper"
+              |  },
+              |  "spec": {
+              |    "ports": [
+              |      {
+              |        "name": "ep3",
+              |        "port": 1234,
+              |        "protocol": "TCP",
+              |        "targetPort": 1234
+              |      }
+              |    ],
+              |    "selector": {
+              |      "app": "friendimpl"
+              |    }
+              |  }
+              |}
+            """.stripMargin.parse.right.get
+          assert(generatedJson == List(
+            Service("friendimpl-internal", headlessJson, JsonTransform.noop),
+            Service("friendimpl", serviceJson, JsonTransform.noop)))
+
+        }
+      }
+
       "options" - {
         "not defined" - {
-          val generatedJson = Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, JsonTransform.noop, None, None).toOption.get
+          val generatedJson = Service.generate(annotations, "v1", clusterIp = None, CanaryDeploymentType, DiscoveryMethod.KubernetesApi, JsonTransform.noop, None, None).toOption.get
           val expectedJson =
             """
               |{
@@ -121,7 +199,19 @@ object ServiceJsonTest extends TestSuite {
               |  "spec": {
               |    "ports": [
               |      {
-              |        "name": "ep1",
+              |        "name": "remoting",
+              |        "port": 2552,
+              |        "protocol": "TCP",
+              |        "targetPort": 2552
+              |      },
+              |      {
+              |        "name": "management",
+              |        "port": 8558,
+              |        "protocol": "TCP",
+              |        "targetPort": 8558
+              |      },
+              |      {
+              |        "name": "ep3",
               |        "port": 1234,
               |        "protocol": "TCP",
               |        "targetPort": 1234
@@ -133,11 +223,11 @@ object ServiceJsonTest extends TestSuite {
               |  }
               |}
             """.stripMargin.parse.right.get
-          assert(generatedJson.get == Service("friendimpl", expectedJson, JsonTransform.noop))
+          assert(generatedJson == List(Service("friendimpl", expectedJson, JsonTransform.noop)))
         }
 
         "defined" - {
-          val generatedJson = Service.generate(annotations, "v1", clusterIp = Some("10.0.0.5"), CanaryDeploymentType, JsonTransform.noop, Some("10.0.0.1"), Some("NodePort")).toOption.get
+          val generatedJson = Service.generate(annotations, "v1", clusterIp = Some("10.0.0.5"), CanaryDeploymentType, DiscoveryMethod.KubernetesApi, JsonTransform.noop, Some("10.0.0.1"), Some("NodePort")).toOption.get
           val expectedJson =
             """
               |{
@@ -155,7 +245,19 @@ object ServiceJsonTest extends TestSuite {
               |    "clusterIP": "10.0.0.5",
               |    "ports": [
               |      {
-              |        "name": "ep1",
+              |        "name": "remoting",
+              |        "port": 2552,
+              |        "protocol": "TCP",
+              |        "targetPort": 2552
+              |      },
+              |      {
+              |        "name": "management",
+              |        "port": 8558,
+              |        "protocol": "TCP",
+              |        "targetPort": 8558
+              |      },
+              |      {
+              |        "name": "ep3",
               |        "port": 1234,
               |        "protocol": "TCP",
               |        "targetPort": 1234
@@ -169,7 +271,7 @@ object ServiceJsonTest extends TestSuite {
               |}
             """.stripMargin.parse.right.get
 
-          assert(generatedJson.get == Service("friendimpl", expectedJson, JsonTransform.noop))
+          assert(generatedJson == List(Service("friendimpl", expectedJson, JsonTransform.noop)))
         }
       }
     }

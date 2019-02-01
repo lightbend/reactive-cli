@@ -50,7 +50,7 @@ object PodTemplate {
     /**
      * Generates pod environment variables specific for RP applications.
      */
-    def envs(annotations: Annotations, serviceResourceName: String, noOfReplicas: Int, externalServices: Map[String, Seq[String]], akkaClusterJoinExisting: Boolean): Map[String, EnvironmentVariable] =
+    def envs(annotations: Annotations, serviceResourceName: String, noOfReplicas: Int, externalServices: Map[String, Seq[String]], akkaClusterJoinExisting: Boolean, discoveryMethod: DiscoveryMethod): Map[String, EnvironmentVariable] =
       mergeEnvs(
         PodEnvs,
         appNameEnvs(annotations.appName),
@@ -58,6 +58,8 @@ object PodTemplate {
         appTypeEnvs(annotations.appType, annotations.modules),
         configEnvs(annotations.configResource),
         akkaClusterEnvs(
+          annotations.appName,
+          discoveryMethod,
           annotations.modules,
           annotations.namespace,
           serviceResourceName,
@@ -78,6 +80,8 @@ object PodTemplate {
     }.toMap
 
     private[kubernetes] def akkaClusterEnvs(
+      appName: Option[String],
+      discoveryMethod: DiscoveryMethod,
       modules: Set[String],
       namespace: Option[String],
       serviceResourceName: String,
@@ -90,17 +94,29 @@ object PodTemplate {
       else
         Map(
           "RP_JAVA_OPTS" -> LiteralEnvironmentVariable(
-            Seq(
-              s"-Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=kubernetes-api",
-              s"-Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=$managementEndpointName",
-              // https://github.com/akka/akka-management/blob/v0.20.0/cluster-bootstrap/src/main/resources/reference.conf
-              akkaClusterBootstrapSystemName match {
-                case Some(systemName) => s"-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=$systemName"
-                case _ => s"-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName"
-              },
-              s"-Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas",
-              "-Dakka.discovery.kubernetes-api.pod-label-selector=akka.lightbend.com/service-name=%s",
-              s"${if (akkaClusterJoinExisting) "-Dakka.management.cluster.bootstrap.form-new-cluster=false" else ""}")
+            ((discoveryMethod match {
+              case DiscoveryMethod.KubernetesApi =>
+                List(
+                  s"-Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=kubernetes-api",
+                  s"-Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=$managementEndpointName",
+                  // https://github.com/akka/akka-management/blob/v0.20.0/cluster-bootstrap/src/main/resources/reference.conf
+                  akkaClusterBootstrapSystemName match {
+                    case Some(systemName) => s"-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=$systemName"
+                    case _ => s"-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName"
+                  },
+                  "-Dakka.discovery.kubernetes-api.pod-label-selector=akka.lightbend.com/service-name=%s")
+              case DiscoveryMethod.AkkaDns =>
+                List(
+                  s"-Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=akka-dns",
+                  s"-Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=$managementEndpointName",
+                  appName match {
+                    case Some(name) => s"-Dakka.management.cluster.bootstrap.contact-point-discovery.service-name=$name-internal"
+                    case _          => sys.error("appName was expected")
+                  })
+            }) ++
+              List(
+                s"-Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas",
+                s"${if (akkaClusterJoinExisting) "-Dakka.management.cluster.bootstrap.form-new-cluster=false" else ""}"))
               .filter(_.nonEmpty)
               .mkString(" ")),
           "RP_DYN_JAVA_OPTS" -> LiteralEnvironmentVariable(
@@ -278,6 +294,7 @@ object PodTemplate {
     restartPolicy: RestartPolicy.Value,
     externalServices: Map[String, Seq[String]],
     deploymentType: DeploymentType,
+    discoveryMethod: DiscoveryMethod,
     akkaClusterJoinExisting: Boolean,
     applicationArgs: Option[Seq[String]],
     appName: String,
@@ -372,7 +389,7 @@ object PodTemplate {
               "imagePullPolicy" -> imagePullPolicy.asJson,
               "env" -> RpEnvironmentVariables.mergeEnvs(
                 annotations.environmentVariables ++
-                  RpEnvironmentVariables.envs(annotations, serviceResourceName, noOfReplicas, externalServices, akkaClusterJoinExisting)).asJson,
+                  RpEnvironmentVariables.envs(annotations, serviceResourceName, noOfReplicas, externalServices, akkaClusterJoinExisting, discoveryMethod)).asJson,
               "ports" -> annotations.endpoints.asJson,
               "volumeMounts" -> secretNames
                 .map {

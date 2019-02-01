@@ -47,6 +47,7 @@ object Job {
     noOfReplicas: Int,
     externalServices: Map[String, Seq[String]],
     deploymentType: DeploymentType,
+    discoveryMethod: DiscoveryMethod,
     jsonTransform: JsonTransform,
     akkaClusterJoinExisting: Boolean): ValidationNel[String, Job] =
 
@@ -79,6 +80,7 @@ object Job {
             if (restartPolicy == RestartPolicy.Default) RestartPolicy.OnFailure else restartPolicy,
             externalServices,
             deploymentType,
+            discoveryMethod,
             akkaClusterJoinExisting,
             applicationArgs,
             appName,

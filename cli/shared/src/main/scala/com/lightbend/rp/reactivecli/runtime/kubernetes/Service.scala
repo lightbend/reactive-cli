@@ -59,12 +59,14 @@ object Service {
     apiVersion: String,
     clusterIp: Option[String],
     deploymentType: DeploymentType,
+    discoveryMethod: DiscoveryMethod,
     jsonTransform: JsonTransform,
     loadBalancerIp: Option[String],
-    serviceType: Option[String]): ValidationNel[String, Option[Service]] =
+    serviceType: Option[String]): ValidationNel[String, List[Service]] =
     (annotations.appNameValidation |@| annotations.versionValidation) { (rawAppName, version) =>
       // FIXME there's a bit of code duplicate in Deployment
       val appName = serviceName(rawAppName)
+      val internalAppname = appName + "-internal"
       val appNameVersion = serviceName(s"$appName${PodTemplate.VersionSeparator}$version")
 
       val selector =
@@ -74,28 +76,50 @@ object Service {
           case BlueGreenDeploymentType => Json("appNameVersion" -> appNameVersion.asJson)
         }
 
-      if (annotations.endpoints.isEmpty)
-        None
-      else
-        Some(
-          Service(
-            appName,
-            Json(
-              "apiVersion" -> apiVersion.asJson,
-              "kind" -> "Service".asJson,
-              "metadata" -> Json(
-                "labels" -> Json(
-                  "app" -> appName.asJson),
-                "name" -> appName.asJson)
-                .deepmerge(
-                  annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
-              "spec" -> Json(
-                "ports" -> annotations.endpoints.asJson,
-                "selector" -> selector)
-                .deepmerge(clusterIp.fold(jEmptyObject)(cIp => Json("clusterIP" -> jString(cIp))))
-                .deepmerge(serviceType.fold(jEmptyObject)(svcType => Json("type" -> jString(svcType))))
-                .deepmerge(loadBalancerIp.fold(jEmptyObject)(lbIp => Json("loadBalancerIP" -> jString(lbIp))))),
-            jsonTransform))
+      def svc(endpoints: Map[String, Endpoint]) = Service(
+        appName,
+        Json(
+          "apiVersion" -> apiVersion.asJson,
+          "kind" -> "Service".asJson,
+          "metadata" -> Json(
+            "labels" -> Json(
+              "app" -> appName.asJson),
+            "name" -> appName.asJson)
+            .deepmerge(
+              annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
+          "spec" -> Json(
+            "ports" -> endpoints.asJson,
+            "selector" -> selector)
+            .deepmerge(clusterIp.fold(jEmptyObject)(cIp => Json("clusterIP" -> jString(cIp))))
+            .deepmerge(serviceType.fold(jEmptyObject)(svcType => Json("type" -> jString(svcType))))
+            .deepmerge(loadBalancerIp.fold(jEmptyObject)(lbIp => Json("loadBalancerIP" -> jString(lbIp))))),
+        jsonTransform)
+
+      def headlessService(endpoints: Map[String, Endpoint]) = Service(
+        internalAppname,
+        Json(
+          "apiVersion" -> apiVersion.asJson,
+          "kind" -> "Service".asJson,
+          "metadata" -> Json(
+            "labels" -> Json(
+              "app" -> appName.asJson),
+            "annotations" -> Json(
+              "service.alpha.kubernetes.io/tolerate-unready-endpoints" -> jString("true")),
+            "name" -> internalAppname.asJson)
+            .deepmerge(
+              annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),
+          "spec" -> Json(
+            "ports" -> endpoints.asJson,
+            "selector" -> selector,
+            "clusterIP" -> jString("None"),
+            "publishNotReadyAddresses" -> jTrue)),
+        jsonTransform)
+
+      if (annotations.endpoints.isEmpty) List()
+      else if (discoveryMethod == DiscoveryMethod.AkkaDns) List(
+        headlessService(annotations.headlessEndpoints),
+        svc(annotations.publicEndpoints))
+      else List(svc(annotations.endpoints))
     }
 }
 

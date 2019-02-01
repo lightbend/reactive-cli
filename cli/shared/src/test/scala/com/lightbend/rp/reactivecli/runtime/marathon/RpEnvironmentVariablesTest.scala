@@ -43,6 +43,7 @@ object RpEnvironmentVariablesTest extends TestSuite {
               endpoints = Map(
                 "ep1" -> TcpEndpoint(0, "ep1", 1234)),
               managementEndpointName = None,
+              remotingEndpointName = None,
               secrets = Seq.empty,
               privileged = true,
               environmentVariables = Map(
@@ -91,6 +92,7 @@ object RpEnvironmentVariablesTest extends TestSuite {
               endpoints = Map(
                 "ep1" -> TcpEndpoint(0, "ep1", 1234)),
               managementEndpointName = None,
+              remotingEndpointName = None,
               secrets = Seq.empty,
               privileged = true,
               environmentVariables = Map(
@@ -141,6 +143,7 @@ object RpEnvironmentVariablesTest extends TestSuite {
               endpoints = Map(
                 "ep1" -> TcpEndpoint(0, "ep1", 1234)),
               managementEndpointName = Some("management"),
+              remotingEndpointName = Some("remoting"),
               secrets = Seq.empty,
               privileged = true,
               environmentVariables = Map(
@@ -191,6 +194,7 @@ object RpEnvironmentVariablesTest extends TestSuite {
               endpoints = Map(
                 "ep1" -> TcpEndpoint(0, "ep1", 1234)),
               managementEndpointName = None,
+              remotingEndpointName = None,
               secrets = Seq.empty,
               privileged = true,
               environmentVariables = Map(

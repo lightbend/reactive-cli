@@ -91,6 +91,7 @@ package object kubernetes extends LazyLogging {
               kubernetesArgs.podControllerArgs.numberOfReplicas,
               generateDeploymentArgs.externalServices,
               generateDeploymentArgs.deploymentType,
+              generateDeploymentArgs.discoveryMethod,
               kubernetesArgs.transformPodControllers.fold(JsonTransform.noop)(JsonTransform.jq),
               generateDeploymentArgs.akkaClusterJoinExisting)
 
@@ -105,6 +106,7 @@ package object kubernetes extends LazyLogging {
               kubernetesArgs.podControllerArgs.numberOfReplicas,
               generateDeploymentArgs.externalServices,
               generateDeploymentArgs.deploymentType,
+              generateDeploymentArgs.discoveryMethod,
               kubernetesArgs.transformPodControllers.fold(JsonTransform.noop)(JsonTransform.jq),
               generateDeploymentArgs.akkaClusterJoinExisting)
         }
@@ -114,6 +116,7 @@ package object kubernetes extends LazyLogging {
         serviceApiVersion,
         kubernetesArgs.serviceArgs.clusterIp,
         generateDeploymentArgs.deploymentType,
+        generateDeploymentArgs.discoveryMethod,
         kubernetesArgs.transformServices.fold(JsonTransform.noop)(JsonTransform.jq),
         kubernetesArgs.serviceArgs.loadBalancerIp,
         kubernetesArgs.serviceArgs.serviceType)

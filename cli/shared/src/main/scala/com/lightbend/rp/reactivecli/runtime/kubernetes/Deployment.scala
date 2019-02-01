@@ -47,6 +47,7 @@ object Deployment {
     noOfReplicas: Int,
     externalServices: Map[String, Seq[String]],
     deploymentType: DeploymentType,
+    discoveryMethod: DiscoveryMethod,
     jsonTransform: JsonTransform,
     akkaClusterJoinExisting: Boolean): ValidationNel[String, Deployment] =
 
@@ -80,6 +81,7 @@ object Deployment {
             RestartPolicy.Always, // The only valid RestartPolicy for Deployment
             externalServices,
             deploymentType,
+            discoveryMethod,
             akkaClusterJoinExisting,
             applicationArgs,
             appName,

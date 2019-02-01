@@ -37,6 +37,14 @@ object InputArgs {
         throw new IllegalArgumentException(s"Invalid deployment type $v. Available: ${DeploymentType.All.mkString(", ")}")
     }
 
+  implicit val discoveryMethodRead: scopt.Read[DiscoveryMethod] =
+    scopt.Read.reads {
+      case v if v.toLowerCase == DiscoveryMethod.AkkaDns.toString => DiscoveryMethod.AkkaDns
+      case v if v.toLowerCase == DiscoveryMethod.KubernetesApi.toString => DiscoveryMethod.KubernetesApi
+      case v =>
+        throw new IllegalArgumentException(s"Invalid discovery method $v. Available: ${DiscoveryMethod.all.mkString(", ")}")
+    }
+
   implicit val logLevelsRead: scopt.Read[LogLevel] =
     scopt.Read.reads {
       case v if v.toLowerCase == "error" => LogLevel.ERROR
@@ -121,6 +129,11 @@ object InputArgs {
             .text(s"Sets the deployment type. Default: ${DeploymentType.Canary}; Available: ${DeploymentType.All.mkString(", ")}")
             .optional()
             .action(GenerateDeploymentArgs.set((t, args) => args.copy(deploymentType = t))),
+
+          opt[DiscoveryMethod]("discovery-method")
+            .text(s"Sets the discovery method. Default: ${DiscoveryMethod.AkkaDns}; Available: ${DiscoveryMethod.all.mkString(", ")}")
+            .optional()
+            .action(GenerateDeploymentArgs.set((t, args) => args.copy(discoveryMethod = t))),
 
           opt[String]("env") /* note: this argument will apply for other targets */
             .text("Sets an environment variable. Format: NAME=value")

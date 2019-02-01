@@ -61,6 +61,20 @@ case object BlueGreenDeploymentType extends DeploymentType
 case object RollingDeploymentType extends DeploymentType
 
 /**
+ * Represents the discovery method during Akka Boostrap on Kubernetes.
+ */
+sealed trait DiscoveryMethod
+object DiscoveryMethod {
+  case object KubernetesApi extends DiscoveryMethod {
+    override def toString: String = "kubernetes-api"
+  }
+  case object AkkaDns extends DiscoveryMethod {
+    override def toString = "akka-dns"
+  }
+  def all = Seq(AkkaDns, KubernetesApi)
+}
+
+/**
  * Represents the input argument for `generate-deployment` command.
  */
 case class GenerateDeploymentArgs(
@@ -68,6 +82,7 @@ case class GenerateDeploymentArgs(
   akkaClusterJoinExisting: Boolean = false,
   akkaClusterSkipValidation: Boolean = false,
   deploymentType: DeploymentType = CanaryDeploymentType,
+  discoveryMethod: DiscoveryMethod = DiscoveryMethod.AkkaDns,
   dockerImages: Seq[String] = Seq.empty,
   name: Option[String] = None,
   version: Option[String] = None,
