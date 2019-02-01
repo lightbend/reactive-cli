@@ -132,7 +132,8 @@ object KubernetesPackageTest extends TestSuite {
                   |    "name": "my-app-v3-2-1-snapshot",
                   |    "labels": {
                   |      "app": "my-app",
-                  |      "appNameVersion": "my-app-v3-2-1-snapshot"
+                  |      "appNameVersion": "my-app-v3-2-1-snapshot",
+                  |      "akka.lightbend.com/service-name": "my-app"
                   |    },
                   |    "namespace": "chirper"
                   |  },
@@ -147,7 +148,8 @@ object KubernetesPackageTest extends TestSuite {
                   |      "metadata": {
                   |        "labels": {
                   |          "app": "my-app",
-                  |          "appNameVersion": "my-app-v3-2-1-snapshot"
+                  |          "appNameVersion": "my-app-v3-2-1-snapshot",
+                  |          "akka.lightbend.com/service-name": "my-app"
                   |        }
                   |      },
                   |      "spec": {

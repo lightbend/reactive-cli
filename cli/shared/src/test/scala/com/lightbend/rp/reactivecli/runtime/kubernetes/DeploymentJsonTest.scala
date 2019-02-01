@@ -114,7 +114,8 @@ object DeploymentJsonTest extends TestSuite {
               |    "name": "friendimpl-v3-2-1-snapshot",
               |    "labels": {
               |      "app": "friendimpl",
-              |      "appNameVersion": "friendimpl-v3-2-1-snapshot"
+              |      "appNameVersion": "friendimpl-v3-2-1-snapshot",
+              |      "akka.lightbend.com/service-name": "friendimpl"
               |    },
               |    "namespace": "chirper"
               |  },
@@ -129,7 +130,8 @@ object DeploymentJsonTest extends TestSuite {
               |      "metadata": {
               |        "labels": {
               |          "app": "friendimpl",
-              |          "appNameVersion": "friendimpl-v3-2-1-snapshot"
+              |          "appNameVersion": "friendimpl-v3-2-1-snapshot",
+              |          "akka.lightbend.com/service-name": "friendimpl"
               |        },
               |        "annotations": {
               |          "annotationKey0": "annotationValue0",
@@ -258,7 +260,8 @@ object DeploymentJsonTest extends TestSuite {
               |    "name": "friendimpl-v3-2-1-snapshot",
               |    "labels": {
               |      "app": "friendimpl",
-              |      "appNameVersion": "friendimpl-v3-2-1-snapshot"
+              |      "appNameVersion": "friendimpl-v3-2-1-snapshot",
+              |      "akka.lightbend.com/service-name": "friendimpl"
               |    },
               |    "namespace": "chirper"
               |  },
@@ -273,7 +276,8 @@ object DeploymentJsonTest extends TestSuite {
               |      "metadata": {
               |        "labels": {
               |          "app": "friendimpl",
-              |          "appNameVersion": "friendimpl-v3-2-1-snapshot"
+              |          "appNameVersion": "friendimpl-v3-2-1-snapshot",
+              |          "akka.lightbend.com/service-name": "friendimpl"
               |        },
               |        "annotations": {
               |          "annotationKey0": "annotationValue0",
@@ -351,7 +355,7 @@ object DeploymentJsonTest extends TestSuite {
               |              },
               |              {
               |                "name": "RP_JAVA_OPTS",
-              |                "value": "-Dconfig.resource=my-config.conf -Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=kubernetes-api -Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=management -Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=friendimpl -Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=1 -Dakka.discovery.kubernetes-api.pod-label-selector=app=%s"
+              |                "value": "-Dconfig.resource=my-config.conf -Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=kubernetes-api -Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=management -Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=friendimpl -Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=1 -Dakka.discovery.kubernetes-api.pod-label-selector=akka.lightbend.com/service-name=%s"
               |              },
               |              {
               |                "name": "RP_KUBERNETES_POD_IP",

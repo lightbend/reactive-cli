@@ -34,6 +34,7 @@ import slogging.LazyLogging
 import Scalaz._
 
 package object kubernetes extends LazyLogging {
+  private[reactivecli] val serviceNameLabel = "akka.lightbend.com/service-name"
   private[reactivecli] val LivenessInitialDelaySeconds = 60
   private[reactivecli] val StatusPeriodSeconds = 10
 

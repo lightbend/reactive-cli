@@ -70,12 +70,14 @@ object JobJsonTest extends TestSuite {
           "name" -> jString("friendimpl-v3-2-1-snapshot"),
           "labels" -> jObjectFields(
             "app" -> jString("friendimpl"),
-            "appNameVersion" -> jString("friendimpl-v3-2-1-snapshot"))),
+            "appNameVersion" -> jString("friendimpl-v3-2-1-snapshot"),
+            "akka.lightbend.com/service-name" -> jString("friendimpl"))),
         "spec" -> jObjectFields(
           "template" -> jObjectFields(
             "metadata" -> jObjectFields(
               "labels" -> jObjectFields(
-                "appNameVersion" -> jString("friendimpl-v3-2-1-snapshot"))),
+                "appNameVersion" -> jString("friendimpl-v3-2-1-snapshot"),
+                "akka.lightbend.com/service-name" -> jString("friendimpl"))),
             "spec" -> jObjectFields(
               "restartPolicy" -> jString("OnFailure"),
               "containers" -> jArrayElements(
