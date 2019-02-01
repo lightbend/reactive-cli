@@ -95,7 +95,7 @@ object PodTemplate {
               s"-Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=$managementEndpointName",
               s"-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName",
               s"-Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas",
-              akkaClusterBootstrapSystemName.fold("-Dakka.discovery.kubernetes-api.pod-label-selector=appName=%s")(systemName => s"-Dakka.discovery.kubernetes-api.pod-label-selector=actorSystemName=$systemName"),
+              akkaClusterBootstrapSystemName.fold("-Dakka.discovery.kubernetes-api.pod-label-selector=app=%s")(systemName => s"-Dakka.discovery.kubernetes-api.pod-label-selector=actorSystemName=$systemName"),
               s"${if (akkaClusterJoinExisting) "-Dakka.management.cluster.bootstrap.form-new-cluster=false" else ""}")
               .filter(_.nonEmpty)
               .mkString(" ")),
@@ -158,7 +158,7 @@ object PodTemplate {
    * If the akkaClusterJoinExisting flag is provided, these labels are removed from the pod template so that
    * it isn't used for bootstrap.
    */
-  private[kubernetes] val PodDiscoveryLabels = Set("appName", "actorSystemName")
+  private[kubernetes] val PodDiscoveryLabels = Set("app", "actorSystemName")
 
   /**
    * Represents possible values for imagePullPolicy field within the Kubernetes pod template.

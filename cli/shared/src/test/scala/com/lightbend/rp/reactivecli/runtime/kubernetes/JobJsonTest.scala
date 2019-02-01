@@ -69,7 +69,7 @@ object JobJsonTest extends TestSuite {
         "metadata" -> jObjectFields(
           "name" -> jString("friendimpl-v3-2-1-snapshot"),
           "labels" -> jObjectFields(
-            "appName" -> jString("friendimpl"),
+            "app" -> jString("friendimpl"),
             "appNameVersion" -> jString("friendimpl-v3-2-1-snapshot"))),
         "spec" -> jObjectFields(
           "template" -> jObjectFields(

@@ -69,8 +69,8 @@ object Service {
 
       val selector =
         deploymentType match {
-          case CanaryDeploymentType => Json("appName" -> appName.asJson)
-          case RollingDeploymentType => Json("appName" -> appName.asJson)
+          case CanaryDeploymentType => Json("app" -> appName.asJson)
+          case RollingDeploymentType => Json("app" -> appName.asJson)
           case BlueGreenDeploymentType => Json("appNameVersion" -> appNameVersion.asJson)
         }
 
@@ -85,7 +85,7 @@ object Service {
               "kind" -> "Service".asJson,
               "metadata" -> Json(
                 "labels" -> Json(
-                  "appName" -> appName.asJson),
+                  "app" -> appName.asJson),
                 "name" -> appName.asJson)
                 .deepmerge(
                   annotations.namespace.fold(jEmptyObject)(ns => Json("namespace" -> serviceName(ns).asJson))),

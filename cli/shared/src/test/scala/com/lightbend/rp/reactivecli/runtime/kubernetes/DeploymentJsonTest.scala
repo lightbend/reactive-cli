@@ -113,7 +113,7 @@ object DeploymentJsonTest extends TestSuite {
               |  "metadata": {
               |    "name": "friendimpl-v3-2-1-snapshot",
               |    "labels": {
-              |      "appName": "friendimpl",
+              |      "app": "friendimpl",
               |      "appNameVersion": "friendimpl-v3-2-1-snapshot"
               |    },
               |    "namespace": "chirper"
@@ -128,7 +128,7 @@ object DeploymentJsonTest extends TestSuite {
               |    "template": {
               |      "metadata": {
               |        "labels": {
-              |          "appName": "friendimpl",
+              |          "app": "friendimpl",
               |          "appNameVersion": "friendimpl-v3-2-1-snapshot"
               |        },
               |        "annotations": {
@@ -257,7 +257,7 @@ object DeploymentJsonTest extends TestSuite {
               |  "metadata": {
               |    "name": "friendimpl-v3-2-1-snapshot",
               |    "labels": {
-              |      "appName": "friendimpl",
+              |      "app": "friendimpl",
               |      "appNameVersion": "friendimpl-v3-2-1-snapshot"
               |    },
               |    "namespace": "chirper"
@@ -272,7 +272,7 @@ object DeploymentJsonTest extends TestSuite {
               |    "template": {
               |      "metadata": {
               |        "labels": {
-              |          "appName": "friendimpl",
+              |          "app": "friendimpl",
               |          "appNameVersion": "friendimpl-v3-2-1-snapshot"
               |        },
               |        "annotations": {
@@ -351,7 +351,7 @@ object DeploymentJsonTest extends TestSuite {
               |              },
               |              {
               |                "name": "RP_JAVA_OPTS",
-              |                "value": "-Dconfig.resource=my-config.conf -Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=kubernetes-api -Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=management -Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=friendimpl -Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=1 -Dakka.discovery.kubernetes-api.pod-label-selector=appName=%s"
+              |                "value": "-Dconfig.resource=my-config.conf -Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=kubernetes-api -Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=management -Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=friendimpl -Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=1 -Dakka.discovery.kubernetes-api.pod-label-selector=app=%s"
               |              },
               |              {
               |                "name": "RP_KUBERNETES_POD_IP",

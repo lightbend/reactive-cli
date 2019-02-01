@@ -58,7 +58,7 @@ object Deployment {
         val appNameVersion = serviceName(s"$appName$VersionSeparator$version")
 
         val labels = Map(
-          "appName" -> appName,
+          "app" -> appName,
           "appNameVersion" -> appNameVersion) ++ annotations.akkaClusterBootstrapSystemName.fold(Map.empty[String, String])(system => Map("actorSystemName" -> system))
 
         val podTemplate =
@@ -87,7 +87,7 @@ object Deployment {
               (appNameVersion, Json("appNameVersion" -> appNameVersion.asJson))
 
             case RollingDeploymentType =>
-              (appName, Json("appName" -> appName.asJson))
+              (appName, Json("app" -> appName.asJson))
           }
 
         Deployment(

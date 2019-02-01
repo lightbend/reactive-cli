@@ -131,7 +131,7 @@ object KubernetesPackageTest extends TestSuite {
                   |  "metadata": {
                   |    "name": "my-app-v3-2-1-snapshot",
                   |    "labels": {
-                  |      "appName": "my-app",
+                  |      "app": "my-app",
                   |      "appNameVersion": "my-app-v3-2-1-snapshot"
                   |    },
                   |    "namespace": "chirper"
@@ -146,7 +146,7 @@ object KubernetesPackageTest extends TestSuite {
                   |    "template": {
                   |      "metadata": {
                   |        "labels": {
-                  |          "appName": "my-app",
+                  |          "app": "my-app",
                   |          "appNameVersion": "my-app-v3-2-1-snapshot"
                   |        }
                   |      },
@@ -259,7 +259,7 @@ object KubernetesPackageTest extends TestSuite {
                   |  "kind": "Service",
                   |  "metadata": {
                   |    "labels": {
-                  |      "appName": "my-app"
+                  |      "app": "my-app"
                   |    },
                   |    "name": "my-app",
                   |    "namespace": "chirper"
@@ -286,7 +286,7 @@ object KubernetesPackageTest extends TestSuite {
                   |      }
                   |    ],
                   |    "selector": {
-                  |      "appName": "my-app"
+                  |      "app": "my-app"
                   |    }
                   |  }
                   |}
