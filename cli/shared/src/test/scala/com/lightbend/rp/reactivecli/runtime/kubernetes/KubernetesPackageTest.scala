@@ -257,7 +257,8 @@ object KubernetesPackageTest extends TestSuite {
                   |              },
                   |              {
                   |                "containerPort": 1234,
-                  |                "name": "ep5"
+                  |                "name": "ep5",
+                  |                "protocol": "UDP"
                   |              }
                   |            ]
                   |          }
@@ -551,7 +552,8 @@ object KubernetesPackageTest extends TestSuite {
                   |              },
                   |              {
                   |                "containerPort": 1234,
-                  |                "name": "ep5"
+                  |                "name": "ep5",
+                  |                "protocol": "UDP"
                   |              }
                   |            ]
                   |          }

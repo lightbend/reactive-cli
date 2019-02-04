@@ -157,7 +157,8 @@ object DeploymentJsonTest extends TestSuite {
               |              },
               |              {
               |                "containerPort": 10001,
-              |                "name": "ep3"
+              |                "name": "ep3",
+              |                "protocol": "UDP"
               |              }
               |            ],
               |            "resources": {
@@ -277,8 +278,7 @@ object DeploymentJsonTest extends TestSuite {
               assert(javaOpts.contains("-Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=kubernetes-api") &&
                 javaOpts.contains("-Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=management") &&
                 javaOpts.contains("-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=friendimpl") &&
-                javaOpts.contains("-Dakka.discovery.kubernetes-api.pod-label-selector=akka.lightbend.com/service-name=%s")
-                )
+                javaOpts.contains("-Dakka.discovery.kubernetes-api.pod-label-selector=akka.lightbend.com/service-name=%s"))
             })
         }
 
@@ -308,8 +308,7 @@ object DeploymentJsonTest extends TestSuite {
                 javaOpts.contains("-Dakka.management.cluster.bootstrap.contact-point-discovery.service-name=friendimpl-internal") &&
                 javaOpts.contains("-Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=management") &&
                 !javaOpts.contains("-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=friendimpl") &&
-                !javaOpts.contains("-Dakka.discovery.kubernetes-api.pod-label-selector=akka.lightbend.com/service-name=%s")
-                )
+                !javaOpts.contains("-Dakka.discovery.kubernetes-api.pod-label-selector=akka.lightbend.com/service-name=%s"))
             })
         }
 
@@ -379,7 +378,8 @@ object DeploymentJsonTest extends TestSuite {
               |              },
               |              {
               |                "containerPort": 10001,
-              |                "name": "ep3"
+              |                "name": "ep3",
+              |                "protocol": "UDP"
               |              }
               |            ],
               |            "resources": {
@@ -665,7 +665,8 @@ object DeploymentJsonTest extends TestSuite {
             """
               |{
               |  "containerPort": 9999,
-              |  "name": "ep1"
+              |  "name": "ep1",
+              |  "protocol": "UDP"
               |}
             """.stripMargin.parse.right.get
           val generatedJson = assigned.asJson

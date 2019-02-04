@@ -111,7 +111,7 @@ object PodTemplate {
                   s"-Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=$managementEndpointName",
                   appName match {
                     case Some(name) => s"-Dakka.management.cluster.bootstrap.contact-point-discovery.service-name=$name-internal"
-                    case _          => sys.error("appName was expected")
+                    case _ => sys.error("appName was expected")
                   })
             }) ++
               List(
@@ -253,10 +253,18 @@ object PodTemplate {
       .asJson
   }
 
-  implicit def assignedEncode = EncodeJson[AssignedPort] { assigned =>
-    Json(
-      "containerPort" -> assigned.port.asJson,
-      "name" -> serviceName(assigned.endpoint.name).asJson)
+  implicit def assignedEncode: EncodeJson[AssignedPort] = EncodeJson[AssignedPort] { assigned =>
+    assigned.endpoint match {
+      case UdpEndpoint(_, _, _) =>
+        Json(
+          "containerPort" -> assigned.port.asJson,
+          "name" -> serviceName(assigned.endpoint.name).asJson,
+          "protocol" -> "UDP".asJson)
+      case _ =>
+        Json(
+          "containerPort" -> assigned.port.asJson,
+          "name" -> serviceName(assigned.endpoint.name).asJson)
+    }
   }
 
   implicit def endpointsEncode = EncodeJson[Map[String, Endpoint]] { endpoints =>
