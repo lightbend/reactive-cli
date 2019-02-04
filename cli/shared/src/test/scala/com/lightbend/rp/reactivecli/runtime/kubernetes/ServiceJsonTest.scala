@@ -65,7 +65,7 @@ object ServiceJsonTest extends TestSuite {
             .get
             .payload
             .map { j =>
-              val result = (j.hcursor --\ "spec" --\ "selector" --\ "appName").focus
+              val result = (j.hcursor --\ "spec" --\ "selector" --\ "app").focus
               val expected = Some(jString("friendimpl"))
 
               assert(result == expected)
@@ -89,7 +89,7 @@ object ServiceJsonTest extends TestSuite {
             .get
             .get
             .payload
-            .map(j => assert((j.hcursor --\ "spec" --\ "selector" --\ "appName").focus.contains(jString("friendimpl"))))
+            .map(j => assert((j.hcursor --\ "spec" --\ "selector" --\ "app").focus.contains(jString("friendimpl"))))
         }
       }
 
@@ -113,7 +113,7 @@ object ServiceJsonTest extends TestSuite {
               |  "kind": "Service",
               |  "metadata": {
               |    "labels": {
-              |      "appName": "friendimpl"
+              |      "app": "friendimpl"
               |    },
               |    "name": "friendimpl",
               |    "namespace": "chirper"
@@ -128,7 +128,7 @@ object ServiceJsonTest extends TestSuite {
               |      }
               |    ],
               |    "selector": {
-              |      "appName": "friendimpl"
+              |      "app": "friendimpl"
               |    }
               |  }
               |}
@@ -145,7 +145,7 @@ object ServiceJsonTest extends TestSuite {
               |  "kind": "Service",
               |  "metadata": {
               |    "labels": {
-              |      "appName": "friendimpl"
+              |      "app": "friendimpl"
               |    },
               |    "name": "friendimpl",
               |    "namespace": "chirper"
@@ -163,7 +163,7 @@ object ServiceJsonTest extends TestSuite {
               |    ],
               |    "type": "NodePort",
               |    "selector": {
-              |      "appName": "friendimpl"
+              |      "app": "friendimpl"
               |    }
               |  }
               |}

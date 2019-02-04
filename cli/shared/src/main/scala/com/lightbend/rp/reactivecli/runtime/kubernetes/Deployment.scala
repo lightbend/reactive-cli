@@ -57,9 +57,17 @@ object Deployment {
         val appName = serviceName(rawAppName)
         val appNameVersion = serviceName(s"$appName$VersionSeparator$version")
 
+        val serviceResourceName =
+          deploymentType match {
+            case CanaryDeploymentType => appName
+            case BlueGreenDeploymentType => appNameVersion
+            case RollingDeploymentType => appName
+          }
+
         val labels = Map(
-          "appName" -> appName,
-          "appNameVersion" -> appNameVersion) ++ annotations.akkaClusterBootstrapSystemName.fold(Map.empty[String, String])(system => Map("actorSystemName" -> system))
+          "app" -> appName,
+          "appNameVersion" -> appNameVersion) ++ annotations.akkaClusterBootstrapSystemName.fold(Map(
+            serviceNameLabel -> serviceResourceName))(system => Map(serviceNameLabel -> system))
 
         val podTemplate =
           PodTemplate.generate(
@@ -87,7 +95,7 @@ object Deployment {
               (appNameVersion, Json("appNameVersion" -> appNameVersion.asJson))
 
             case RollingDeploymentType =>
-              (appName, Json("appName" -> appName.asJson))
+              (appName, Json("app" -> appName.asJson))
           }
 
         Deployment(
