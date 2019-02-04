@@ -278,7 +278,8 @@ object DeploymentJsonTest extends TestSuite {
               assert(javaOpts.contains("-Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=kubernetes-api") &&
                 javaOpts.contains("-Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=management") &&
                 javaOpts.contains("-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=friendimpl") &&
-                javaOpts.contains("-Dakka.discovery.kubernetes-api.pod-label-selector=akka.lightbend.com/service-name=%s"))
+                javaOpts.contains("-Dakka.discovery.kubernetes-api.pod-label-selector=akka.lightbend.com/service-name=%s") &&
+                javaOpts.contains("-Dplay.server.pidfile.path=/dev/null"))
             })
         }
 
@@ -308,13 +309,14 @@ object DeploymentJsonTest extends TestSuite {
                 javaOpts.contains("-Dakka.management.cluster.bootstrap.contact-point-discovery.service-name=friendimpl-internal") &&
                 javaOpts.contains("-Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=management") &&
                 !javaOpts.contains("-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=friendimpl") &&
-                !javaOpts.contains("-Dakka.discovery.kubernetes-api.pod-label-selector=akka.lightbend.com/service-name=%s"))
+                !javaOpts.contains("-Dakka.discovery.kubernetes-api.pod-label-selector=akka.lightbend.com/service-name=%s") &&
+                javaOpts.contains("-Dplay.server.pidfile.path=/dev/null"))
             })
         }
 
         "should generate application health check given status module" - {
           val expectedJson =
-            """
+            ("""
               |{
               |  "apiVersion": "apps/v1beta2",
               |  "kind": "Deployment",
@@ -418,7 +420,16 @@ object DeploymentJsonTest extends TestSuite {
               |              },
               |              {
               |                "name": "RP_JAVA_OPTS",
-              |                "value": "-Dconfig.resource=my-config.conf -Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=kubernetes-api -Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=management -Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=friendimpl -Dakka.discovery.kubernetes-api.pod-label-selector=akka.lightbend.com/service-name=%s -Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=1"
+              |                "value": """".stripMargin +
+              List(
+                "-Dconfig.resource=my-config.conf",
+                "-Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=kubernetes-api",
+                "-Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=management",
+                "-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=friendimpl",
+                "-Dakka.discovery.kubernetes-api.pod-label-selector=akka.lightbend.com/service-name=%s",
+                "-Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=1",
+                "-Dplay.server.pidfile.path=/dev/null").mkString(" ") +
+                """"
               |              },
               |              {
               |                "name": "RP_KUBERNETES_POD_IP",
@@ -471,7 +482,7 @@ object DeploymentJsonTest extends TestSuite {
               |    }
               |  }
               |}
-            """.stripMargin.parse.right.get
+            """.stripMargin).parse.right.get
           val result = Deployment.generate(annotations.copy(
             modules = Set("akka-management", "status", "akka-cluster-bootstrapping"),
             managementEndpointName = Some("management")), "apps/v1beta2", None, imageName,
