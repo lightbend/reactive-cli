@@ -14,7 +14,7 @@ lazy val generateYaml = taskKey[Unit]("generateYaml")
 lazy val root = (project in file("."))
   .enablePlugins(SbtReactiveAppPlugin)
   .settings(
-    name := "bootstrap-kubernetes-api-demo",
+    name := "bootstrap-kubernetes-dns-demo",
     scalacOptions ++= Seq(
       "-encoding",
       "UTF-8",
@@ -36,7 +36,6 @@ lazy val root = (project in file("."))
       scalaTest
     ),
     enableAkkaClusterBootstrap := true,
-    akkaClusterBootstrapSystemName := "hoboken1",
 
     // run nativeLink in the host build first
     generateYaml := {
@@ -45,7 +44,7 @@ lazy val root = (project in file("."))
       val v = version.value
       val namespace = "reactivelibtest1"
       val rpPath = file(sys.props("reactiveclipath")) / "reactive-cli-out"
-      val out = Process(s"$rpPath generate-kubernetes-resources --registry-use-local --generate-all --discovery-method kubernetes-api $nm:$v --pod-controller-replicas 3").!!
+      val out = Process(s"$rpPath generate-kubernetes-resources --registry-use-local --generate-all $nm:$v --pod-controller-replicas 3 --stacktrace").!!
       val x =
         if (!Deckhand.isOpenShift)
           out.replaceAllLiterally("imagePullPolicy: IfNotPresent", "imagePullPolicy: Never")
@@ -64,24 +63,15 @@ lazy val root = (project in file("."))
       val namespace = "reactivelibtest1"
       val kubectl = Deckhand.kubectl(s.log)
       val docker = Deckhand.docker(s.log)
-      val yamlDir = baseDirectory.value / "kubernetes"
 
       try {
         if (!Deckhand.isOpenShift) {
           kubectl.tryCreate(s"namespace $namespace")
           kubectl.setCurrentNamespace(namespace)
-          kubectl.apply(Deckhand.mustache(yamlDir / "rbac.mustache"),
-            Map(
-              "namespace"       -> namespace
-            ))
         } else {
           // work around: /rp-start: line 60: /opt/docker/bin/bootstrap-kapi-demo: Permission denied
           kubectl.command(s"adm policy add-scc-to-user anyuid system:serviceaccount:$namespace:default")
           kubectl.command(s"policy add-role-to-user system:image-builder system:serviceaccount:$namespace:default")
-          kubectl.apply(Deckhand.mustache(yamlDir / "rbac.mustache"),
-            Map(
-              "namespace"       -> namespace
-            ))
           docker.tag(s"$nm:$v docker-registry-default.centralpark.lightbend.com/$namespace/$nm:$v")
           docker.push(s"docker-registry-default.centralpark.lightbend.com/$namespace/$nm")
         }

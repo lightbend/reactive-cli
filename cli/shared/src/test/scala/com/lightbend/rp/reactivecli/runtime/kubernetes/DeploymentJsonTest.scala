@@ -47,6 +47,7 @@ object DeploymentJsonTest extends TestSuite {
     cpu = Some(0.5D),
     endpoints = endpoints,
     managementEndpointName = None,
+    remotingEndpointName = None,
     secrets = Seq(Secret("acme.co", "my-secret")),
     annotations = Seq(
       Annotation("annotationKey0", "annotationValue0"),
@@ -66,7 +67,7 @@ object DeploymentJsonTest extends TestSuite {
         "deploymentType" - {
           "Canary" - {
             Deployment
-              .generate(annotations, "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, noOfReplicas = 1, Map.empty, CanaryDeploymentType, JsonTransform.noop, false)
+              .generate(annotations, "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, noOfReplicas = 1, Map.empty, CanaryDeploymentType, DiscoveryMethod.AkkaDns, JsonTransform.noop, false)
               .toOption
               .get
               .payload
@@ -79,7 +80,7 @@ object DeploymentJsonTest extends TestSuite {
 
           "BlueGreen" - {
             Deployment
-              .generate(annotations, "v1", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, noOfReplicas = 1, Map.empty, BlueGreenDeploymentType, JsonTransform.noop, false)
+              .generate(annotations, "v1", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, noOfReplicas = 1, Map.empty, BlueGreenDeploymentType, DiscoveryMethod.AkkaDns, JsonTransform.noop, false)
               .toOption
               .get
               .payload
@@ -92,7 +93,7 @@ object DeploymentJsonTest extends TestSuite {
 
           "Rolling" - {
             Deployment
-              .generate(annotations, "v1", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, noOfReplicas = 1, Map.empty, RollingDeploymentType, JsonTransform.noop, false)
+              .generate(annotations, "v1", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, noOfReplicas = 1, Map.empty, RollingDeploymentType, DiscoveryMethod.AkkaDns, JsonTransform.noop, false)
               .toOption
               .get
               .payload
@@ -242,12 +243,74 @@ object DeploymentJsonTest extends TestSuite {
             """.stripMargin.parse.right.get
 
           val result = Deployment.generate(annotations, "apps/v1beta2", None, imageName,
-            PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, noOfReplicas = 1, Map.empty, CanaryDeploymentType, JsonTransform.noop, false).toOption.get
+            PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, noOfReplicas = 1, Map.empty, CanaryDeploymentType,
+            DiscoveryMethod.AkkaDns, JsonTransform.noop, false).toOption.get
 
           if (result.json != expectedJson) {
             println(s"deployment K8 JSON:\n" + PrettyParams.spaces2.copy(colonLeft = "").pretty(result.json))
           }
           assert(result == Deployment("friendimpl-v3-2-1-snapshot", expectedJson, JsonTransform.noop))
+        }
+
+        "should generate JAVA_OPTS override for Akka Cluster Boostrapping" - {
+          val result = Deployment.generate(annotations.copy(
+            modules = Set("akka-management", "status", "akka-cluster-bootstrapping"),
+            managementEndpointName = Some("management")), "apps/v1beta2", None, imageName,
+            PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, noOfReplicas = 1, Map.empty,
+            CanaryDeploymentType, DiscoveryMethod.KubernetesApi, JsonTransform.noop, false).toOption.get
+
+          result
+            .payload
+            .map({ j =>
+              val javaOpts = (j.hcursor --\ "spec" --\ "template" --\ "spec" --\ "containers")
+                .downArray
+                .first
+                .downField("env")
+                .downN(4)
+                .downField("value")
+                .focus
+                .get
+                .string
+                .get
+                .split(' ')
+                .toSet
+              assert(javaOpts.contains("-Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=kubernetes-api") &&
+                javaOpts.contains("-Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=management") &&
+                javaOpts.contains("-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=friendimpl") &&
+                javaOpts.contains("-Dakka.discovery.kubernetes-api.pod-label-selector=akka.lightbend.com/service-name=%s")
+                )
+            })
+        }
+
+        "should generate JAVA_OPTS override for Akka Cluster Boostrapping using DNS" - {
+          val result = Deployment.generate(annotations.copy(
+            modules = Set("akka-management", "status", "akka-cluster-bootstrapping"),
+            managementEndpointName = Some("management")), "apps/v1beta2", None, imageName,
+            PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, noOfReplicas = 1, Map.empty,
+            CanaryDeploymentType, DiscoveryMethod.AkkaDns, JsonTransform.noop, false).toOption.get
+
+          result
+            .payload
+            .map({ j =>
+              val javaOpts = (j.hcursor --\ "spec" --\ "template" --\ "spec" --\ "containers")
+                .downArray
+                .first
+                .downField("env")
+                .downN(4)
+                .downField("value")
+                .focus
+                .get
+                .string
+                .get
+                .split(' ')
+                .toSet
+              assert(javaOpts.contains("-Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=akka-dns") &&
+                javaOpts.contains("-Dakka.management.cluster.bootstrap.contact-point-discovery.service-name=friendimpl-internal") &&
+                javaOpts.contains("-Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=management") &&
+                !javaOpts.contains("-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=friendimpl") &&
+                !javaOpts.contains("-Dakka.discovery.kubernetes-api.pod-label-selector=akka.lightbend.com/service-name=%s")
+                )
+            })
         }
 
         "should generate application health check given status module" - {
@@ -355,7 +418,7 @@ object DeploymentJsonTest extends TestSuite {
               |              },
               |              {
               |                "name": "RP_JAVA_OPTS",
-              |                "value": "-Dconfig.resource=my-config.conf -Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=kubernetes-api -Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=management -Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=friendimpl -Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=1 -Dakka.discovery.kubernetes-api.pod-label-selector=akka.lightbend.com/service-name=%s"
+              |                "value": "-Dconfig.resource=my-config.conf -Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=kubernetes-api -Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=management -Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=friendimpl -Dakka.discovery.kubernetes-api.pod-label-selector=akka.lightbend.com/service-name=%s -Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=1"
               |              },
               |              {
               |                "name": "RP_KUBERNETES_POD_IP",
@@ -412,7 +475,8 @@ object DeploymentJsonTest extends TestSuite {
           val result = Deployment.generate(annotations.copy(
             modules = Set("akka-management", "status", "akka-cluster-bootstrapping"),
             managementEndpointName = Some("management")), "apps/v1beta2", None, imageName,
-            PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, noOfReplicas = 1, Map.empty, CanaryDeploymentType, JsonTransform.noop, false).toOption.get
+            PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, noOfReplicas = 1, Map.empty,
+            CanaryDeploymentType, DiscoveryMethod.KubernetesApi, JsonTransform.noop, false).toOption.get
           if (result.json != expectedJson) {
             println(s"deployment K8 JSON:\n" + PrettyParams.spaces2.copy(colonLeft = "").pretty(result.json))
           }
@@ -421,16 +485,16 @@ object DeploymentJsonTest extends TestSuite {
 
         "should fail if application name is not defined" - {
           val invalid = annotations.copy(appName = None)
-          assert(Deployment.generate(invalid, "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, 1, Map.empty, CanaryDeploymentType, JsonTransform.noop, false).toOption.isEmpty)
+          assert(Deployment.generate(invalid, "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, 1, Map.empty, CanaryDeploymentType, DiscoveryMethod.AkkaDns, JsonTransform.noop, false).toOption.isEmpty)
         }
 
         "should fail when restart policy is wrong" - {
-          assert(Deployment.generate(annotations, "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Never, 1, Map.empty, CanaryDeploymentType, JsonTransform.noop, false).toOption.isEmpty)
+          assert(Deployment.generate(annotations, "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Never, 1, Map.empty, CanaryDeploymentType, DiscoveryMethod.AkkaDns, JsonTransform.noop, false).toOption.isEmpty)
         }
 
         "jq" - {
           Deployment
-            .generate(annotations, "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, 1, Map.empty, CanaryDeploymentType, JsonTransform.jq(JsonTransformExpression(".jqTest = \"test\"")), false)
+            .generate(annotations, "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, 1, Map.empty, CanaryDeploymentType, DiscoveryMethod.AkkaDns, JsonTransform.jq(JsonTransformExpression(".jqTest = \"test\"")), false)
             .toOption
             .get
             .payload
@@ -440,7 +504,7 @@ object DeploymentJsonTest extends TestSuite {
         "applications" - {
           "should select default given no application" - {
             Deployment
-              .generate(annotations.copy(applications = Vector("test" -> Vector("arg1", "arg2"), "default" -> Vector("def1"))), "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, 1, Map.empty, CanaryDeploymentType, JsonTransform.noop, false)
+              .generate(annotations.copy(applications = Vector("test" -> Vector("arg1", "arg2"), "default" -> Vector("def1"))), "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, 1, Map.empty, CanaryDeploymentType, DiscoveryMethod.AkkaDns, JsonTransform.noop, false)
               .toOption
               .get
               .payload
@@ -458,7 +522,7 @@ object DeploymentJsonTest extends TestSuite {
 
           "should select requested application given an application" - {
             Deployment
-              .generate(annotations.copy(applications = Vector("test" -> Vector("arg1", "arg2"), "default" -> Vector("def1"))), "apps/v1beta2", Some("test"), imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, 1, Map.empty, CanaryDeploymentType, JsonTransform.noop, false)
+              .generate(annotations.copy(applications = Vector("test" -> Vector("arg1", "arg2"), "default" -> Vector("def1"))), "apps/v1beta2", Some("test"), imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, 1, Map.empty, CanaryDeploymentType, DiscoveryMethod.AkkaDns, JsonTransform.noop, false)
               .toOption
               .get
               .payload
@@ -492,7 +556,7 @@ object DeploymentJsonTest extends TestSuite {
 
           val generatedJson =
             Deployment
-              .generate(annotations, "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, 1, Map.empty, CanaryDeploymentType, JsonTransform.noop, false)
+              .generate(annotations, "apps/v1beta2", None, imageName, PodTemplate.ImagePullPolicy.Never, PodTemplate.RestartPolicy.Default, 1, Map.empty, CanaryDeploymentType, DiscoveryMethod.AkkaDns, JsonTransform.noop, false)
               .toOption
               .get
               .payload

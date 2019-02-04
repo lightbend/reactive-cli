@@ -121,6 +121,7 @@ object AnnotationsTest extends TestSuite {
           cpu = None,
           endpoints = Map.empty,
           managementEndpointName = None,
+          remotingEndpointName = None,
           secrets = Seq.empty,
           privileged = false,
           environmentVariables = Map.empty,
@@ -202,6 +203,7 @@ object AnnotationsTest extends TestSuite {
                 "ep2" -> TcpEndpoint(1, "ep2", 1234),
                 "ep3" -> UdpEndpoint(2, "ep3", 1234)),
               managementEndpointName = Some("management"),
+              remotingEndpointName = Some("remoting"),
               secrets = Seq.empty,
               annotations = Vector(
                 Annotation("annotationKey0", "annotationValue0"),
@@ -245,6 +247,7 @@ object AnnotationsTest extends TestSuite {
               cpu = Some(0.5),
               endpoints = Map.empty,
               managementEndpointName = None,
+              remotingEndpointName = None,
               secrets = Seq.empty,
               privileged = false,
               environmentVariables = Map(
@@ -272,6 +275,7 @@ object AnnotationsTest extends TestSuite {
               cpu = None,
               endpoints = Map.empty,
               managementEndpointName = None,
+              remotingEndpointName = None,
               secrets = Seq.empty,
               privileged = false,
               environmentVariables = Map.empty,
@@ -295,6 +299,7 @@ object AnnotationsTest extends TestSuite {
               cpu = None,
               endpoints = Map.empty,
               managementEndpointName = None,
+              remotingEndpointName = None,
               secrets = Seq.empty,
               privileged = false,
               environmentVariables = Map.empty,
@@ -318,6 +323,7 @@ object AnnotationsTest extends TestSuite {
               cpu = None,
               endpoints = Map.empty,
               managementEndpointName = None,
+              remotingEndpointName = None,
               secrets = Seq.empty,
               privileged = false,
               environmentVariables = Map.empty,
@@ -347,6 +353,7 @@ object AnnotationsTest extends TestSuite {
               endpoints = Map(
                 "ep2" -> TcpEndpoint(1, "ep2", 1234)),
               managementEndpointName = None,
+              remotingEndpointName = None,
               secrets = Seq.empty,
               privileged = false,
               environmentVariables = Map.empty,
@@ -374,6 +381,7 @@ object AnnotationsTest extends TestSuite {
               endpoints = Map(
                 "ep2" -> TcpEndpoint(1, "ep2", 1234)),
               managementEndpointName = None,
+              remotingEndpointName = None,
               secrets = Seq.empty,
               privileged = false,
               environmentVariables = Map.empty,

@@ -17,7 +17,7 @@
 package com.lightbend.rp.reactivecli.runtime.kubernetes
 
 import argonaut._
-import com.lightbend.rp.reactivecli.argparse.GenerateDeploymentArgs
+import com.lightbend.rp.reactivecli.argparse.{ GenerateDeploymentArgs, DiscoveryMethod }
 import com.lightbend.rp.reactivecli.argparse.kubernetes.KubernetesArgs
 import com.lightbend.rp.reactivecli.concurrent._
 import com.lightbend.rp.reactivecli.docker.Config
@@ -67,25 +67,328 @@ object KubernetesPackageTest extends TestSuite {
               "com.lightbend.rp.environment-variables.2.type" -> "kubernetes.fieldRef",
               "com.lightbend.rp.environment-variables.2.name" -> "testing3",
               "com.lightbend.rp.environment-variables.2.field-path" -> "metadata.name",
-              "com.lightbend.rp.endpoints.0.name" -> "ep1",
-              "com.lightbend.rp.endpoints.0.protocol" -> "http",
-              "com.lightbend.rp.endpoints.0.version" -> "9",
-              "com.lightbend.rp.endpoints.0.ingress.0.type" -> "http",
-              "com.lightbend.rp.endpoints.0.ingress.0.paths.0" -> "/pizza",
-              "com.lightbend.rp.endpoints.0.some-key" -> "test",
-              "com.lightbend.rp.endpoints.0.acls.0.some-key" -> "test",
-              "com.lightbend.rp.endpoints.1.name" -> "ep2",
+              "com.lightbend.rp.endpoints.0.name" -> "remoting",
+              "com.lightbend.rp.endpoints.0.protocol" -> "tcp",
+              "com.lightbend.rp.endpoints.0.port" -> "2552",
+              "com.lightbend.rp.endpoints.1.name" -> "management",
               "com.lightbend.rp.endpoints.1.protocol" -> "tcp",
-              "com.lightbend.rp.endpoints.1.version" -> "1",
-              "com.lightbend.rp.endpoints.1.port" -> "1234",
+              "com.lightbend.rp.endpoints.1.port" -> "8558",
               "com.lightbend.rp.endpoints.2.name" -> "ep3",
-              "com.lightbend.rp.endpoints.2.protocol" -> "udp",
-              "com.lightbend.rp.endpoints.2.port" -> "1234"))))
+              "com.lightbend.rp.endpoints.2.protocol" -> "http",
+              "com.lightbend.rp.endpoints.2.version" -> "9",
+              "com.lightbend.rp.endpoints.2.ingress.0.type" -> "http",
+              "com.lightbend.rp.endpoints.2.ingress.0.paths.0" -> "/pizza",
+              "com.lightbend.rp.endpoints.2.some-key" -> "test",
+              "com.lightbend.rp.endpoints.2.acls.0.some-key" -> "test",
+              "com.lightbend.rp.endpoints.3.name" -> "ep4",
+              "com.lightbend.rp.endpoints.3.protocol" -> "tcp",
+              "com.lightbend.rp.endpoints.3.version" -> "1",
+              "com.lightbend.rp.endpoints.3.port" -> "1234",
+              "com.lightbend.rp.endpoints.4.name" -> "ep5",
+              "com.lightbend.rp.endpoints.4.protocol" -> "udp",
+              "com.lightbend.rp.endpoints.4.port" -> "1234",
+              "com.lightbend.rp.remoting-endpoint" -> "remoting",
+              "com.lightbend.rp.management-endpoint" -> "management"))))
 
         "generates kubernetes deployment + service resource" - {
           val k8sArgs = kubernetesArgs.copy(generateNamespaces = true, namespace = Some("chirper"))
 
-          generateResources(imageName, dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs)
+          generateResources(imageName, dockerConfig, generateDeploymentArgs
+            .copy(targetRuntimeArgs = Some(k8sArgs), discoveryMethod = DiscoveryMethod.AkkaDns), k8sArgs)
+            .map(_.toOption)
+            .flatMap { result =>
+              assert(result.nonEmpty)
+
+              val generatedResources = result.get
+
+              val (namespace, deployment, headlessService, service, ingress) = generatedResources match {
+                case Seq(namespace: Namespace, deployment: Deployment, headlessService: Service, service: Service, ingress: Ingress) =>
+                  (namespace, deployment, headlessService, service, ingress)
+              }
+
+              var asserts = List.empty[Future[Unit]]
+              def assertPayload(label: String, generatedResource: GeneratedResource[Json], jsonExpected: Json): Unit = {
+                asserts ::= generatedResource.payload.map { p =>
+                  if (p != jsonExpected)
+                    println(s"$label payload:\n" + PrettyParams.spaces2.copy(colonLeft = "").pretty(p))
+                  assert(p == jsonExpected)
+                }
+              }
+
+              assert(namespace.name == "chirper")
+              val namespaceJsonExpected =
+                """
+                  |{
+                  |  "apiVersion": "v1",
+                  |  "kind": "Namespace",
+                  |  "metadata": {
+                  |    "name": "chirper",
+                  |    "labels": {
+                  |      "name": "chirper"
+                  |    }
+                  |  }
+                  |}
+                """.stripMargin.parse.right.get
+              assertPayload("namespace", namespace, namespaceJsonExpected)
+
+              assert(deployment.name == "my-app-v3-2-1-snapshot")
+              val deploymentJsonExpected =
+                """
+                  |{
+                  |  "apiVersion": "apps/v1beta2",
+                  |  "kind": "Deployment",
+                  |  "metadata": {
+                  |    "name": "my-app-v3-2-1-snapshot",
+                  |    "labels": {
+                  |      "app": "my-app",
+                  |      "appNameVersion": "my-app-v3-2-1-snapshot",
+                  |      "akka.lightbend.com/service-name": "my-app"
+                  |    },
+                  |    "namespace": "chirper"
+                  |  },
+                  |  "spec": {
+                  |    "replicas": 1,
+                  |    "selector": {
+                  |      "matchLabels": {
+                  |        "appNameVersion": "my-app-v3-2-1-snapshot"
+                  |      }
+                  |    },
+                  |    "template": {
+                  |      "metadata": {
+                  |        "labels": {
+                  |          "app": "my-app",
+                  |          "appNameVersion": "my-app-v3-2-1-snapshot",
+                  |          "akka.lightbend.com/service-name": "my-app"
+                  |        }
+                  |      },
+                  |      "spec": {
+                  |        "restartPolicy": "Always",
+                  |        "containers": [
+                  |          {
+                  |            "name": "my-app",
+                  |            "image": "fsat/testimpl:1.0.0-SNAPSHOT",
+                  |            "resources": {
+                  |              "limits": {
+                  |                "cpu": 0.5,
+                  |                "memory": 8192
+                  |              },
+                  |              "requests": {
+                  |                "cpu": 0.5,
+                  |                "memory": 8192
+                  |              }
+                  |            },
+                  |            "imagePullPolicy": "IfNotPresent",
+                  |            "volumeMounts": [],
+                  |            "env": [
+                  |              {
+                  |                "name": "RP_APP_NAME",
+                  |                "value": "my-app"
+                  |              },
+                  |              {
+                  |                "name": "RP_APP_VERSION",
+                  |                "value": "3.2.1-SNAPSHOT"
+                  |              },
+                  |              {
+                  |                "name": "RP_KUBERNETES_POD_IP",
+                  |                "valueFrom": {
+                  |                  "fieldRef": {
+                  |                    "fieldPath": "status.podIP"
+                  |                  }
+                  |                }
+                  |              },
+                  |              {
+                  |                "name": "RP_KUBERNETES_POD_NAME",
+                  |                "valueFrom": {
+                  |                  "fieldRef": {
+                  |                    "fieldPath": "metadata.name"
+                  |                  }
+                  |                }
+                  |              },
+                  |              {
+                  |                "name": "RP_NAMESPACE",
+                  |                "valueFrom": {
+                  |                  "fieldRef": {
+                  |                    "fieldPath": "metadata.namespace"
+                  |                  }
+                  |                }
+                  |              },
+                  |              {
+                  |                "name": "RP_PLATFORM",
+                  |                "value": "kubernetes"
+                  |              },
+                  |              {
+                  |                "name": "testing1",
+                  |                "value": "testingvalue1"
+                  |              },
+                  |              {
+                  |                "name": "testing2",
+                  |                "valueFrom": {
+                  |                  "configMapKeyRef": {
+                  |                    "name": "mymap",
+                  |                    "key": "mykey"
+                  |                  }
+                  |                }
+                  |              },
+                  |              {
+                  |                "name": "testing3",
+                  |                "valueFrom": {
+                  |                  "fieldRef": {
+                  |                    "fieldPath": "metadata.name"
+                  |                  }
+                  |                }
+                  |              }
+                  |            ],
+                  |            "ports": [
+                  |              {
+                  |                "containerPort": 2552,
+                  |                "name": "remoting"
+                  |              },
+                  |              {
+                  |                "containerPort": 8558,
+                  |                "name": "management"
+                  |              },
+                  |              {
+                  |                "containerPort": 10000,
+                  |                "name": "ep3"
+                  |              },
+                  |              {
+                  |                "containerPort": 1234,
+                  |                "name": "ep4"
+                  |              },
+                  |              {
+                  |                "containerPort": 1234,
+                  |                "name": "ep5"
+                  |              }
+                  |            ]
+                  |          }
+                  |        ],
+                  |        "volumes": []
+                  |      }
+                  |    }
+                  |  }
+                  |}
+                """.stripMargin.parse.right.get
+              assertPayload("deployment", deployment, deploymentJsonExpected)
+
+              assert(headlessService.name == "my-app-internal")
+              val headlessServiceJsonExpected =
+                """
+                  |{
+                  |  "apiVersion": "v1",
+                  |  "kind": "Service",
+                  |  "metadata": {
+                  |    "labels": {
+                  |      "app": "my-app"
+                  |    },
+                  |    "annotations": {
+                  |      "service.alpha.kubernetes.io/tolerate-unready-endpoints" : "true"
+                  |    },
+                  |    "name": "my-app-internal",
+                  |    "namespace": "chirper"
+                  |  },
+                  |  "spec": {
+                  |    "ports": [
+                  |      {
+                  |        "name": "management",
+                  |        "port": 8558,
+                  |        "protocol": "TCP",
+                  |        "targetPort": 8558
+                  |      },
+                  |      {
+                  |        "name": "remoting",
+                  |        "port": 2552,
+                  |        "protocol": "TCP",
+                  |        "targetPort": 2552
+                  |      }
+                  |    ],
+                  |    "selector": {
+                  |      "app": "my-app"
+                  |    },
+                  |    "clusterIP" : "None",
+                  |    "publishNotReadyAddresses" : true
+                  |  }
+                  |}
+                """.stripMargin.parse.right.get
+              assertPayload("headless service", headlessService, headlessServiceJsonExpected)
+
+              assert(service.name == "my-app")
+              val serviceJsonExpected =
+                """
+                  |{
+                  |  "apiVersion": "v1",
+                  |  "kind": "Service",
+                  |  "metadata": {
+                  |    "labels": {
+                  |      "app": "my-app"
+                  |    },
+                  |    "name": "my-app",
+                  |    "namespace": "chirper"
+                  |  },
+                  |  "spec": {
+                  |    "ports": [
+                  |      {
+                  |        "name": "ep5",
+                  |        "port": 1234,
+                  |        "protocol": "UDP",
+                  |        "targetPort": 1234
+                  |      },
+                  |      {
+                  |        "name": "ep3",
+                  |        "port": 10000,
+                  |        "protocol": "TCP",
+                  |        "targetPort": 10000
+                  |      },
+                  |      {
+                  |        "name": "ep4",
+                  |        "port": 1234,
+                  |        "protocol": "TCP",
+                  |        "targetPort": 1234
+                  |      }
+                  |    ],
+                  |    "selector": {
+                  |      "app": "my-app"
+                  |    }
+                  |  }
+                  |}
+                """.stripMargin.parse.right.get
+              assertPayload("service", service, serviceJsonExpected)
+
+              assert(ingress.name == "my-app")
+              val ingressJsonExpected =
+                """
+                  |{
+                  |	"apiVersion": "extensions/v1beta1",
+                  |	"kind": "Ingress",
+                  |	"metadata": {
+                  |		"name": "my-app",
+                  |   "namespace": "chirper"
+                  |	},
+                  |	"spec": {
+                  |		"rules": [{
+                  |			"http": {
+                  |				"paths": [{
+                  |					"path": "/pizza",
+                  |					"backend": {
+                  |						"serviceName": "my-app",
+                  |						"servicePort": 10000
+                  |					}
+                  |				}]
+                  |			}
+                  |		}]
+                  |	}
+                  |}
+                """.stripMargin.parse.right.get
+              assertPayload("ingress", ingress, ingressJsonExpected)
+
+              Future.sequence(asserts.reverse)
+            }
+        }
+
+        "generates kubernetes deployment + service resource using Kubernetes API" - {
+          val k8sArgs = kubernetesArgs.copy(generateNamespaces = true, namespace = Some("chirper"))
+
+          generateResources(imageName, dockerConfig, generateDeploymentArgs
+            .copy(targetRuntimeArgs = Some(k8sArgs), discoveryMethod = DiscoveryMethod.KubernetesApi), k8sArgs)
             .map(_.toOption)
             .flatMap { result =>
               assert(result.nonEmpty)
@@ -231,16 +534,24 @@ object KubernetesPackageTest extends TestSuite {
                   |            ],
                   |            "ports": [
                   |              {
+                  |                "containerPort": 2552,
+                  |                "name": "remoting"
+                  |              },
+                  |              {
+                  |                "containerPort": 8558,
+                  |                "name": "management"
+                  |              },
+                  |              {
                   |                "containerPort": 10000,
-                  |                "name": "ep1"
-                  |              },
-                  |              {
-                  |                "containerPort": 1234,
-                  |                "name": "ep2"
-                  |              },
-                  |              {
-                  |                "containerPort": 1234,
                   |                "name": "ep3"
+                  |              },
+                  |              {
+                  |                "containerPort": 1234,
+                  |                "name": "ep4"
+                  |              },
+                  |              {
+                  |                "containerPort": 1234,
+                  |                "name": "ep5"
                   |              }
                   |            ]
                   |          }
@@ -269,22 +580,34 @@ object KubernetesPackageTest extends TestSuite {
                   |  "spec": {
                   |    "ports": [
                   |      {
-                  |        "name": "ep1",
+                  |        "name": "ep5",
+                  |        "port": 1234,
+                  |        "protocol": "UDP",
+                  |        "targetPort": 1234
+                  |      },
+                  |      {
+                  |        "name": "ep3",
                   |        "port": 10000,
                   |        "protocol": "TCP",
                   |        "targetPort": 10000
                   |      },
                   |      {
-                  |        "name": "ep2",
+                  |        "name": "ep4",
                   |        "port": 1234,
                   |        "protocol": "TCP",
                   |        "targetPort": 1234
                   |      },
                   |      {
-                  |        "name": "ep3",
-                  |        "port": 1234,
-                  |        "protocol": "UDP",
-                  |        "targetPort": 1234
+                  |        "name": "management",
+                  |        "port": 8558,
+                  |        "protocol": "TCP",
+                  |        "targetPort": 8558
+                  |      },
+                  |      {
+                  |        "name": "remoting",
+                  |        "port": 2552,
+                  |        "protocol": "TCP",
+                  |        "targetPort": 2552
                   |      }
                   |    ],
                   |    "selector": {
@@ -299,25 +622,25 @@ object KubernetesPackageTest extends TestSuite {
               val ingressJsonExpected =
                 """
                   |{
-                  |	"apiVersion": "extensions/v1beta1",
-                  |	"kind": "Ingress",
-                  |	"metadata": {
-                  |		"name": "my-app",
+                  | "apiVersion": "extensions/v1beta1",
+                  | "kind": "Ingress",
+                  | "metadata": {
+                  |   "name": "my-app",
                   |   "namespace": "chirper"
-                  |	},
-                  |	"spec": {
-                  |		"rules": [{
-                  |			"http": {
-                  |				"paths": [{
-                  |					"path": "/pizza",
-                  |					"backend": {
-                  |						"serviceName": "my-app",
-                  |						"servicePort": 10000
-                  |					}
-                  |				}]
-                  |			}
-                  |		}]
-                  |	}
+                  | },
+                  | "spec": {
+                  |   "rules": [{
+                  |     "http": {
+                  |       "paths": [{
+                  |         "path": "/pizza",
+                  |         "backend": {
+                  |           "serviceName": "my-app",
+                  |           "servicePort": 10000
+                  |         }
+                  |       }]
+                  |     }
+                  |   }]
+                  | }
                   |}
                 """.stripMargin.parse.right.get
               assertPayload("ingress", ingress, ingressJsonExpected)
@@ -332,7 +655,7 @@ object KubernetesPackageTest extends TestSuite {
             generateResources(imageName, dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs)
               .map(_.toOption.get)
               .map { result =>
-                assert(result.length == 4)
+                assert(result.length == 5)
                 assert(result.head.resourceType == "namespace")
               }
           }
@@ -362,7 +685,7 @@ object KubernetesPackageTest extends TestSuite {
             generateResources(imageName, dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs)
               .map(_.toOption.get)
               .map { result =>
-                assert(result.length == 1)
+                assert(result.length == 2)
                 assert(result.head.resourceType == "service")
               }
           }
