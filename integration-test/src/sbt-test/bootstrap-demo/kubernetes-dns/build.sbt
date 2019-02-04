@@ -42,7 +42,7 @@ lazy val root = (project in file("."))
       val s = streams.value
       val nm = name.value
       val v = version.value
-      val namespace = "reactivelibtest1"
+      val namespace = sys.env.get("OC_PROJECT").getOrElse("reactivelibtest1")
       val rpPath = file(sys.props("reactiveclipath")) / "reactive-cli-out"
       val out = Process(s"$rpPath generate-kubernetes-resources --registry-use-local --generate-all $nm:$v --pod-controller-replicas 3 --stacktrace").!!
       val x =
@@ -60,7 +60,7 @@ lazy val root = (project in file("."))
       val s = streams.value
       val nm = name.value
       val v = version.value
-      val namespace = "reactivelibtest1"
+      val namespace = sys.env.get("OC_PROJECT").getOrElse("reactivelibtest1")
       val kubectl = Deckhand.kubectl(s.log)
       val docker = Deckhand.docker(s.log)
 
