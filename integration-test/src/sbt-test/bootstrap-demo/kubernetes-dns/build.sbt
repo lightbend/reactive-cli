@@ -35,7 +35,7 @@ lazy val root = (project in file("."))
       logback,
       scalaTest
     ),
-    enableAkkaClusterBootstrap := true,
+    rpEnableAkkaClusterBootstrap := true,
 
     // run nativeLink in the host build first
     generateYaml := {
@@ -65,20 +65,22 @@ lazy val root = (project in file("."))
       val docker = Deckhand.docker(s.log)
 
       try {
-        if (!Deckhand.isOpenShift) {
-          kubectl.tryCreate(s"namespace $namespace")
-          kubectl.setCurrentNamespace(namespace)
-        } else {
-          // work around: /rp-start: line 60: /opt/docker/bin/bootstrap-kapi-demo: Permission denied
-          kubectl.command(s"adm policy add-scc-to-user anyuid system:serviceaccount:$namespace:default")
-          kubectl.command(s"policy add-role-to-user system:image-builder system:serviceaccount:$namespace:default")
-          docker.tag(s"$nm:$v docker-registry-default.centralpark.lightbend.com/$namespace/$nm:$v")
-          docker.push(s"docker-registry-default.centralpark.lightbend.com/$namespace/$nm")
+        try {
+          if (!Deckhand.isOpenShift) {
+            kubectl.tryCreate(s"namespace $namespace")
+            kubectl.setCurrentNamespace(namespace)
+          } else {
+            kubectl.command(s"policy add-role-to-user system:image-builder system:serviceaccount:$namespace:default")
+            docker.tag(s"$nm:$v docker-registry-default.centralpark.lightbend.com/$namespace/$nm:$v")
+            docker.push(s"docker-registry-default.centralpark.lightbend.com/$namespace/$nm")
+          }
+          kubectl.apply(target.value / "temp.yaml")
+          kubectl.waitForPods(3)
+          kubectl.describe("pods")
+          kubectl.checkAkkaCluster(3, _.contains(nm))
+        } catch {
+          case e => kubectl.tryLogs()
         }
-        kubectl.apply(target.value / "temp.yaml")
-        kubectl.waitForPods(3)
-        kubectl.describe("pods")
-        kubectl.checkAkkaCluster(3, _.contains(nm))
       } finally {
         kubectl.delete(s"services,pods,deployment --all --namespace $namespace")
         kubectl.waitForPods(0)

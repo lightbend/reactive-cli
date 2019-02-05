@@ -147,6 +147,34 @@ object ServiceJsonTest extends TestSuite {
               |  }
               |}
             """.stripMargin.parse.right.get
+          val dummyJson =
+            """
+              |{
+              |  "apiVersion": "v1",
+              |  "kind": "Service",
+              |  "metadata": {
+              |    "labels": {
+              |      "app": "friendimpl"
+              |    },
+              |    "name": "friendimpl-external",
+              |    "namespace": "chirper"
+              |  },
+              |  "spec": {
+              |    "ports": [
+              |      {
+              |        "name": "dummy",
+              |        "port": 70,
+              |        "protocol": "TCP",
+              |        "targetPort": 70
+              |      }
+              |    ],
+              |    "selector": {
+              |      "app": "friendimpl"
+              |    },
+              |    "type": "LoadBalancer"
+              |  }
+              |}
+            """.stripMargin.parse.right.get
           val serviceJson =
             """
               |{
@@ -174,8 +202,11 @@ object ServiceJsonTest extends TestSuite {
               |  }
               |}
             """.stripMargin.parse.right.get
+
+          assert(generatedJson.size == 3)
           assert(generatedJson == List(
             Service("friendimpl-internal", headlessJson, JsonTransform.noop),
+            Service("friendimpl-external", dummyJson, JsonTransform.noop),
             Service("friendimpl", serviceJson, JsonTransform.noop)))
 
         }

@@ -101,9 +101,9 @@ object KubernetesPackageTest extends TestSuite {
 
               val generatedResources = result.get
 
-              val (namespace, deployment, headlessService, service, ingress) = generatedResources match {
-                case Seq(namespace: Namespace, deployment: Deployment, headlessService: Service, service: Service, ingress: Ingress) =>
-                  (namespace, deployment, headlessService, service, ingress)
+              val (namespace, deployment, headlessService, dummyService, service, ingress) = generatedResources match {
+                case Seq(namespace: Namespace, deployment: Deployment, headlessService: Service, dummyService: Service, service: Service, ingress: Ingress) =>
+                  (namespace, deployment, headlessService, dummyService, service, ingress)
               }
 
               var asserts = List.empty[Future[Unit]]
@@ -311,6 +311,37 @@ object KubernetesPackageTest extends TestSuite {
                   |}
                 """.stripMargin.parse.right.get
               assertPayload("headless service", headlessService, headlessServiceJsonExpected)
+
+              assert(dummyService.name == "my-app-external")
+              val dummyServiceJsonExpected =
+                """
+                  |{
+                  |  "apiVersion": "v1",
+                  |  "kind": "Service",
+                  |  "metadata": {
+                  |    "labels": {
+                  |      "app": "my-app"
+                  |    },
+                  |    "name": "my-app-external",
+                  |    "namespace": "chirper"
+                  |  },
+                  |  "spec": {
+                  |    "ports": [
+                  |      {
+                  |        "name": "dummy",
+                  |        "port": 70,
+                  |        "protocol": "TCP",
+                  |        "targetPort": 70
+                  |      }
+                  |    ],
+                  |    "selector": {
+                  |      "app": "my-app"
+                  |    },
+                  |    "type": "LoadBalancer"
+                  |  }
+                  |}
+                """.stripMargin.parse.right.get
+              assertPayload("dummy service", dummyService, dummyServiceJsonExpected)
 
               assert(service.name == "my-app")
               val serviceJsonExpected =
@@ -657,7 +688,7 @@ object KubernetesPackageTest extends TestSuite {
             generateResources(imageName, dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs)
               .map(_.toOption.get)
               .map { result =>
-                assert(result.length == 5)
+                assert(result.length == 6)
                 assert(result.head.resourceType == "namespace")
               }
           }
@@ -687,7 +718,7 @@ object KubernetesPackageTest extends TestSuite {
             generateResources(imageName, dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs)
               .map(_.toOption.get)
               .map { result =>
-                assert(result.length == 2)
+                assert(result.length == 3)
                 assert(result.head.resourceType == "service")
               }
           }
