@@ -69,7 +69,8 @@ object RpEnvironmentVariables {
           s"-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName",
           s"-Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas",
           akkaClusterBootstrapSystemName.fold("-Dakka.discovery.marathon-api.app-label-query=APP_NAME==%s")(systemName => s"-Dakka.discovery.marathon-api.app-label-query=ACTOR_SYSTEM_NAME==$systemName"),
-          s"${if (akkaClusterJoinExisting) "-Dakka.management.cluster.bootstrap.form-new-cluster=false" else ""}")
+          s"${if (akkaClusterJoinExisting) "-Dakka.management.cluster.bootstrap.form-new-cluster=false" else ""}",
+          s"-Dplay.server.pidfile.path=/dev/null")
           .filter(_.nonEmpty)
           .mkString(" "))
 

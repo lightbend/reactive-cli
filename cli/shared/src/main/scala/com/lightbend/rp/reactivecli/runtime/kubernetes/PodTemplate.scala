@@ -116,7 +116,8 @@ object PodTemplate {
             }) ++
               List(
                 s"-Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas",
-                s"${if (akkaClusterJoinExisting) "-Dakka.management.cluster.bootstrap.form-new-cluster=false" else ""}"))
+                s"${if (akkaClusterJoinExisting) "-Dakka.management.cluster.bootstrap.form-new-cluster=false" else ""}",
+                s"-Dplay.server.pidfile.path=/dev/null"))
               .filter(_.nonEmpty)
               .mkString(" ")),
           "RP_DYN_JAVA_OPTS" -> LiteralEnvironmentVariable(
