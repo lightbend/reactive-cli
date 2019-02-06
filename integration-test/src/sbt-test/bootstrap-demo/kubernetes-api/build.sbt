@@ -35,8 +35,8 @@ lazy val root = (project in file("."))
       logback,
       scalaTest
     ),
-    enableAkkaClusterBootstrap := true,
-    akkaClusterBootstrapSystemName := "hoboken1",
+    rpEnableAkkaClusterBootstrap := true,
+    rpAkkaClusterBootstrapSystemName := "hoboken1",
 
     // run nativeLink in the host build first
     generateYaml := {
@@ -75,8 +75,6 @@ lazy val root = (project in file("."))
               "namespace"       -> namespace
             ))
         } else {
-          // work around: /rp-start: line 60: /opt/docker/bin/bootstrap-kapi-demo: Permission denied
-          kubectl.command(s"adm policy add-scc-to-user anyuid system:serviceaccount:$namespace:default")
           kubectl.command(s"policy add-role-to-user system:image-builder system:serviceaccount:$namespace:default")
           kubectl.apply(Deckhand.mustache(yamlDir / "rbac.mustache"),
             Map(
