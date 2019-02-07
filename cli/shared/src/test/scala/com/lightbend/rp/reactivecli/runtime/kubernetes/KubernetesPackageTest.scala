@@ -688,7 +688,7 @@ object KubernetesPackageTest extends TestSuite {
             generateResources(imageName, dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs)
               .map(_.toOption.get)
               .map { result =>
-                assert(result.length == 6)
+                assert(result.length == 4)
                 assert(result.head.resourceType == "namespace")
               }
           }
@@ -718,7 +718,7 @@ object KubernetesPackageTest extends TestSuite {
             generateResources(imageName, dockerConfig, generateDeploymentArgs.copy(targetRuntimeArgs = Some(k8sArgs)), k8sArgs)
               .map(_.toOption.get)
               .map { result =>
-                assert(result.length == 3)
+                assert(result.length == 1)
                 assert(result.head.resourceType == "service")
               }
           }

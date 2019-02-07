@@ -44,7 +44,7 @@ lazy val root = (project in file("."))
       val v = version.value
       val namespace = sys.env.get("OC_PROJECT").getOrElse("reactivelibtest1")
       val rpPath = file(sys.props("reactiveclipath")) / "reactive-cli-out"
-      val out = Process(s"$rpPath generate-kubernetes-resources --registry-use-local --generate-all $nm:$v --pod-controller-replicas 3 --stacktrace").!!
+      val out = Process(s"$rpPath generate-kubernetes-resources --registry-use-local --generate-all --discovery-method akka-dns $nm:$v --pod-controller-replicas 3 --stacktrace").!!
       val x =
         if (!Deckhand.isOpenShift)
           out.replaceAllLiterally("imagePullPolicy: IfNotPresent", "imagePullPolicy: Never")

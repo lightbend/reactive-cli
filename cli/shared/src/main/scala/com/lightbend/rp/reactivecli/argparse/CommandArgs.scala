@@ -82,7 +82,7 @@ case class GenerateDeploymentArgs(
   akkaClusterJoinExisting: Boolean = false,
   akkaClusterSkipValidation: Boolean = false,
   deploymentType: DeploymentType = CanaryDeploymentType,
-  discoveryMethod: DiscoveryMethod = DiscoveryMethod.AkkaDns,
+  discoveryMethod: DiscoveryMethod = DiscoveryMethod.KubernetesApi,
   dockerImages: Seq[String] = Seq.empty,
   name: Option[String] = None,
   version: Option[String] = None,

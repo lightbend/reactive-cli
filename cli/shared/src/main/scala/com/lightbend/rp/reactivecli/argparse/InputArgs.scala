@@ -131,7 +131,7 @@ object InputArgs {
             .action(GenerateDeploymentArgs.set((t, args) => args.copy(deploymentType = t))),
 
           opt[DiscoveryMethod]("discovery-method")
-            .text(s"Sets the discovery method. Default: ${DiscoveryMethod.AkkaDns}; Available: ${DiscoveryMethod.all.mkString(", ")}")
+            .text(s"Sets the discovery method. Default: ${DiscoveryMethod.KubernetesApi}; Available: ${DiscoveryMethod.all.mkString(", ")}")
             .optional()
             .action(GenerateDeploymentArgs.set((t, args) => args.copy(discoveryMethod = t))),
 
