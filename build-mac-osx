@@ -13,7 +13,7 @@ fi
 
 version=${1:?usage: build-mac-osx version}
 git checkout "tags/v$version"
-sbt -Xmx2048m -Dbuild.nativeMode=release clean cliNative/test cliNative/package
+sbt -J-Xmx2048m -Dbuild.nativeMode=release clean cliNative/test cliNative/package
 
 pkgbase=target/mac
 rm -rf "$pkgbase"
