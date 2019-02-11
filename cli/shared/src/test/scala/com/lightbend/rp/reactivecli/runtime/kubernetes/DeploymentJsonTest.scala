@@ -192,7 +192,7 @@ object DeploymentJsonTest extends TestSuite {
               |              },
               |              {
               |                "name": "RP_JAVA_OPTS",
-              |                "value": "-Dconfig.resource=my-config.conf"
+              |                "value": "-Dplay.server.pidfile.path=/dev/null -Dconfig.resource=my-config.conf"
               |              },
               |              {
               |                "name": "RP_KUBERNETES_POD_IP",
@@ -422,13 +422,13 @@ object DeploymentJsonTest extends TestSuite {
               |                "name": "RP_JAVA_OPTS",
               |                "value": """".stripMargin +
               List(
+                "-Dplay.server.pidfile.path=/dev/null",
                 "-Dconfig.resource=my-config.conf",
                 "-Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=kubernetes-api",
                 "-Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=management",
                 "-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=friendimpl",
                 "-Dakka.discovery.kubernetes-api.pod-label-selector=akka.lightbend.com/service-name=%s",
-                "-Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=1",
-                "-Dplay.server.pidfile.path=/dev/null").mkString(" ") +
+                "-Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=1").mkString(" ") +
                 """"
               |              },
               |              {

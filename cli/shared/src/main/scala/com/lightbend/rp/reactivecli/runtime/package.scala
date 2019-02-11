@@ -20,6 +20,7 @@ package object runtime {
   private[reactivecli] val AkkaClusterMinimumReplicas = 2
   private[reactivecli] val ReadyCheckUrl = "/platform-tooling/ready"
   private[reactivecli] val HealthCheckUrl = "/platform-tooling/healthy"
+  private[reactivecli] val playPidDevNull = "-Dplay.server.pidfile.path=/dev/null"
 
   def pathDepthAndLength(path: String): (Int, Int) = {
     val depth = path.split('/').length

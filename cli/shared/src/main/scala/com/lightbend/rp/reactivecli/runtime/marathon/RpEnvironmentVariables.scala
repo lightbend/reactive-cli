@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-package com.lightbend.rp.reactivecli.runtime.marathon
+package com.lightbend.rp.reactivecli.runtime
+package marathon
 
 import com.lightbend.rp.reactivecli.annotations._
 import scala.collection.immutable.Seq
@@ -37,6 +38,7 @@ object RpEnvironmentVariables {
       annotations.version.fold(Map.empty[String, String])(versionEnvs),
       appTypeEnvs(annotations.appType, annotations.modules),
       configEnvs(annotations.configResource),
+      Map("RP_JAVA_OPTS" -> playPidDevNull),
       endpointEnvs(annotations.endpoints),
       akkaClusterEnvs(annotations.modules, annotations.namespace, serviceResourceName, annotations.managementEndpointName.getOrElse(legacyAkkaManagementPortName), noOfReplicas, annotations.akkaClusterBootstrapSystemName, akkaClusterJoinExisting),
       externalServicesEnvs(annotations.modules, externalServices))
@@ -69,8 +71,7 @@ object RpEnvironmentVariables {
           s"-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=$serviceResourceName",
           s"-Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas",
           akkaClusterBootstrapSystemName.fold("-Dakka.discovery.marathon-api.app-label-query=APP_NAME==%s")(systemName => s"-Dakka.discovery.marathon-api.app-label-query=ACTOR_SYSTEM_NAME==$systemName"),
-          s"${if (akkaClusterJoinExisting) "-Dakka.management.cluster.bootstrap.form-new-cluster=false" else ""}",
-          s"-Dplay.server.pidfile.path=/dev/null")
+          s"${if (akkaClusterJoinExisting) "-Dakka.management.cluster.bootstrap.form-new-cluster=false" else ""}")
           .filter(_.nonEmpty)
           .mkString(" "))
 
