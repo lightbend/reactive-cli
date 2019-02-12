@@ -309,6 +309,11 @@ object InputArgs {
             .optional()
             .action(GenerateDeploymentArgs.set((_, c) => c.copy(registryUseLocal = true))),
 
+          opt[Unit]("registry-disable-local") /* note: this argument will apply for other targets */
+            .text("Disables the local docker registry before the remote registry.")
+            .optional()
+            .action(GenerateDeploymentArgs.set((_, c) => c.copy(registryUseLocal = false))),
+
           opt[String]("service-api-version")
             .text(s"Sets the Service API version. Default: ${printFuture(KubernetesArgs.DefaultServiceApiVersion)}")
             .optional()
