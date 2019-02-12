@@ -66,6 +66,7 @@ object RpEnvironmentVariablesTest extends TestSuite {
           "RP_ENDPOINTS" -> "EP1",
           "RP_APP_VERSION" -> "3.2.1-SNAPSHOT",
           "RP_PLATFORM" -> "mesos",
+          "RP_JAVA_OPTS" -> "-Dplay.server.pidfile.path=/dev/null",
           "RP_ENDPOINT_EP1_PORT" -> "$PORT_EP",
           "RP_APP_NAME" -> "friendimpl",
           "RP_ENDPOINT_0_PORT" -> "$PORT_EP",
@@ -114,12 +115,12 @@ object RpEnvironmentVariablesTest extends TestSuite {
           "RP_ENDPOINT_0_BIND_PORT" -> "$PORT_EP",
           "RP_ENDPOINTS" -> "EP1", "RP_APP_VERSION" -> "3.2.1-SNAPSHOT",
           "RP_JAVA_OPTS" -> List(
+            "-Dplay.server.pidfile.path=/dev/null",
             "-Dakka.management.cluster.bootstrap.contact-point-discovery.discovery-method=marathon-api",
             "-Dakka.management.cluster.bootstrap.contact-point-discovery.port-name=management",
             "-Dakka.management.cluster.bootstrap.contact-point-discovery.effective-name=friendimpl",
             "-Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=3",
-            "-Dakka.discovery.marathon-api.app-label-query=APP_NAME==%s",
-            "-Dplay.server.pidfile.path=/dev/null").mkString(" "),
+            "-Dakka.discovery.marathon-api.app-label-query=APP_NAME==%s").mkString(" "),
           "RP_PLATFORM" -> "mesos",
           "RP_ENDPOINT_EP1_PORT" -> "$PORT_EP",
           "RP_MODULES" -> "akka-cluster-bootstrapping",
@@ -183,6 +184,7 @@ object RpEnvironmentVariablesTest extends TestSuite {
           "RP_ENDPOINT_EP1_BIND_HOST" -> "0.0.0.0",
           "RP_MODULES" -> "service-discovery",
           "RP_JAVA_OPTS" -> List(
+            "-Dplay.server.pidfile.path=/dev/null",
             "-Dcom.lightbend.platform-tooling.service-discovery.external-service-addresses.chirpservice.0=_chirpservice._tcp.marathon.mesos",
             "-Dcom.lightbend.platform-tooling.service-discovery.external-service-addresses.chirpservice.1=_chirpservice._udp.marathon.mesos",
             "-Dcom.lightbend.platform-tooling.service-discovery.external-service-addresses.friendservice.0=_friendservice._tcp.marathon.mesos").mkString(" "))

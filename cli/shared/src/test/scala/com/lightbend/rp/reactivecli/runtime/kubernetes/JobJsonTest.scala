@@ -93,6 +93,7 @@ object JobJsonTest extends TestSuite {
                     jObjectFields("name" -> jString("RP_APP_NAME"), "value" -> jString("friendimpl")),
                     jObjectFields("name" -> jString("RP_APP_TYPE"), "value" -> jString("basic")),
                     jObjectFields("name" -> jString("RP_APP_VERSION"), "value" -> jString("3.2.1-SNAPSHOT")),
+                    jObjectFields("name" -> jString("RP_JAVA_OPTS"), "value" -> jString("-Dplay.server.pidfile.path=/dev/null")),
                     jObjectFields("name" -> jString("RP_KUBERNETES_POD_IP"), "valueFrom" -> jObjectFields("fieldRef" -> jObjectFields("fieldPath" -> jString("status.podIP")))),
                     jObjectFields("name" -> jString("RP_KUBERNETES_POD_NAME"), "valueFrom" -> jObjectFields("fieldRef" -> jObjectFields("fieldPath" -> jString("metadata.name")))),
                     jObjectFields("name" -> jString("RP_NAMESPACE"), "valueFrom" -> jObjectFields("fieldRef" -> jObjectFields("fieldPath" -> jString("metadata.namespace")))),

@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-package com.lightbend.rp.reactivecli.runtime.kubernetes
+package com.lightbend.rp.reactivecli.runtime
+package kubernetes
 
 import argonaut._
 import com.lightbend.rp.reactivecli.annotations.kubernetes.{ ConfigMapEnvironmentVariable, FieldRefEnvironmentVariable, SecretKeyRefEnvironmentVariable }
@@ -56,6 +57,7 @@ object PodTemplate {
         appNameEnvs(annotations.appName),
         annotations.version.fold(Map.empty[String, EnvironmentVariable])(versionEnvs),
         appTypeEnvs(annotations.appType, annotations.modules),
+        Map("RP_JAVA_OPTS" -> LiteralEnvironmentVariable(playPidDevNull)),
         configEnvs(annotations.configResource),
         akkaClusterEnvs(
           annotations.appName,
@@ -116,8 +118,7 @@ object PodTemplate {
             }) ++
               List(
                 s"-Dakka.management.cluster.bootstrap.contact-point-discovery.required-contact-point-nr=$noOfReplicas",
-                s"${if (akkaClusterJoinExisting) "-Dakka.management.cluster.bootstrap.form-new-cluster=false" else ""}",
-                s"-Dplay.server.pidfile.path=/dev/null"))
+                s"${if (akkaClusterJoinExisting) "-Dakka.management.cluster.bootstrap.form-new-cluster=false" else ""}"))
               .filter(_.nonEmpty)
               .mkString(" ")),
           "RP_DYN_JAVA_OPTS" -> LiteralEnvironmentVariable(

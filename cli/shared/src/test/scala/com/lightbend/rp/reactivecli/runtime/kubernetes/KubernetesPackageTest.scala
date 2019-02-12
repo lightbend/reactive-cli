@@ -189,6 +189,10 @@ object KubernetesPackageTest extends TestSuite {
                   |                "value": "3.2.1-SNAPSHOT"
                   |              },
                   |              {
+                  |                "name": "RP_JAVA_OPTS",
+                  |                "value": "-Dplay.server.pidfile.path=/dev/null"
+                  |              },
+                  |              {
                   |                "name": "RP_KUBERNETES_POD_IP",
                   |                "valueFrom": {
                   |                  "fieldRef": {
@@ -513,6 +517,10 @@ object KubernetesPackageTest extends TestSuite {
                   |              {
                   |                "name": "RP_APP_VERSION",
                   |                "value": "3.2.1-SNAPSHOT"
+                  |              },
+                  |              {
+                  |                "name": "RP_JAVA_OPTS",
+                  |                "value": "-Dplay.server.pidfile.path=/dev/null"
                   |              },
                   |              {
                   |                "name": "RP_KUBERNETES_POD_IP",
