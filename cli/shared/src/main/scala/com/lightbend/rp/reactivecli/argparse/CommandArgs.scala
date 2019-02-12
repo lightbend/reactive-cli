@@ -29,7 +29,7 @@ object VersionArgs extends CommandArgs
 object GenerateDeploymentArgs {
   val DockerRegistryUseHttpsDefault = true
   val DockerRegistryValidateTlsDefault = true
-  val DockerRegistryUseLocalDefault = false
+  val DockerRegistryUseLocalDefault = true
 
   /**
    * Convenience method to set the [[GenerateDeploymentArgs]] values when parsing the complete user input.
