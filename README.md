@@ -6,6 +6,13 @@ This project is a component of [Lightbend Orchestration](https://developer.light
 
 `reactive-cli` is a CLI tool, `rp`, that can inspect Docker images created by [sbt-reactive-app](https://github.com/lightbend/sbt-reactive-app) and generate resources for Kubernetes, DC/OS and potentially other target platforms.
 
+## Project Status
+
+
+Lightbend Orchestration is no longer actively developed and will reach its [End of Life](https://developer.lightbend.com/docs/lightbend-platform/2.0/support-terminology/index.html#end-of-life-eol-) on April 15, 2020.
+
+We recommend [Migrating to the Improved Kubernetes Deployment Experience](https://developer.lightbend.com/docs/lightbend-orchestration/current/migration.html).
+
 ## Installation / Usage
 
 Consult the [Lightbend Orchestration](https://developer.lightbend.com/docs/lightbend-orchestration/current/setup/cli-installation.html#install-the-cli) documentation for setup and configuration.
@@ -127,7 +134,3 @@ sbt buildAll
 ```
 
 Once built, you can find the packages in `target/stage/<name>/output`.
-
-## Maintenance
-
-Enterprise Suite Platform Team <es-platform@lightbend.com>
